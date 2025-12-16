@@ -9,9 +9,9 @@
 | Attribute | Value |
 |-----------|-------|
 | **Project Title** | Equipment Request Management System (ERMS) |
-| **Version** | 1.0 |
-| **Status** | Draft for Stakeholder Review |
-| **Last Updated** | December 16, 2025 |
+| **Version** | 1.1 |
+| **Status** | Updated with Refined Workflow & Role Structure |
+| **Last Updated** | December 17, 2025 |
 | **Document Type** | Project Scope Statement (PSS) |
 | **Classification** | Internal - Engineering Departments |
 | **Prepared By** | Software Engineering Project Team |
@@ -155,59 +155,98 @@ This project aligns with institutional goals of:
   - Custom form fields based on equipment type
   - Cost threshold triggering different approval paths
 
-- **Automated Workflow Engine**
-  - **Submission Phase**
-    - Automatic validation of required fields
-    - Duplicate request detection algorithm
-    - Conflict checking (overlapping reservations for same equipment)
+- **Automated Workflow Engine (Refined Based on Institutional Workflow)**
+
+  **Overall Request Flow:**
+  Student → System Eligibility Check → Lab In-charge Review → HOD Approval (if high-value) → Status Update → TO Issues Item → Equipment Usage → Student Return → TO Inspection → Request Closure
+
+  - **Submission Phase (Student Initiates)**
+    - Student logs in and selects target lab (CSEEEE system)
+    - System displays available equipment in selected lab
+    - Student specifies equipment and quantity
+    - Automatic system eligibility checks:
+      - Stock availability (Stock = 0? Requirement capped?)
+      - Student authorization for lab
+      - Duplicate request prevention
+      - Scheduling conflict detection
+    - Request submitted with justification and duration
+
+  - **Approval Pipeline (Institutional Hierarchy)**
     
-  - **Approval Pipeline (Multi-stage)**
-    - **Level 1 - Faculty/Supervisor Approval** (optional based on role)
+    - **Level 1 - Lab In-charge (Lecturer) Review** ⭐ PRIMARY APPROVER
+      - Validates student is authorized for the lab
+      - Verifies request justification aligns with lab activities
+      - Reviews equipment feasibility for stated purpose
       - Decision options: Approve, Reject, Request Modifications
       - Comment/feedback capability
-      - SLA: 2 business days
-    
-    - **Level 2 - Department Head (HOD) Approval**
-      - Budget authority verification
-      - Priority alignment with departmental goals
-      - SLA: 2 business days
-    
-    - **Level 3 - Lab Administrator Review**
-      - Inventory availability confirmation
-      - Scheduling conflict resolution
-      - Equipment feasibility assessment
       - SLA: 1 business day
+      - If approved → Proceed to Level 2 or Direct TO Issuance (if low-value)
+      - If rejected → Notify student with remediation path
     
-    - **Level 4 - Procurement Authorization** (if applicable for new purchases)
-      - Purchase order generation (if new equipment)
-      - Vendor selection from approved vendors list
-      - Budget code assignment
-      - SLA: 1-3 business days based on type
+    - **Level 2 - HOD (Head of Department) Approval** (CONDITIONAL - High-Value Requests)
+      - Triggered only if: Request value > ₹2 lakh OR bulk quantity OR cross-departmental OR emergency
+      - Budget authority verification
+      - Priority alignment with departmental goals and semester plan
+      - Resource allocation approval
+      - SLA: 2 business days
+      - Decision options: Approve, Reject, Request Modifications, Escalate to Director
+      - If rejected → Return to Lab In-charge with feedback
+    
+    - **Level 3 - Director/Dean Escalation** (IF NEEDED)
+      - Only for requests exceeding ₹5 lakh OR critical equipment OR conflicts
+      - Strategic budgetary review
+      - Cross-departmental coordination
+      - SLA: 1 business day
+      - Can override or request reconsideration
 
-  - **Conditional Routing Rules**
-    - Equipment value < ₹50,000: Direct approval by HOD
-    - Equipment value ₹50,000 - ₹2,00,000: HOD + Director approval
-    - Equipment value > ₹2,00,000: Management approval + Finance review
-    - Cross-departmental requests: Both HOD approvals required
-    - Emergency requests: Fast-track path with senior management authority
+  - **Conditional Routing Logic (System-Driven)**
+    - **Stock = 0 and Request > Available**: Cap the request → Notify student of available quantity
+    - **High-Value Bulk Request (Value > ₹2 lakh OR Qty > 5 units)**: Route to HOD automatically
+    - **Cross-Departmental Request**: Both HOD approvals required (sequential)
+    - **Emergency Request Flag**: Fast-track to HOD with escalation option
+    - **Standard Equipment Request (Value < ₹2 lakh, In-stock, Within Limits)**: Lab In-charge approval only
+
+  - **Post-Approval Phase (Technical Officer Execution)**
+    - System sends "Ready for Pickup" notification to student
+    - Student visits Lab Counter
+    - TO verifies request in system
+    - TO physically issues equipment item(s)
+    - TO records issuance in system with:
+      - Equipment serial/identification number
+      - Condition at issuance
+      - Expected return date
+      - Student acknowledgment
+
+  - **Equipment Return & Inspection Phase**
+    - Student returns equipment by due date (or requests extension through Lab In-charge)
+    - TO inspects equipment condition:
+      - **Good Condition** → Request closed, stock updated (Stock +1)
+      - **Damaged/Missing Parts** → Flag equipment, notify HOD, create maintenance request
+    - TO records return inspection in system
+    - Return confirmed to student
 
   - **Escalation Mechanism**
-    - Automatic escalation if SLA breached (escalates to next level)
+    - Automatic escalation if SLA breached at any level
+    - Lab In-charge escalates to HOD if cannot approve within SLA
+    - HOD escalates to Director if requiring strategic decision
     - Manual escalation option with justification
-    - Escalation history tracking
+    - Escalation history tracked with reasons
 
   - **Modification & Resubmission**
-    - Requesters can modify pending requests
-    - Approvers can request modifications with specific feedback
-    - Automatic re-routing on modification submission
-    - Version history of all modifications
+    - Students can modify pending requests (before Lab In-charge approval)
+    - Lab In-charge can request modifications with specific feedback
+    - Automatic re-routing after modification
+    - Version history of all modifications maintained
 
 - **Status Tracking & Communication**
-  - Real-time status dashboard for requesters
+  - Real-time status dashboard for all users (role-appropriate views)
+  - Status stages: Draft → Submitted → Lab In-charge Review → HOD Review (if applicable) → Approved → Ready for Pickup → Issued → In-Use → Returned → Inspection → Closed
   - Automated email notifications at each approval stage
-  - SMS alerts for urgent approvals
+  - SMS alerts for critical approvals (HOD level)
+  - Lab In-charge receives in-app notifications for pending approvals
+  - TO receives notifications when equipment ready for pickup
   - Rejection reasons clearly communicated with remediation suggestions
-  - Pending action indicators for approvers
+  - Return reminder notifications (1 day before, on due date, 1 day after overdue)
 
 **Users:** Students, Faculty, Lab Staff, HODs, Lab Admins, Procurement Staff
 
@@ -218,19 +257,20 @@ This project aligns with institutional goals of:
 **Purpose:** Enforce secure, granular access control based on user roles and departments.
 
 **Core Features:**
-- **User Role Hierarchy**
+- **User Role Hierarchy (Institutional Context)**
 
-| Role | Module Access | Capabilities | Department Scope |
-|------|-------------|-------------|-----------------|
-| **System Admin** | All | All functions, user management, system configuration | Cross-department |
-| **Director/Principal** | All | Strategic approvals, budget override, reports | Cross-department |
-| **HOD** | Approvals, Inventory, Reports | Approve requests, set departmental priorities, view analytics | Own department + shared assets |
-| **Faculty/Lab Supervisor** | Requests, Inventory, Reports | Submit requests, view equipment, approve student requests | Own department + shared resources |
-| **Lab Administrator** | Inventory, Tracking, Reports | Equipment allocation, maintenance scheduling, availability updates | Own department labs |
-| **Procurement Officer** | Orders, Inventory, Tracking | Process purchase orders, update delivery status, vendor management | Cross-department |
-| **Student** | Requests, Reports | Submit requests (through faculty), track own requests | Own department (for assigned labs) |
-| **Department Staff** | Inventory, Reports | Track equipment, generate reports | Own department |
-| **Guest/Auditor** | Reports (read-only) | View specified reports only | Limited/configurable |
+| Role | Level | Module Access | Capabilities | Department Scope |
+|------|-------|-------------|-------------|-----------------|
+| **System Admin** | L0 | All | System configuration, user management, technical support, backup/recovery | Cross-department |
+| **Director/Dean** | L1 | All | Strategic oversight, budgetary control, escalation authority, executive reports | Cross-department |
+| **HOD (Head of Department)** | L2 | Approvals, Inventory, Reports, Budget | Approve high-value requests (>₹2 lakh), set departmental priorities, lab supervision, analytics, cross-departmental coordination | Own department + shared assets |
+| **Lab In-charge (Lecturer)** | L3 | Requests, Approvals, Inventory, Reports | Approve student requests for assigned lab, manage lab schedules, recommend equipment, view equipment status | Assigned lab + department labs |
+| **Lab Assistant** (Demonstrator/Instructor) | L4 | Requests, Inventory, Reports | Assist students in requests, guide equipment usage, report usage issues, track lab activities | Assigned lab |
+| **Technical Officer (TO)** | L4 | Inventory, Tracking, Maintenance | Physical equipment issuance/return, condition inspection, equipment maintenance scheduling, stock updates, damage flagging | Own department equipment |
+| **Faculty/Researcher** | L3 | Requests, Inventory, Reports | Submit requests for projects/research, approve student requests (if supervising), view equipment, track own requests | Own department |
+| **Student** | L5 | Requests, Reports | Submit requests through Lab In-charge approval, track own requests, use equipment in authorized labs | Assigned labs only |
+| **Department Staff** | L4 | Inventory, Reports | Track equipment, generate operational reports, assist in data maintenance | Own department |
+| **Guest/Auditor** | L5 | Reports (read-only) | View compliance and audit reports only | Restricted/configurable |
 
 - **Permission Matrix**
   - Granular permission definitions per role
@@ -269,7 +309,7 @@ This project aligns with institutional goals of:
   - Change history accessible to admins and auditors
   - Compliance report generation for regulatory requirements
 
-**Users:** System Administrators, all user roles
+**Users:** System Administrators (configuration), HODs (department-level access rules), Lab In-charges (lab-level access rules), Auditors (compliance review)
 
 ---
 
@@ -356,7 +396,7 @@ This project aligns with institutional goals of:
   - Utilization improvement suggestions
   - Cost optimization alerts
 
-**Users:** HODs, Lab Admins, Faculty, Procurement Staff, Department Heads
+**Users:** HODs (strategic analytics), Lab In-charges (lab utilization), Technical Officers (operational tracking), Procurement Staff (vendor analysis), Faculty (research project tracking)
 
 ---
 
@@ -374,7 +414,7 @@ This project aligns with institutional goals of:
 - Equipment depreciation calculations
 - End-of-life disposal workflows
 
-**Users:** Lab Admins, Maintenance Staff, Procurement Officers
+**Users:** Lab In-charges (schedule maintenance), Technical Officers (perform/track maintenance), HOD (approve maintenance costs)
 
 ---
 
@@ -513,15 +553,18 @@ The following items are explicitly **NOT** included in this project scope:
 
 | Stakeholder Group | Role | Interest | Impact | Engagement Strategy |
 |------------------|------|----------|--------|-------------------|
-| **Department HODs (CE & EEE)** | Project Sponsor, Approver | Efficient resource management, budget control, operational visibility | High | Monthly steering committee, quarterly reviews |
-| **Faculty Members** | Approver, User | Equipment availability, ease of use, fair allocation | High | Training workshops, feedback surveys |
-| **Lab Administrators** | Daily User, Data Manager | System reliability, ease of inventory updates, reporting | High | Weekly system support, feature requests |
-| **Students** | Requester, User | Simple request process, quick turnaround, transparency | High | User guides, helpdesk support |
-| **Procurement Officer** | Approver, User | Purchase order automation, vendor management, compliance | Medium | Coordination meetings, requirement refinement |
-| **IT Department** | Technical Support, Hosting | System performance, security, uptime | High | Infrastructure planning, technical support agreements |
-| **Finance Department** | Data Consumer | Budget tracking, cost analysis, financial reporting | Medium | Report integration, data accuracy assurance |
-| **Institutional Management** | Strategic Oversight | Cost savings, efficiency gains, compliance | Medium | Executive dashboards, quarterly reports |
-| **External Auditors** | Compliance Reviewer | Asset tracking, audit trail, regulatory compliance | Low | Compliance reporting, audit-ready documentation |
+| **Department HODs (CE & EEE)** | Project Sponsor, Approver (High-value requests) | Efficient resource management, budget control, lab supervision, departmental priorities | High | Monthly steering committee, quarterly reviews, Role definition workshops |
+| **Lab In-charges (Lecturers)** | Primary Approver, Gatekeeper | Lab scheduling, student authorization, equipment feasibility, ease of approval workflow | High | Weekly training, approval workflow walkthrough, feedback mechanisms |
+| **Technical Officers (TOs)** | Equipment Manager, Data Entry | Equipment accountability, physical asset tracking, condition management, system usability | High | Dedicated TO training, issuance/return workflow simplification, field testing |
+| **Faculty/Researchers** | Request Submitter, User | Equipment availability for research, ease of request process, quick turnaround | High | Training workshops, request form guidance, priority support |
+| **Students** | Requester, End-User | Simple request process, quick turnaround, transparency, no approval bottleneck | High | Student guides, simplified forms, Lab In-charge guidance, video tutorials |
+| **Lab Assistants** (Demonstrators) | Support Role, User | Guide students, track usage, report issues, minimal system burden | Medium | Training for assistance role, reference documentation |
+| **Procurement Officer** | Secondary Approver, Data User | Purchase order requests, vendor management, budget coding, request fulfillment | Medium | Coordination meetings, integration requirements, reporting access |
+| **IT Department** | Technical Support, Hosting, SSO Integration | System performance, security, uptime, SSO configuration, email integration | High | Infrastructure planning, SLA agreements, technical support protocols |
+| **Director/Dean** | Executive Escalation, Strategic | Cost savings, efficiency gains, cross-departmental coordination, budget oversight | Medium | Quarterly executive reports, escalation point only |
+| **Finance Department** | Data Consumer, Budget Analyst | Budget tracking by department/lab, equipment cost analysis, financial reporting | Medium | Report integration, cost data accuracy, quarterly financial reviews |
+| **Department Staff** | Data User, Reporter | Equipment tracking, operational reporting, inventory visibility | Low | Training for reporting access, role-specific documentation |
+| **External Auditors** | Compliance Reviewer | Asset tracking, audit trail completeness, regulatory compliance, accountability trail | Low | Compliance reporting, audit-ready documentation, trail verification |
 
 ### 4.2 Project Governance Structure
 
@@ -540,16 +583,19 @@ Tech Lead  QA Lead  BA Lead   Support Lead
 
 ### 4.3 Decision Authority Matrix (RACI)
 
-| Decision Type | Project Manager | HODs | IT Director | Procurement | Finance |
-|---------------|-----------------|------|-------------|-------------|---------|
-| Functional Requirements | C | A,R | C | I | I |
-| System Architecture | R | C | A | C | I |
-| Budget Allocation | C | A | R | C | A |
-| Scope Changes | R | A | C | I | C |
-| Vendor Selection | C | I | A | R | C |
-| Technical Implementation | I | C | A | R | I |
-| Go-Live Timeline | R | A | C | I | C |
-| Approval Workflows | C | A,R | I | C | I |
+| Decision Type | Project Manager | Director | HOD | Lab In-charge | IT Director | Technical Officer |
+|---------------|-----------------|----------|-----|---------------|-------------|------------------|
+| Functional Requirements | R | C | A,I | C | C | I |
+| System Architecture | R | I | C | I | A | I |
+| Workflow Design | R | I | A | R | C | I |
+| Budget Allocation | C | A | R | I | C | I |
+| Scope Changes | R | A | C | I | C | I |
+| Equipment Catalog | I | I | A | R | I | R |
+| Vendor Selection | C | A | I | I | R | I |
+| Technical Implementation | I | I | C | I | A | I |
+| Go-Live Timeline | R | A | C | I | C | I |
+| Approval Authority Rules | R | A | R | R | C | I |
+| TO Responsibilities | I | I | A | R | I | R |
 
 **Legend:** A=Accountable, R=Responsible, C=Consulted, I=Informed
 
@@ -566,23 +612,34 @@ Tech Lead  QA Lead  BA Lead   Support Lead
 - The system shall enable bulk import of legacy equipment data with validation
 - The system shall maintain complete audit trail of all catalog changes
 
-#### **FR-2: Request Submission & Processing**
-- The system shall provide user-friendly request submission forms with guided data entry
-- The system shall route requests through defined approval workflows based on request classification and value
-- The system shall support multi-level approvals (Faculty → HOD → Lab Admin → Procurement)
-- The system shall enforce SLA compliance with automatic escalation
-- The system shall prevent duplicate requests and detect scheduling conflicts
-- The system shall support request modification and resubmission with version tracking
-- The system shall generate unique request reference IDs for tracking
+#### **FR-2: Request Submission & Processing (Institutional Workflow)**
+- The system shall provide student-friendly request interface with lab selection and equipment browsing
+- The system shall perform automatic stock availability checking (display available quantity)
+- The system shall cap requests if stock is insufficient and notify students of available quantity
+- The system shall route requests through Lab In-charge approval as primary approval stage
+- The system shall conditionally route high-value/bulk requests to HOD for secondary approval
+- The system shall support escalation to Director/Dean for critical decisions (>₹5 lakh or conflicts)
+- The system shall enforce Lab In-charge SLA (1 business day) with HOD SLA (2 business days)
+- The system shall prevent duplicate simultaneous requests for same equipment
+- The system shall detect and flag scheduling conflicts (overlapping reservations)
+- The system shall support request modification before Lab In-charge approval
+- The system shall allow Lab In-charge to request modifications with feedback
+- The system shall generate unique request reference IDs (format: REQ-DEPT-YYYY-NNNNN)
+- The system shall provide "Ready for Pickup" status triggering TO notification
 
-#### **FR-3: Role-Based Access Control**
-- The system shall implement role-based access control with granular permissions
-- The system shall support 8+ distinct user roles with configurable permissions
-- The system shall enforce department-based access control for equipment visibility
-- The system shall support temporary role delegation
-- The system shall integrate with institutional SSO where available
-- The system shall enforce session timeout and security policies
-- The system shall maintain complete audit trail of access attempts
+#### **FR-3: Role-Based Access Control (Institutional Hierarchy)**
+- The system shall implement hierarchical role-based access control (9 distinct roles)
+- The system shall enforce role hierarchy: System Admin → Director → HOD → Lab In-charge/Faculty → Lab Assistant/TO → Student/Staff
+- The system shall enforce department-based access control (CE department users ≠ EEE users except shared equipment)
+- The system shall provide role-specific dashboards (Student view ≠ Lab In-charge view ≠ HOD view)
+- The system shall restrict Lab In-charge approvals to own assigned lab(s)
+- The system shall restrict TO equipment issuance to own departments` equipment
+- The system shall restrict student requests to authorized labs only
+- The system shall support temporary role delegation (HOD → Faculty during absence)
+- The system shall integrate with institutional SSO (LDAP/Active Directory) where available
+- The system shall enforce session timeout (30 min inactivity) and security policies
+- The system shall maintain complete audit trail of access attempts, approvals, and data modifications
+- The system shall mask sensitive data (cost, budget codes) from unauthorized users
 
 #### **FR-4: Inventory Management**
 - The system shall track real-time equipment availability status
@@ -789,21 +846,22 @@ Total Project Duration: 36 weeks (~9 months)
 
 | Role | Count | Responsibilities |
 |------|-------|-----------------|
-| **Project Manager** | 1 | Project planning, stakeholder management, risk management, schedule tracking |
-| **Business Analyst** | 1 | Requirements gathering, business process analysis, documentation |
-| **Solution Architect** | 1 | System design, technology stack decisions, integration planning |
-| **Senior Backend Developer** | 2 | Core business logic, database design, API development |
-| **Senior Frontend Developer** | 2 | UI implementation, user experience, responsive design |
-| **DevOps Engineer** | 1 | Infrastructure setup, deployment automation, monitoring |
-| **QA Lead** | 1 | Test planning, test automation framework setup |
-| **QA Engineers** | 3 | Manual testing, test automation, performance testing |
-| **Database Administrator** | 1 | Database design, optimization, backup/recovery setup |
-| **Security Specialist** | 1 | Security assessment, compliance review, vulnerability testing |
-| **Technical Writer** | 1 | Documentation, user manuals, API documentation |
-| **UI/UX Designer** | 1 | Interface design, user experience optimization, mockups |
-| **Support Lead** | 1 | Support team setup, documentation, knowledge transfer |
+| **Project Manager** | 1 | Project planning, stakeholder management (across both departments), risk management, schedule tracking, change control |
+| **Business Analyst** | 1 | Requirements gathering from CE & EEE departments, workflow analysis (Student→Lab In-charge→HOD→TO flow), documentation |
+| **Solution Architect** | 1 | System design, technology stack decisions, integration planning (SSO, email), institutional workflow design |
+| **Senior Backend Developer** | 2 | Core business logic (approval workflows, conditional routing), database design, REST API development, equipment tracking engine |
+| **Senior Frontend Developer** | 2 | UI implementation (role-specific dashboards), user experience (student-friendly form, Lab In-charge approval dashboard, HOD overview), responsive design |
+| **DevOps Engineer** | 1 | Infrastructure setup, deployment automation, monitoring, institutional integration, backup strategy |
+| **QA Lead** | 1 | Test planning, workflow testing (all approval paths), test automation framework, UAT coordination with labs |
+| **QA Engineers** | 3 | Manual testing, test automation, performance testing (concurrent users in labs), institutional workflow validation |
+| **Database Administrator** | 1 | Database design, optimization, backup/recovery setup, audit trail implementation, compliance data handling |
+| **Security Specialist** | 1 | Security assessment, institutional compliance (audit trail, data masking), vulnerability testing, SSO integration security |
+| **Technical Writer** | 1 | Documentation (Lab In-charge guide, TO manual, student quick start), user manuals, API documentation, video tutorials |
+| **UI/UX Designer** | 1 | Interface design (lab-focused workflows), user experience optimization (minimize student confusion), mockups for stakeholder review |
+| **Support Lead** | 1 | Support team setup (helpdesk triage), documentation (troubleshooting by role), knowledge transfer to IT support staff |
+| **Institutional Liaison** (Optional) | 0.5 | Department coordination, institutional policy alignment, stakeholder liaison between CE and EEE |
 
-**Total: 16 core team members + support staff**
+**Total: 16-17 core team members + support staff**
 
 ### 8.2 Technology Stack
 
@@ -921,20 +979,24 @@ Total Project Duration: 36 weeks (~9 months)
 
 ## 10. RISK MANAGEMENT
 
-### 10.1 Risk Register
+### 10.1 Risk Register (Updated with Workflow Considerations)
 
 | Risk ID | Description | Probability | Impact | Severity | Mitigation Strategy |
 |---------|-------------|------------|--------|----------|-------------------|
-| **R1** | User adoption lower than expected | Medium | Medium | Medium | Early training programs, phased rollout, incentive alignment |
-| **R2** | Key team member departure | Low | High | Medium | Knowledge documentation, cross-training, succession planning |
-| **R3** | Scope creep due to new requirements | High | Medium | High | Strict change control process, prioritization framework |
-| **R4** | Integration with institutional SSO fails | Medium | High | High | Early pilot, contingency local auth, IT coordination |
-| **R5** | Data migration errors from legacy system | Medium | High | High | Data validation checks, parallel running period, backup strategy |
-| **R6** | Performance issues under load | Medium | Medium | Medium | Load testing, database optimization, caching strategy |
-| **R7** | Security vulnerabilities discovered post-launch | Low | High | High | Regular security assessments, penetration testing, incident response plan |
-| **R8** | Inadequate training leading to misuse | Medium | Medium | Medium | Comprehensive documentation, video tutorials, helpdesk support |
-| **R9** | Budget overrun due to scope changes | Medium | High | High | Budget tracking, contingency reserve (15%), change control |
-| **R10** | Timeline delays due to dependencies | Medium | High | High | Parallel work streams, buffer time in schedule, stakeholder coordination |
+| **R1** | Lab In-charges not adopting approval role | Medium | High | High | Early training, Role-specific demos, Integration into lab operations, SLA clarity |
+| **R2** | Technical Officers unable to manage TO-specific features | Medium | High | High | Dedicated TO training, Simple issuance/return workflow, Helpdesk support |
+| **R3** | Student confusion with request process | Medium | Medium | Medium | Simplified student interface, Video tutorials, Lab assistant guidance, FAQ portal |
+| **R4** | Key team member departure | Low | High | Medium | Knowledge documentation, cross-training, succession planning |
+| **R5** | Scope creep with departmental workflow variations | High | Medium | High | Strict change control, Two-department alignment workshops, Phased enhancements |
+| **R6** | Integration with institutional SSO fails | Medium | High | High | Early pilot with IT, contingency local auth, dedicated IT coordination meetings |
+| **R7** | Data migration errors from legacy records | Medium | High | High | Data validation scripts, parallel running period (1 week), backup strategy |
+| **R8** | Performance issues during semester peak (many simultaneous requests) | Medium | Medium | Medium | Load testing with 500+ concurrent users, caching strategy, database optimization |
+| **R9** | Security vulnerabilities in approval workflow logic | Low | High | High | Security review of workflow engine, penetration testing, audit trail validation |
+| **R10** | Inadequate training for diverse user roles | Medium | Medium | Medium | Role-specific training materials, video tutorials, helpdesk support by role |
+| **R11** | Equipment damage flagging workflow not enforced | Medium | Medium | Medium | TO training, Damage reporting checklist, HOD notification automation |
+| **R12** | Cross-department equipment sharing conflicts | Medium | Medium | Medium | Conflict resolution workflow, HOD-level arbitration, shared equipment registry |
+| **R13** | Budget overrun due to scope changes | Medium | High | High | Budget tracking, 15% contingency reserve, strict change control |
+| **R14** | Timeline delays due to IT dependencies (SSO, email, hosting) | Medium | High | High | Early IT engagement, parallel work streams, SLA agreements with IT |
 
 ### 10.2 Risk Response Planning
 
@@ -977,12 +1039,15 @@ Total Project Duration: 36 weeks (~9 months)
    - Benefit: ₹5-10 lakhs annual savings
 
 **Qualitative Benefits:**
-- Enhanced faculty and student satisfaction through faster equipment access
-- Improved institutional asset management and compliance
-- Data-driven decision making for future investments
-- Reduction in equipment-related project delays
-- Better support for institutional accreditation requirements
-- Improved cross-departmental collaboration
+- Enhanced faculty and student satisfaction through faster equipment access (1-2 day turnaround vs 5-7 days)
+- Improved institutional asset management and compliance with audit trail requirements
+- Lab In-charges empowered with first-level approval authority (streamlines process)
+- Technical Officers better manage physical asset accountability and condition tracking
+- Data-driven decision making for future investments (equipment utilization by lab)
+- Reduction in equipment-related project delays (critical path reduction)
+- Better support for institutional accreditation requirements (evidence of resource management)
+- Improved cross-departmental collaboration (shared equipment visibility)
+- Reduced manual paperwork and TO tracking burden
 
 ### 11.2 Estimated Costs
 
@@ -1031,16 +1096,22 @@ Total Project Duration: 36 weeks (~9 months)
 
 ### 12.2 Operational Success Metrics (Post-Launch)
 
-| Metric | Target | Baseline | Measurement Frequency |
-|--------|--------|----------|----------------------|
-| **System Uptime** | 99.5% | N/A | Monthly |
-| **Average Request Processing Time** | < 2 days | 5-7 days | Weekly |
-| **User Adoption Rate** | > 80% within 6 months | 0% | Monthly |
-| **User Satisfaction Score** | ≥ 4.0/5.0 | N/A | Quarterly |
-| **Equipment Utilization Rate** | 85% | 60% | Monthly |
-| **Cost per Request** | Reduce by 40% | TBD | Quarterly |
-| **Average Approval SLA Compliance** | > 95% | < 50% | Weekly |
-| **Critical Issues Resolution Time** | < 4 hours | N/A | Real-time tracking |
+| Metric | Target | Baseline | Measurement Frequency | Owner |
+|--------|--------|----------|----------------------|-------|
+| **System Uptime** | 99.5% | N/A | Monthly | DevOps, IT |
+| **Average Request Processing Time** | < 2 days | 5-7 days | Weekly | Project Manager |
+| **Lab In-charge Approval SLA Compliance** | > 95% (1 day SLA) | < 50% | Weekly | HOD, Project Manager |
+| **HOD Approval SLA Compliance (High-Value)** | > 90% (2 day SLA) | N/A | Weekly | HOD, Project Manager |
+| **User Adoption Rate** | > 80% within 6 months (all roles) | 0% | Monthly | Project Manager |
+| **Lab In-charge Adoption Rate** | > 90% within 3 months | 0% | Monthly | HOD |
+| **TO System Usage Rate** | > 85% (equipment tracking) | 0% | Monthly | Lab In-charge |
+| **Student Satisfaction Score** | ≥ 4.0/5.0 | N/A | Quarterly | Project Manager |
+| **Lab In-charge Satisfaction Score** | ≥ 4.5/5.0 | N/A | Quarterly | HOD |
+| **Equipment Utilization Rate** | 85% | 60% | Monthly | Lab In-charge |
+| **Equipment Return Compliance** | > 95% on-time returns | ~70% | Monthly | TO |
+| **Damaged Equipment Flagging Accuracy** | > 98% | N/A | Monthly | TO |
+| **Cost per Request** | Reduce by 40% | TBD | Quarterly | Finance |
+| **Critical Issues Resolution Time** | < 4 hours | N/A | Real-time tracking | Support Lead |
 
 ---
 
@@ -1250,10 +1321,4 @@ Acceptance Criteria:
 | Version | Date | Author | Changes |
 |---------|------|--------|---------|
 | 1.0 | Dec 16, 2025 | Project Team | Initial comprehensive scope document |
-| | | | |
-
----
-
-**Document Classification:** Internal - Engineering Departments
-**Confidentiality Level:** Restricted
-**Retention Period:** Throughout project + 2 years post-completion
+| 1.1 | Dec 17, 2025 | Project Team | Updated with refined institutional workflow, role hierarchy (9 roles), Lab In-charge primary approval, TO equipment management, Director escalation path, updated risk register, and stakeholder engagement strategy |
