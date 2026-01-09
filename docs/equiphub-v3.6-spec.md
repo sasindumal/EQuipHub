@@ -41,21 +41,21 @@ EqipHub v3.6 is the **production-ready** equipment request management system for
 │ STUDENT CAPACITY: 426 concurrent users                     │
 │ TECHNICAL OFFICERS: 6 (3 per department)                   │
 │                                                            │
-│ ACTIVITY TYPES: 4                                          │
-│ ├─ Coursework (semester-long, mid-inspection required)     │
-│ ├─ Research (2-week + extensions, cross-dept allowed)      │
+│ ACTIVITY TYPES: 5                                          │
+│ ├─ Lab Session (scheduled, practical-based)               │
+│ ├─ Coursework (semester-long, mid-inspection required)    │
+│ ├─ Research (2-week + extensions, cross-dept allowed)     │
 │ ├─ Extracurricular (hours/days, event-based)              │
-│ └─ Personal (2-week strict, cross-dept allowed)            │
+│ └─ Personal (2-week strict, cross-dept allowed)           │
 │                                                            │
 │ USER ROLES: 9                                              │
 │ ├─ System Administrator                                    │
 │ ├─ Department Administrator                                │
 │ ├─ Head of Department (HOD)                                │
-│ ├─ Lecturer (with 5 sub-roles)                            │
+│ ├─ Lecturer                                                │
 │ ├─ Lab Instructor                                          │
 │ ├─ Technical Officer (TO)                                  │
 │ ├─ Student                                                 │
-│ └─ Research Supervisor                                     │
 │                                                            │
 │ KEY FEATURES:                                              │
 │ ├─ Pure FIFO request priority (fairness)                   │
