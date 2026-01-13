@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import './LoginForm.css';
-import logo from '../assets/logo.png';
+import logo from '../assets/iconlogo.png';
 
 interface LoginFormState {
   email: string;
