@@ -1,0 +1,37 @@
+/* Liquid Glass Theme Colors */
+:root {
+  --color-primary-deep-blue: #3D52A0;
+  --color-accent-blue: #7091E6;
+  --color-soft-blue: #8697C4;
+  --color-muted-neutral: #ADBBDA;
+  --color-background-light: #EDE8F5;
+  --color-black: #000000;
+  --color-white: #FFFFFF;
+
+  --transition-smooth: all 0.3s cubic-bezier(0.4, 0.0, 0.2, 1);
+  --shadow-soft: 0 8px 32px 0 rgba(61, 82, 160, 0.1);
+  --shadow-hover: 0 12px 48px 0 rgba(61, 82, 160, 0.15);
+  --blur-glass: blur(10px);
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html {
+  font-size: 16px;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica Neue', sans-serif;
+  background: linear-gradient(135deg, var(--color-background-light) 0%, #E0D5F0 100%);
+  min-height: 100vh;
+  color: var(--color-black);
+  overflow-x: hidden;
+}
+
+#root {
+  min-height: 100vh;
+}
