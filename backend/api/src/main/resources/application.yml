@@ -1,0 +1,221 @@
+# ==================== APPLICATION CONFIGURATION ====================
+# Main Spring Boot Configuration File
+# Location: backend/api/src/main/resources/application.yml
+# Profile: Default (all profiles inherit from this)
+
+spring:
+  application:
+    name: equiphub-api
+    description: Equipment Request Management System
+    version: 1.0.0
+
+  # ==================== SERVER CONFIGURATION ====================
+  server:
+    port: 8080
+    servlet:
+      context-path: /api
+    error:
+      include-message: always
+      include-binding-errors: always
+      include-stacktrace: on_param
+      include-exception: false
+
+  # ==================== DATABASE CONFIGURATION ====================
+  datasource:
+    url: jdbc:postgresql://localhost:5432/equiphub
+    username: equiphub_user
+    password: equiphub_password
+    driver-class-name: org.postgresql.Driver
+    hikari:
+      maximum-pool-size: 20
+      minimum-idle: 5
+      idle-timeout: 600000
+      max-lifetime: 1800000
+      connection-timeout: 30000
+      auto-commit: true
+
+  # ==================== JPA/HIBERNATE CONFIGURATION ====================
+  jpa:
+    database-platform: org.hibernate.dialect.PostgreSQLDialect
+    hibernate:
+      ddl-auto: validate  # Use Flyway for schema management
+    show-sql: false
+    open-in-view: false
+    properties:
+      hibernate:
+        format_sql: true
+        use_sql_comments: true
+        jdbc:
+          fetch_size: 50
+          batch_size: 20
+          batch_versioned_data: true
+        order_inserts: true
+        order_updates: true
+
+  # ==================== FLYWAY DATABASE MIGRATION ====================
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+    baselineOnMigrate: false
+    validateOnMigrate: true
+    out-of-order: false
+
+  # ==================== REDIS CACHING CONFIGURATION ====================
+  data:
+    redis:
+      host: localhost
+      port: 6379
+      password: 
+      timeout: 2000ms
+      database: 0
+      jedis:
+        pool:
+          max-active: 20
+          max-idle: 10
+          min-idle: 0
+      max-wait: -1ms
+      ssl:
+        enabled: false
+  
+  cache:
+    type: redis
+    redis:
+      time-to-live: 600000  # 10 minutes in milliseconds
+
+  # ==================== SECURITY CONFIGURATION ====================
+  security:
+    jwt:
+      secret: ${JWT_SECRET:your-secret-key-change-in-production-minimum-256-bits-this-is-unsafe-change-immediately}
+      expiration: 3600000  # 1 hour in milliseconds
+      refresh-expiration: 604800000  # 7 days in milliseconds
+    user:
+      name: admin
+      password: admin123
+      roles: ADMIN
+
+  # ==================== MAIL CONFIGURATION ====================
+  mail:
+    host: ${MAIL_HOST:smtp.gmail.com}
+    port: ${MAIL_PORT:587}
+    username: ${MAIL_USERNAME:}
+    password: ${MAIL_PASSWORD:}
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
+            required: true
+          connectiontimeout: 5000
+          timeout: 5000
+          writetimeout: 5000
+
+  # ==================== SERVLET CONFIGURATION ====================
+  servlet:
+    multipart:
+      max-file-size: 10MB
+      max-request-size: 10MB
+      enabled: true
+
+  # ==================== JACKSON JSON CONFIGURATION ====================
+  jackson:
+    serialization:
+      write-dates-as-timestamps: false
+      indent-output: true
+      write-empty-json-arrays: true
+    deserialization:
+      fail-on-unknown-properties: false
+    time-zone: Asia/Kolkata
+    default-property-inclusion: non_null
+    locale: en_IN
+
+  # ==================== LOGGING CONFIGURATION ====================
+  logging:
+    level:
+      root: INFO
+      com.equiphub: DEBUG
+      org.springframework.web: INFO
+      org.springframework.security: DEBUG
+      org.springframework.security.jwt: DEBUG
+      org.hibernate.SQL: DEBUG
+      org.hibernate.type.descriptor.sql.BasicBinder: TRACE
+    pattern:
+      console: "%d{yyyy-MM-dd HH:mm:ss} - %msg%n"
+      file: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
+    file:
+      name: logs/equiphub.log
+
+# ==================== ACTUATOR CONFIGURATION ====================
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus,threaddump,heapdump,env,configprops
+      base-path: /actuator
+  endpoint:
+    health:
+      show-details: always
+      show-components: always
+      probes:
+        enabled: true
+    metrics:
+      enabled: false
+    prometheus:
+      enabled: false
+  metrics:
+    distribution:
+      percentiles-histogram:
+        http.server.requests: true
+  prometheus:
+    metrics:
+      export:
+        enabled: false
+  server:
+    port: 8080
+    base-path: /
+
+# ==================== SPRINGDOC OPENAPI (SWAGGER) CONFIGURATION ====================
+springdoc:
+  api-docs:
+    path: /v3/api-docs
+    enabled: true
+  swagger-ui:
+    path: /swagger-ui.html
+    enabled: true
+    try-it-out-enabled: true
+    filter: true
+    operations-sorter: method
+    tags-sorter: alpha
+    url: /api/v3/api-docs
+    urls:
+      - name: EquipHub API
+        url: /api/v3/api-docs
+  show-actuator: true
+  use-management-port: false
+  info:
+    title: EQuipHub API
+    description: Equipment Request Management System
+    version: 1.0.0
+    contact:
+      name: EQuipHub Team
+      url: http://equiphub.local
+      email: support@equiphub.local
+    license:
+      name: MIT
+
+# ==================== APPLICATION SPECIFIC CONFIGURATION ====================
+app:
+  name: EQuipHub
+  version: 1.0.0
+  description: Equipment Request Management System
+  api:
+    base-url: ${API_BASE_URL:http://localhost:8080/api}
+    version: v1
+  cors:
+    allowed-origins: ${CORS_ORIGINS:http://localhost:3000,http://localhost:3001,http://localhost:5173}
+    allowed-methods: GET,POST,PUT,DELETE,PATCH,OPTIONS,HEAD
+    allowed-headers: "*"
+    allow-credentials: true
+    max-age: 3600
+  timezone: Asia/Kolkata
+  language: en_IN

@@ -1,0 +1,272 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration>
+    <!--
+    ============================================
+    Logback Configuration for EQuipHub API
+    Location: backend/api/src/main/resources/logback-spring.xml
+    Purpose: Configure logging with profile-specific settings
+    
+    Profiles:
+    - dev:  DEBUG logging, colored console, file output
+    - test: INFO logging, console only (fast)
+    - prod: WARN logging, file only (production-safe)
+    ============================================
+    -->
+
+    <!-- Property placeholders for dynamic configuration -->
+    <property name="LOG_DIR" value="logs"/>
+    <property name="LOG_FILE_NAME" value="equiphub"/>
+    <property name="LOG_PATTERN" value="%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n"/>
+    <property name="LOG_PATTERN_COLORED" value="%d{yyyy-MM-dd HH:mm:ss.SSS} %highlight(%-5level) %cyan(%logger{36}) - %msg%n"/>
+
+    <!-- Context name for identification -->
+    <contextName>equiphub-api</contextName>
+
+    <!-- ============================================
+         DEVELOPMENT PROFILE (dev)
+         ============================================ -->
+    <springProfile name="dev">
+        <!-- Console Output with Colors -->
+        <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+            <encoder>
+                <pattern>${LOG_PATTERN_COLORED}</pattern>
+                <charset>UTF-8</charset>
+            </encoder>
+        </appender>
+
+        <!-- File Output with Rolling Policy -->
+        <appender name="FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+            <file>${LOG_DIR}/${LOG_FILE_NAME}-dev.log</file>
+            <encoder>
+                <pattern>${LOG_PATTERN}</pattern>
+                <charset>UTF-8</charset>
+            </encoder>
+            <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
+                <!-- Max 10MB per file, keep 7 days -->
+                <fileNamePattern>${LOG_DIR}/${LOG_FILE_NAME}-dev.%d{yyyy-MM-dd}.%i.log</fileNamePattern>
+                <maxFileSize>10MB</maxFileSize>
+                <maxHistory>7</maxHistory>
+                <totalSizeCap>100MB</totalSizeCap>
+            </rollingPolicy>
+        </appender>
+
+        <!-- Async Appender for Better Performance -->
+        <appender name="ASYNC_FILE" class="ch.qos.logback.classic.AsyncAppender">
+            <queueSize>512</queueSize>
+            <discardingThreshold>0</discardingThreshold>
+            <appender-ref ref="FILE"/>
+        </appender>
+
+        <!-- Root Logger: DEBUG level -->
+        <root level="DEBUG">
+            <appender-ref ref="CONSOLE"/>
+            <appender-ref ref="ASYNC_FILE"/>
+        </root>
+
+        <!-- Framework Loggers -->
+        <logger name="org.springframework" level="INFO"/>
+        <logger name="org.springframework.boot" level="DEBUG"/>
+        <logger name="org.springframework.security" level="DEBUG"/>
+        <logger name="org.springframework.data.jpa" level="DEBUG"/>
+        <logger name="org.springframework.cache" level="DEBUG"/>
+
+        <!-- Hibernate & SQL Logging -->
+        <logger name="org.hibernate" level="DEBUG"/>
+        <logger name="org.hibernate.SQL" level="DEBUG"/>
+        <logger name="org.hibernate.type.descriptor.sql" level="TRACE"/>
+
+        <!-- Redis Logging -->
+        <logger name="redis.clients.jedis" level="INFO"/>
+        <logger name="io.lettuce" level="INFO"/>
+
+        <!-- PostgreSQL Driver -->
+        <logger name="org.postgresql.jdbc" level="DEBUG"/>
+
+        <!-- Application Loggers -->
+        <logger name="com.equiphub" level="DEBUG"/>
+        <logger name="com.equiphub.api.service" level="DEBUG"/>
+        <logger name="com.equiphub.api.controller" level="DEBUG"/>
+        <logger name="com.equiphub.api.security" level="DEBUG"/>
+    </springProfile>
+
+    <!-- ============================================
+         TEST PROFILE (test)
+         ============================================ -->
+    <springProfile name="test">
+        <!-- Console Output (minimal) -->
+        <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+            <encoder>
+                <pattern>%d{HH:mm:ss.SSS} %-5level %logger{36} - %msg%n</pattern>
+                <charset>UTF-8</charset>
+            </encoder>
+        </appender>
+
+        <!-- Root Logger: INFO level -->
+        <root level="INFO">
+            <appender-ref ref="CONSOLE"/>
+        </root>
+
+        <!-- Framework Loggers (less verbose) -->
+        <logger name="org.springframework" level="WARN"/>
+        <logger name="org.springframework.boot" level="INFO"/>
+        <logger name="org.springframework.test" level="INFO"/>
+
+        <!-- Hibernate (minimal output) -->
+        <logger name="org.hibernate" level="WARN"/>
+        <logger name="org.hibernate.engine.transaction" level="DEBUG"/>
+
+        <!-- Application Loggers -->
+        <logger name="com.equiphub" level="INFO"/>
+        <logger name="com.equiphub.api.test" level="DEBUG"/>
+
+        <!-- Suppress noisy loggers -->
+        <logger name="org.postgresql" level="WARN"/>
+        <logger name="org.h2.database" level="WARN"/>
+    </springProfile>
+
+    <!-- ============================================
+         PRODUCTION PROFILE (prod)
+         ============================================ -->
+    <springProfile name="prod">
+        <!-- File Output Only (no console) -->
+        <appender name="FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+            <file>/var/log/equiphub/${LOG_FILE_NAME}.log</file>
+            <encoder>
+                <pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n</pattern>
+                <charset>UTF-8</charset>
+            </encoder>
+            <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
+                <!-- Max 100MB per day, keep 30 days -->
+                <fileNamePattern>/var/log/equiphub/${LOG_FILE_NAME}.%d{yyyy-MM-dd}.%i.log</fileNamePattern>
+                <maxFileSize>100MB</maxFileSize>
+                <maxHistory>30</maxHistory>
+                <totalSizeCap>3GB</totalSizeCap>
+            </rollingPolicy>
+        </appender>
+
+        <!-- Async Appender for Non-Blocking Performance -->
+        <appender name="ASYNC_FILE" class="ch.qos.logback.classic.AsyncAppender">
+            <queueSize>1024</queueSize>
+            <discardingThreshold>0</discardingThreshold>
+            <includeCallerData>false</includeCallerData>
+            <appender-ref ref="FILE"/>
+        </appender>
+
+        <!-- Error File (separate error logs) -->
+        <appender name="ERROR_FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+            <file>/var/log/equiphub/${LOG_FILE_NAME}-error.log</file>
+            <filter class="ch.qos.logback.classic.filter.LevelFilter">
+                <level>ERROR</level>
+                <onMatch>ACCEPT</onMatch>
+                <onMismatch>DENY</onMismatch>
+            </filter>
+            <encoder>
+                <pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n%ex</pattern>
+                <charset>UTF-8</charset>
+            </encoder>
+            <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
+                <fileNamePattern>/var/log/equiphub/${LOG_FILE_NAME}-error.%d{yyyy-MM-dd}.%i.log</fileNamePattern>
+                <maxFileSize>50MB</maxFileSize>
+                <maxHistory>30</maxHistory>
+            </rollingPolicy>
+        </appender>
+
+        <!-- Root Logger: WARN level only -->
+        <root level="WARN">
+            <appender-ref ref="ASYNC_FILE"/>
+            <appender-ref ref="ERROR_FILE"/>
+        </root>
+
+        <!-- Application Loggers -->
+        <logger name="com.equiphub" level="INFO"/>
+        <logger name="com.equiphub.api.service" level="INFO"/>
+        <logger name="com.equiphub.api.controller" level="INFO"/>
+        <logger name="com.equiphub.api.security" level="WARN"/>
+
+        <!-- Framework Loggers (warnings only) -->
+        <logger name="org.springframework" level="WARN"/>
+        <logger name="org.springframework.security" level="WARN"/>
+        <logger name="org.hibernate" level="WARN"/>
+        <logger name="org.postgresql" level="WARN"/>
+    </springProfile>
+
+    <!-- ============================================
+         COMMON CONFIGURATION (all profiles)
+         ============================================ -->
+
+    <!-- Component-Specific Loggers -->
+    <logger name="com.equiphub.api.config" level="DEBUG"/>
+    <logger name="com.equiphub.api.exception" level="DEBUG"/>
+    <logger name="com.equiphub.api.util" level="DEBUG"/>
+
+    <!-- Database Migration -->
+    <logger name="org.flywaydb" level="INFO"/>
+    <logger name="org.flywaydb.core.internal.command" level="DEBUG"/>
+
+    <!-- REST & Web -->
+    <logger name="org.springframework.web" level="INFO"/>
+    <logger name="org.springframework.web.servlet.mvc.method.annotation" level="DEBUG"/>
+
+    <!-- JSON Processing -->
+    <logger name="com.fasterxml.jackson" level="WARN"/>
+    <logger name="org.codehaus.jackson" level="WARN"/>
+
+    <!-- HTTP Client -->
+    <logger name="org.apache.http" level="WARN"/>
+    <logger name="org.apache.http.wire" level="WARN"/>
+
+    <!-- Connection Pool -->
+    <logger name="com.zaxxer.hikari" level="INFO"/>
+    <logger name="com.zaxxer.hikari.pool" level="DEBUG"/>
+
+    <!-- Cache -->
+    <logger name="org.springframework.cache" level="INFO"/>
+    <logger name="io.lettuce.core" level="INFO"/>
+
+    <!--
+    ============================================
+    LOGGING REFERENCE
+    ============================================
+
+    LOG LEVELS (from most to least verbose):
+    1. TRACE - Extremely detailed information (rarely used)
+    2. DEBUG - Detailed information for debugging
+    3. INFO  - General informational messages
+    4. WARN  - Warning messages
+    5. ERROR - Error messages
+    6. FATAL - Critical errors (highest level)
+
+    PROFILE DEFAULTS:
+    - dev:  Root=DEBUG, Console+File Output, Colored
+    - test: Root=INFO,  Console Only, Minimal
+    - prod: Root=WARN,  File Only, No Console
+
+    LOGGER HIERARCHY:
+    - Root logger catches everything
+    - Package loggers override root level
+    - Most specific logger wins
+
+    PERFORMANCE TIPS:
+    - Use async appenders in production
+    - Avoid SLF4J string concatenation in debug code
+    - Use {} placeholders: logger.debug("User: {}", user)
+    - Set high-traffic packages to WARN in production
+
+    FILE NAMING CONVENTION:
+    - dev:  equiphub-dev.log (daily rotation, max 10MB)
+    - prod: equiphub.log (daily rotation, max 100MB)
+    - errors: equiphub-error.log (separate file for errors)
+
+    RETENTION POLICIES:
+    - dev:  7 days, 100MB total
+    - prod: 30 days, 3GB total
+    - errors: 30 days, 1.5GB total
+
+    LOG DIRECTORY:
+    - dev:  ./logs/ (relative to application)
+    - prod: /var/log/equiphub/ (absolute)
+
+    ============================================
+    -->
+
+</configuration>

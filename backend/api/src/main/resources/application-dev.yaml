@@ -1,0 +1,157 @@
+# ==================== DEVELOPMENT PROFILE CONFIGURATION ====================
+# File: application-dev.yml
+# Location: backend/api/src/main/resources/application-dev.yml
+# Profile: dev (local development)
+# Active when: SPRING_PROFILES_ACTIVE=dev
+
+# This file OVERRIDES settings from application.yml
+# Only include settings that differ from base config
+
+spring:
+  # ==================== DEVELOPMENT SPECIFIC SETTINGS ====================
+  
+  # ==================== DATABASE CONFIGURATION ====================
+  datasource:
+    # Connection pool settings for development
+    hikari:
+      maximum-pool-size: 10  # Smaller pool for local development
+      minimum-idle: 2
+      idle-timeout: 300000
+      connection-timeout: 20000
+
+  # ==================== JPA/HIBERNATE ====================
+  jpa:
+    # Show SQL queries for debugging
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+        use_sql_comments: true
+        generate_statistics: false
+        # Development-friendly settings
+        jdbc:
+          batch_size: 10
+          fetch_size: 20
+
+  # ==================== LOGGING CONFIGURATION ====================
+  logging:
+    level:
+      root: INFO
+      com.equiphub: DEBUG                          # Our code - DETAILED
+      org.springframework.web: DEBUG               # Web layer - detailed
+      org.springframework.security: DEBUG          # Security - detailed
+      org.springframework.security.oauth2: DEBUG   # OAuth - detailed
+      org.springframework.data: DEBUG              # Data layer - detailed
+      org.hibernate.SQL: DEBUG                     # SQL queries
+      org.hibernate.type.descriptor.sql: TRACE    # SQL parameters
+      org.postgresql.jdbc: DEBUG                  # PostgreSQL driver
+    pattern:
+      console: "%d{HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n"
+      file: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n"
+    file:
+      name: logs/equiphub-dev.log
+      max-size: 10MB
+      max-history: 10
+      total-size-cap: 100MB
+
+  # ==================== CACHE CONFIGURATION ====================
+  cache:
+    type: redis
+    redis:
+      time-to-live: 300000  # 5 minutes (short for dev)
+
+  # ==================== SECURITY ====================
+  security:
+    jwt:
+      expiration: 86400000  # 24 hours (longer for dev testing)
+      refresh-expiration: 604800000  # 7 days
+
+  # ==================== DEVTOOLS ====================
+  devtools:
+    restart:
+      enabled: true
+      additional-paths: src/main/java
+      exclude: "target/**,logs/**"
+    livereload:
+      enabled: true
+
+  # ==================== ERROR HANDLING ====================
+  error:
+    include-message: always
+    include-binding-errors: always
+    include-stacktrace: always  # Show full stack trace in dev
+    include-exception: true
+    whitelabel:
+      enabled: true  # Spring's default error page
+
+# ==================== SERVER CONFIGURATION ====================
+server:
+  error:
+    include-message: always
+    include-binding-errors: always
+
+# ==================== ACTUATOR CONFIGURATION ====================
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus,threaddump,heapdump,env,configprops,flyway,loggers
+  endpoint:
+    health:
+      show-details: always
+      show-components: always
+      probes:
+        enabled: true
+    loggers:
+      enabled: true
+  prometheus:
+    metrics:
+      export:
+        enabled: true
+
+# ==================== SPRINGDOC SWAGGER (DEV) ====================
+springdoc:
+  api-docs:
+    path: /v3/api-docs
+    enabled: true
+  swagger-ui:
+    path: /swagger-ui.html
+    enabled: true
+    try-it-out-enabled: true
+    operations-sorter: method
+    tags-sorter: alpha
+    display-request-duration: true
+    doc-expansion: list
+  show-actuator: true
+  info:
+    title: EQuipHub API (Development)
+    description: Equipment Request Management System - DEV Environment
+    version: 1.0.0-DEV
+
+# ==================== DEVELOPMENT FLAGS ====================
+app:
+  dev:
+    enabled: true
+    auto-populate-data: false  # Set to true to auto-create test data
+    mock-email: false           # Set to true to log emails instead of sending
+    verbose-logging: true
+    cache-enabled: false        # Disable cache for easier debugging
+  cors:
+    allowed-origins: http://localhost:3000,http://localhost:3001,http://localhost:5173,http://localhost:4200
+    allowed-methods: GET,POST,PUT,DELETE,PATCH,OPTIONS,HEAD
+    allowed-headers: "*"
+    allow-credentials: true
+    max-age: 7200
+
+# ==================== DATABASE FEATURES ====================
+# Enable these for development convenience
+flyway:
+  validate-on-migrate: true
+  out-of-order: false
+
+# ==================== DEBUGGING ====================
+# These flags help with development
+logging:
+  level:
+    org.springframework.boot.context.config: DEBUG
+    org.springframework.boot.env: DEBUG

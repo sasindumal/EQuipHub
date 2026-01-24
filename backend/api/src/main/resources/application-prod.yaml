@@ -1,0 +1,214 @@
+# ==================== PRODUCTION PROFILE CONFIGURATION ====================
+# File: application-prod.yml
+# Location: backend/api/src/main/resources/application-prod.yml
+# Profile: prod (production environment)
+# Active when: SPRING_PROFILES_ACTIVE=prod
+
+# This file OVERRIDES settings from application.yml for production
+# Focus: Security, Performance, Stability
+
+spring:
+  # ==================== DATABASE CONFIGURATION (PRODUCTION) ====================
+  datasource:
+    # Production-grade connection pool
+    hikari:
+      maximum-pool-size: 30        # Higher pool for production load
+      minimum-idle: 10             # Maintain idle connections
+      idle-timeout: 900000         # 15 minutes
+      max-lifetime: 1800000        # 30 minutes connection lifetime
+      connection-timeout: 30000
+      auto-commit: true
+      leak-detection-threshold: 60000  # Detect connection leaks
+      
+  # ==================== JPA/HIBERNATE ====================
+  jpa:
+    # Production settings
+    show-sql: false
+    open-in-view: false
+    properties:
+      hibernate:
+        format_sql: false
+        use_sql_comments: false
+        generate_statistics: false
+        jdbc:
+          batch_size: 25  # Optimize batch processing
+          fetch_size: 100
+          batch_versioned_data: true
+        order_inserts: true
+        order_updates: true
+        # Connection pool optimization
+        connection:
+          provider_disables_autocommit: true
+
+  # ==================== FLYWAY CONFIGURATION ====================
+  flyway:
+    enabled: true
+    validate-on-migrate: true
+    out-of-order: false
+    schemas: public
+
+  # ==================== REDIS CONFIGURATION ====================
+  data:
+    redis:
+      # Production Redis connection
+      timeout: 2000ms
+      jedis:
+        pool:
+          max-active: 32
+          max-idle: 16
+          min-idle: 8
+          max-wait: 5000ms
+      ssl:
+        enabled: true  # Enable SSL for Redis in production
+  
+  cache:
+    type: redis
+    redis:
+      time-to-live: 1800000  # 30 minutes for production cache
+
+  # ==================== SECURITY ====================
+  security:
+    jwt:
+      # JWT settings for production
+      expiration: 3600000         # 1 hour
+      refresh-expiration: 604800000  # 7 days
+    # Require strong passwords
+    password-requirements:
+      min-length: 12
+      require-uppercase: true
+      require-lowercase: true
+      require-numbers: true
+      require-special: true
+
+  # ==================== LOGGING CONFIGURATION ====================
+  # Minimal, efficient logging for production
+  logging:
+    level:
+      root: WARN
+      com.equiphub: INFO
+      org.springframework: WARN
+      org.springframework.security: WARN
+      org.hibernate: WARN
+      org.postgresql.jdbc: WARN
+    pattern:
+      console: "%d{yyyy-MM-dd HH:mm:ss.SSS} %-5level %logger{36} - %msg%n"
+      file: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n"
+    file:
+      name: /var/log/equiphub/equiphub.log
+      max-size: 100MB
+      max-history: 30
+      total-size-cap: 1GB
+
+  # ==================== DEVTOOLS (DISABLED) ====================
+  devtools:
+    restart:
+      enabled: false
+
+  # ==================== ERROR HANDLING ====================
+  error:
+    include-message: on_param     # Only on request parameter
+    include-binding-errors: on_param
+    include-stacktrace: never     # NEVER show stack traces in production
+    include-exception: false
+    whitelabel:
+      enabled: false  # Custom error handling only
+
+  # ==================== SERVLET MULTIPART ====================
+  servlet:
+    multipart:
+      max-file-size: 10MB
+      max-request-size: 10MB
+
+  # ==================== JACKSON JSON ====================
+  jackson:
+    serialization:
+      write-dates-as-timestamps: false
+      indent-output: false  # Compress JSON in production
+      default-property-inclusion: non_null
+
+# ==================== SERVER CONFIGURATION ====================
+server:
+  port: 8080
+  compression:
+    enabled: true
+    min-response-size: 1024
+    mime-types: application/json,application/xml,text/html,text/xml,text/plain
+  error:
+    include-message: never
+    include-binding-errors: never
+    include-stacktrace: never
+
+# ==================== ACTUATOR CONFIGURATION ====================
+# Limited endpoints in production (security)
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+      base-path: /actuator
+      base-path-mappings:
+        health: /health
+        metrics: /metrics
+  endpoint:
+    health:
+      show-details: when-authorized  # Only authenticated users see details
+      show-components: false
+      probes:
+        enabled: true
+    metrics:
+      enabled: true
+    prometheus:
+      enabled: true
+  metrics:
+    export:
+      prometheus:
+        enabled: true
+    tags:
+      application: equiphub
+      environment: production
+  server:
+    port: 8080
+
+# ==================== SPRINGDOC SWAGGER (DISABLED) ====================
+# Swagger disabled in production for security
+springdoc:
+  api-docs:
+    enabled: false
+  swagger-ui:
+    enabled: false
+  show-actuator: false
+
+# ==================== PRODUCTION-SPECIFIC SETTINGS ====================
+app:
+  production: true
+  # Disable all development features
+  dev:
+    enabled: false
+    auto-populate-data: false
+    mock-email: false
+    verbose-logging: false
+    cache-enabled: true
+  
+  # Strict CORS for production
+  cors:
+    allowed-origins: ${CORS_ORIGINS:https://equiphub.example.com,https://www.equiphub.example.com}
+    allowed-methods: GET,POST,PUT,DELETE,PATCH,OPTIONS
+    allowed-headers: Accept,Content-Type,Authorization
+    allow-credentials: true
+    max-age: 3600
+
+# ==================== SECURITY HEADERS ====================
+  security:
+    headers:
+      content-security-policy: "default-src 'self'"
+      x-frame-options: DENY
+      x-content-type-options: nosniff
+      x-xss-protection: "1; mode=block"
+      strict-transport-security: "max-age=31536000; includeSubDomains"
+
+# ==================== MONITORING & ALERTS ====================
+# Configure monitoring in production
+monitoring:
+  enabled: true
+  health-check-interval: 30s
+  metrics-collection-interval: 1m
