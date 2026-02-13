@@ -2,149 +2,98 @@
 <project xmlns="http://maven.apache.org/POM/4.0.0"
          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0
-         http://maven.apache.org/xsd/maven-4.0.0.xsd">
+         https://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
 
-    <!-- ==================== PROJECT INFO ==================== -->
     <parent>
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-starter-parent</artifactId>
-        <version>3.5.10</version>
-        <relativePath/> <!-- lookup parent from repository -->
+        <version>3.2.2</version>
+        <relativePath/>
     </parent>
 
     <groupId>com.equiphub</groupId>
     <artifactId>api</artifactId>
-    <version>0.0.1-SNAPSHOT</version>
-    <name>EquipHub</name>
-    <description>Equipment Request Management System</description>
+    <version>1.0.0</version>
+    <packaging>jar</packaging>
 
-    <!-- ==================== PROPERTIES ==================== -->
+    <name>EQuipHub API</name>
+    <description>Equipment Request Management System - Monolithic Backend</description>
+
     <properties>
         <java.version>21</java.version>
+        <maven.compiler.source>21</maven.compiler.source>
+        <maven.compiler.target>21</maven.compiler.target>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
-
-        <!-- Dependency Versions (Critical/Custom) - CORRECTED FOR MAVEN CENTRAL -->
+        
+        <!-- Dependency Versions (CRITICAL for conflict resolution) -->
         <jjwt.version>0.12.5</jjwt.version>
-        <mapstruct.version>1.6.0</mapstruct.version>
-        <springdoc.version>2.4.0</springdoc.version>
-        <lettuce.version>6.5.0.RELEASE</lettuce.version>
-        <testcontainers.version>1.19.6</testcontainers.version>
-        <maven-compiler-plugin.version>3.12.1</maven-compiler-plugin.version>
-
-        <!-- Plugin Versions -->
-        <maven-surefire-plugin.version>3.2.5</maven-surefire-plugin.version>
-        <maven-failsafe-plugin.version>3.2.5</maven-failsafe-plugin.version>
+        <springdoc.version>2.3.0</springdoc.version>
+        <mapstruct.version>1.5.5.Final</mapstruct.version>
+        <lombok.version>1.18.30</lombok.version>
     </properties>
 
-    <!-- ==================== DEPENDENCIES ==================== -->
     <dependencies>
-
-        <!-- ============= SPRING BOOT STARTERS (Auto-managed) ============= -->
-        <!-- Web Framework -->
+        <!-- ========== SPRING BOOT CORE ========== -->
+        
+        <!-- Spring Boot Web (REST APIs) -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-web</artifactId>
         </dependency>
 
-        <!-- Data Access -->
+        <!-- Spring Boot Data JPA (Database Access) -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-data-jpa</artifactId>
         </dependency>
 
-        <!-- Security & Authentication -->
+        <!-- Spring Boot Security (Authentication & Authorization) -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-security</artifactId>
         </dependency>
 
-        <!-- Validation -->
+        <!-- Spring Boot Validation (Bean Validation) -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-validation</artifactId>
         </dependency>
 
-        <!-- Caching -->
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-data-redis</artifactId>
-        </dependency>
-
-        <!-- Email -->
+        <!-- Spring Boot Mail (Email Service) -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-mail</artifactId>
         </dependency>
 
-        <!-- Monitoring & Metrics -->
+        <!-- Spring Boot Actuator (Health Checks, Metrics) -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-actuator</artifactId>
         </dependency>
 
-        <!-- Development Tools -->
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-devtools</artifactId>
-            <scope>runtime</scope>
-            <optional>true</optional>
-        </dependency>
-
-        <!-- Docker Compose Support -->
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-docker-compose</artifactId>
-            <scope>runtime</scope>
-            <optional>true</optional>
-        </dependency>
-
-        <!-- ============= DATABASE DRIVERS ============= -->
-        <!-- PostgreSQL (Production) -->
+        <!-- ========== DATABASE ========== -->
+        
+        <!-- PostgreSQL Driver -->
         <dependency>
             <groupId>org.postgresql</groupId>
             <artifactId>postgresql</artifactId>
             <scope>runtime</scope>
         </dependency>
 
-        <!-- H2 (Testing/Development) -->
-        <dependency>
-            <groupId>com.h2database</groupId>
-            <artifactId>h2</artifactId>
-            <scope>runtime</scope>
-        </dependency>
+        <!-- HikariCP (Connection Pooling - included by default) -->
+        <!-- Already included in spring-boot-starter-data-jpa -->
 
-        <!-- ============= DATABASE MIGRATION ============= -->
-        <!-- Flyway Core -->
-        <dependency>
-            <groupId>org.flywaydb</groupId>
-            <artifactId>flyway-core</artifactId>
-        </dependency>
-
-        <!-- Flyway PostgreSQL Database Support -->
-        <dependency>
-            <groupId>org.flywaydb</groupId>
-            <artifactId>flyway-database-postgresql</artifactId>
-        </dependency>
-
-        <!-- ============= REDIS/CACHING ============= -->
-        <!-- Lettuce Redis Client (Compatible with Spring Boot 3.5.10) -->
-        <dependency>
-            <groupId>io.lettuce</groupId>
-            <artifactId>lettuce-core</artifactId>
-            <version>${lettuce.version}</version>
-        </dependency>
-
-        <!-- ============= JWT AUTHENTICATION ============= -->
-        <!-- CRITICAL: JWT API (Compile-time only) -->
+        <!-- ========== SECURITY & JWT ========== -->
+        
+        <!-- JWT API -->
         <dependency>
             <groupId>io.jsonwebtoken</groupId>
             <artifactId>jjwt-api</artifactId>
             <version>${jjwt.version}</version>
         </dependency>
 
-        <!-- CRITICAL: JWT Implementation (Runtime) -->
+        <!-- JWT Implementation -->
         <dependency>
             <groupId>io.jsonwebtoken</groupId>
             <artifactId>jjwt-impl</artifactId>
@@ -152,7 +101,7 @@
             <scope>runtime</scope>
         </dependency>
 
-        <!-- CRITICAL: JWT Jackson Serialization Support (Runtime) -->
+        <!-- JWT Jackson (JSON Processing) -->
         <dependency>
             <groupId>io.jsonwebtoken</groupId>
             <artifactId>jjwt-jackson</artifactId>
@@ -160,82 +109,140 @@
             <scope>runtime</scope>
         </dependency>
 
-        <!-- ============= DTO MAPPING ============= -->
-        <!-- MapStruct (Compile-time code generation for Entity<->DTO) -->
+        <!-- OAuth2 Client (Optional - for Google/GitHub login) -->
         <dependency>
-            <groupId>org.mapstruct</groupId>
-            <artifactId>mapstruct</artifactId>
-            <version>${mapstruct.version}</version>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-oauth2-client</artifactId>
         </dependency>
 
-        <!-- ============= CODE GENERATION & BOILERPLATE ============= -->
-        <!-- Lombok (Reduces boilerplate: @Data, @Getter, etc.) -->
+        <!-- OAuth2 Resource Server (Optional - for token validation) -->
         <dependency>
-            <groupId>org.projectlombok</groupId>
-            <artifactId>lombok</artifactId>
-            <optional>true</optional>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-oauth2-resource-server</artifactId>
         </dependency>
 
-        <!-- ============= API DOCUMENTATION ============= -->
-        <!-- Swagger UI + OpenAPI 3 Documentation (Auto-generates from annotations) -->
+        <!-- ========== CACHE (REDIS) ========== -->
+        
+        <!-- Redis Client -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-data-redis</artifactId>
+        </dependency>
+
+        <!-- Redis Session Management -->
+        <dependency>
+            <groupId>org.springframework.session</groupId>
+            <artifactId>spring-session-data-redis</artifactId>
+        </dependency>
+
+        <!-- ========== API DOCUMENTATION (SWAGGER) ========== -->
+        
+        <!-- SpringDoc OpenAPI UI -->
         <dependency>
             <groupId>org.springdoc</groupId>
             <artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
             <version>${springdoc.version}</version>
         </dependency>
 
-        <!-- ============= TESTING DEPENDENCIES ============= -->
-        <!-- Spring Boot Test (MockMvc, TestRestTemplate, @WebMvcTest, etc.) -->
+        <!-- ========== UTILITIES ========== -->
+        
+        <!-- Lombok (Reduce Boilerplate Code) -->
+        <dependency>
+            <groupId>org.projectlombok</groupId>
+            <artifactId>lombok</artifactId>
+            <version>${lombok.version}</version>
+            <optional>true</optional>
+        </dependency>
+
+        <!-- MapStruct (DTO Mapping) -->
+        <dependency>
+            <groupId>org.mapstruct</groupId>
+            <artifactId>mapstruct</artifactId>
+            <version>${mapstruct.version}</version>
+        </dependency>
+
+        <!-- MapStruct Processor -->
+        <dependency>
+            <groupId>org.mapstruct</groupId>
+            <artifactId>mapstruct-processor</artifactId>
+            <version>${mapstruct.version}</version>
+            <scope>provided</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>org.modelmapper</groupId>
+            <artifactId>modelmapper</artifactId>
+            <version>3.2.4</version>
+        </dependency>
+
+        <!-- Apache Commons Lang3 (Utilities) -->
+        <dependency>
+            <groupId>org.apache.commons</groupId>
+            <artifactId>commons-lang3</artifactId>
+        </dependency>
+
+        <!-- ========== DEVELOPMENT TOOLS ========== -->
+        
+        <!-- Spring Boot DevTools (Hot Reload) -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-devtools</artifactId>
+            <scope>runtime</scope>
+            <optional>true</optional>
+        </dependency>
+
+        <!-- ========== TESTING ========== -->
+        
+        <!-- Spring Boot Test (Includes JUnit 5, Mockito, AssertJ) -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-test</artifactId>
             <scope>test</scope>
-            <exclusions>
-                <exclusion>
-                    <groupId>org.junit.vintage</groupId>
-                    <artifactId>junit-vintage-engine</artifactId>
-                </exclusion>
-            </exclusions>
         </dependency>
 
-        <!-- Spring Security Testing (@WithMockUser, SecurityMockMvcRequestPostProcessor) -->
+        <!-- Spring Security Test -->
         <dependency>
             <groupId>org.springframework.security</groupId>
             <artifactId>spring-security-test</artifactId>
             <scope>test</scope>
         </dependency>
 
-        <!-- TestContainers Core (Docker support for integration tests) -->
+        <!-- H2 Database (For Testing) -->
+        <dependency>
+            <groupId>com.h2database</groupId>
+            <artifactId>h2</artifactId>
+            <scope>test</scope>
+        </dependency>
+
+        <!-- Testcontainers (Docker-based Integration Tests) -->
         <dependency>
             <groupId>org.testcontainers</groupId>
             <artifactId>testcontainers</artifactId>
-            <version>${testcontainers.version}</version>
+            <version>1.19.3</version>
             <scope>test</scope>
         </dependency>
 
-        <!-- TestContainers PostgreSQL Module (Auto-start PostgreSQL for tests) -->
+        <!-- Testcontainers PostgreSQL -->
         <dependency>
             <groupId>org.testcontainers</groupId>
             <artifactId>postgresql</artifactId>
-            <version>${testcontainers.version}</version>
+            <version>1.19.3</version>
             <scope>test</scope>
         </dependency>
 
-        <!-- Embedded Redis for Testing (Cache layer testing) -->
+        <!-- Testcontainers JUnit Jupiter -->
         <dependency>
-            <groupId>it.ozimov</groupId>
-            <artifactId>embedded-redis</artifactId>
-            <version>0.7.3</version>
+            <groupId>org.testcontainers</groupId>
+            <artifactId>junit-jupiter</artifactId>
+            <version>1.19.3</version>
             <scope>test</scope>
         </dependency>
 
     </dependencies>
 
-    <!-- ==================== BUILD & PLUGINS ==================== -->
     <build>
         <plugins>
-
-            <!-- ============= SPRING BOOT MAVEN PLUGIN ============= -->
+            <!-- Spring Boot Maven Plugin -->
             <plugin>
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>
@@ -249,31 +256,28 @@
                 </configuration>
             </plugin>
 
-            <!-- ============= JAVA COMPILER PLUGIN ============= -->
-            <!-- Compiles Java 21 code with annotation processors for MapStruct & Lombok -->
+            <!-- Maven Compiler Plugin (Lombok + MapStruct) -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-compiler-plugin</artifactId>
-                <version>${maven-compiler-plugin.version}</version>
+                <version>3.12.1</version>
                 <configuration>
                     <source>21</source>
                     <target>21</target>
-                    <encoding>UTF-8</encoding>
-                    <!-- Annotation processors run during compilation -->
                     <annotationProcessorPaths>
-                        <!-- MapStruct Annotation Processor -->
-                        <path>
-                            <groupId>org.mapstruct</groupId>
-                            <artifactId>mapstruct-processor</artifactId>
-                            <version>${mapstruct.version}</version>
-                        </path>
-                        <!-- Lombok Annotation Processor -->
+                        <!-- Lombok Processor -->
                         <path>
                             <groupId>org.projectlombok</groupId>
                             <artifactId>lombok</artifactId>
                             <version>${lombok.version}</version>
                         </path>
-                        <!-- MapStruct + Lombok Binding (enables both to work together) -->
+                        <!-- MapStruct Processor -->
+                        <path>
+                            <groupId>org.mapstruct</groupId>
+                            <artifactId>mapstruct-processor</artifactId>
+                            <version>${mapstruct.version}</version>
+                        </path>
+                        <!-- Lombok + MapStruct Binding -->
                         <path>
                             <groupId>org.projectlombok</groupId>
                             <artifactId>lombok-mapstruct-binding</artifactId>
@@ -283,66 +287,42 @@
                 </configuration>
             </plugin>
 
-            <!-- ============= TEST EXECUTION PLUGINS ============= -->
-            <!-- Unit Tests (JUnit 5) -->
+            <!-- JaCoCo (Code Coverage) -->
+            <plugin>
+                <groupId>org.jacoco</groupId>
+                <artifactId>jacoco-maven-plugin</artifactId>
+                <version>0.8.11</version>
+                <executions>
+                    <execution>
+                        <goals>
+                            <goal>prepare-agent</goal>
+                        </goals>
+                    </execution>
+                    <execution>
+                        <id>report</id>
+                        <phase>test</phase>
+                        <goals>
+                            <goal>report</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+
+            <!-- Surefire (Unit Tests) -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-surefire-plugin</artifactId>
-                <version>${maven-surefire-plugin.version}</version>
-                <configuration>
-                    <includes>
-                        <include>**/*Test.java</include>
-                        <include>**/*Tests.java</include>
-                    </includes>
-                </configuration>
+                <version>3.2.3</version>
             </plugin>
 
-            <!-- Integration Tests -->
+            <!-- Failsafe (Integration Tests) -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-failsafe-plugin</artifactId>
-                <version>${maven-failsafe-plugin.version}</version>
-                <configuration>
-                    <includes>
-                        <include>**/*IT.java</include>
-                        <include>**/*ITest.java</include>
-                    </includes>
-                </configuration>
-                <executions>
-                    <execution>
-                        <goals>
-                            <goal>integration-test</goal>
-                            <goal>verify</goal>
-                        </goals>
-                    </execution>
-                </executions>
-            </plugin>
-
-            <!-- Maven Enforcer Plugin (Enforces dependency version ranges) -->
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-enforcer-plugin</artifactId>
-                <version>3.4.1</version>
-                <executions>
-                    <execution>
-                        <id>enforce-versions</id>
-                        <goals>
-                            <goal>enforce</goal>
-                        </goals>
-                        <configuration>
-                            <rules>
-                                <requireMavenVersion>
-                                    <version>3.8.0</version>
-                                </requireMavenVersion>
-                                <requireJavaVersion>
-                                    <version>21</version>
-                                </requireJavaVersion>
-                            </rules>
-                        </configuration>
-                    </execution>
-                </executions>
+                <version>3.2.3</version>
             </plugin>
 
         </plugins>
     </build>
+
 </project>
