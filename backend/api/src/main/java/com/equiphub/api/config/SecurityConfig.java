@@ -31,8 +31,8 @@ public class SecurityConfig {
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
     private final JwtAuthenticationEntryPoint jwtAuthenticationEntryPoint;
     private final UserDetailsService userDetailsService;
-    private final CustomOAuth2UserService customOAuth2UserService;
-    private final OAuth2SuccessHandler oAuth2SuccessHandler;
+    // private final CustomOAuth2UserService customOAuth2UserService;
+    // private final OAuth2SuccessHandler oAuth2SuccessHandler;
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
@@ -88,13 +88,13 @@ public class SecurityConfig {
             )
             
             // OAuth2 Login
-            .oauth2Login(oauth2 -> oauth2
-                .userInfoEndpoint(userInfo -> 
-                    userInfo.userService(customOAuth2UserService)
-                )
-                .successHandler(oAuth2SuccessHandler)
-                .failureUrl("/login?error=true")
-            )
+            // .oauth2Login(oauth2 -> oauth2
+            //     .userInfoEndpoint(userInfo -> 
+            //         userInfo.userService(customOAuth2UserService)
+            //     )
+            //     .successHandler(oAuth2SuccessHandler)
+            //     .failureUrl("/login?error=true")
+            // )
             
             // Exception handling
             .exceptionHandling(exception -> 

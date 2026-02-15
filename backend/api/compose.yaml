@@ -1,118 +1,98 @@
-# ==================== DOCKER COMPOSE CONFIGURATION ====================
-# Location: backend/api/compose.yml
-# Purpose: Define all services needed for local development
-# Commands:
-#   Start:  docker-compose up -d
-#   Stop:   docker-compose down
-#   Logs:   docker-compose logs -f service-name
+version: '3.8'
 
 services:
-
-  # ==================== POSTGRESQL DATABASE ====================
+  # PostgreSQL Database
   postgres:
-    image: postgres:16-alpine
+    image: postgres:15-alpine
     container_name: equiphub-postgres
-    hostname: postgres
-    environment:
-      POSTGRES_DB: equiphub
-      POSTGRES_USER: equiphub_user
-      POSTGRES_PASSWORD: equiphub_password
-      POSTGRES_INITDB_ARGS: "--encoding=UTF8 --lc-collate=en_US.UTF-8 --lc-ctype=en_US.UTF-8"
-      TZ: Asia/Kolkata
+    restart: unless-stopped
     ports:
       - "5432:5432"
+    environment:
+      POSTGRES_DB: equiphub_dev
+      POSTGRES_USER: equiphub_user
+      POSTGRES_PASSWORD: equiphub_password
+      PGDATA: /var/lib/postgresql/data/pgdata
     volumes:
       - postgres_data:/var/lib/postgresql/data
-      - ./src/main/resources/db/init.sql:/docker-entrypoint-initdb.d/01-init.sql
+      - ./database/init:/docker-entrypoint-initdb.d
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U equiphub_user -d equiphub"]
+      test: ["CMD-SHELL", "pg_isready -U equiphub_user -d equiphub_dev"]
       interval: 10s
       timeout: 5s
       retries: 5
-      start_period: 10s
     networks:
       - equiphub-network
-    restart: unless-stopped
-    logging:
-      driver: "json-file"
-      options:
-        max-size: "10m"
-        max-file: "3"
 
-  # ==================== REDIS CACHE ====================
+  # Redis Cache
   redis:
     image: redis:7-alpine
     container_name: equiphub-redis
-    hostname: redis
-    command: redis-server --appendonly yes --requirepass equiphub_redis_pass --maxmemory 512mb --maxmemory-policy allkeys-lru
+    restart: unless-stopped
     ports:
       - "6379:6379"
+    command: redis-server --appendonly yes --requirepass equiphub_redis_pass
     volumes:
       - redis_data:/data
-    environment:
-      TZ: Asia/Kolkata
     healthcheck:
-      test: ["CMD", "redis-cli", "-a", "equiphub_redis_pass", "ping"]
+      test: ["CMD", "redis-cli", "ping"]
       interval: 10s
       timeout: 5s
       retries: 5
-      start_period: 10s
     networks:
       - equiphub-network
-    restart: unless-stopped
-    logging:
-      driver: "json-file"
-      options:
-        max-size: "10m"
-        max-file: "3"
 
-  # ==================== PGADMIN (DATABASE MANAGEMENT UI) ====================
+  # Backend API
+  backend:
+    build:
+      context: ./
+      dockerfile: Dockerfile
+    container_name: equiphub-backend
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      SPRING_PROFILES_ACTIVE: dev
+      DATABASE_URL: jdbc:postgresql://postgres:5432/equiphub_dev
+      DATABASE_USERNAME: equiphub_user
+      DATABASE_PASSWORD: equiphub_password
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_PASSWORD: equiphub_redis_pass
+      JWT_SECRET: ${JWT_SECRET:-YourSuperSecretJWTKeyMinimum256BitsForHS256}
+      MAIL_USERNAME: ${MAIL_USERNAME}
+      MAIL_PASSWORD: ${MAIL_PASSWORD}
+    volumes:
+      - ./backend/logs:/app/logs
+    networks:
+      - equiphub-network
+
+  # PgAdmin (Optional - Database Management UI)
   pgadmin:
     image: dpage/pgadmin4:latest
     container_name: equiphub-pgadmin
-    hostname: pgadmin
+    restart: unless-stopped
+    ports:
+      - "5050:80"
     environment:
       PGADMIN_DEFAULT_EMAIL: admin@equiphub.local
       PGADMIN_DEFAULT_PASSWORD: admin
       PGADMIN_CONFIG_SERVER_MODE: 'False'
-      SCRIPT_NAME: /pgadmin
-    ports:
-      - "5050:80"
     volumes:
       - pgadmin_data:/var/lib/pgadmin
     depends_on:
-      postgres:
-        condition: service_healthy
+      - postgres
     networks:
       - equiphub-network
-    restart: unless-stopped
-    logging:
-      driver: "json-file"
-      options:
-        max-size: "10m"
-        max-file: "3"
 
-  # ==================== REDIS COMMANDER (REDIS MANAGEMENT UI) ====================
-  redis-commander:
-    image: rediscommander/redis-commander:latest
-    container_name: equiphub-redis-commander
-    hostname: redis-commander
-    environment:
-      REDIS_HOSTS: equiphub-redis:equiphub_redis_pass@redis:6379
-      REDIS_PASSWORD: equiphub_redis_pass
-    ports:
-      - "8081:8081"
-    depends_on:
-      redis:
-        condition: service_healthy
-    networks:
-      - equiphub-network
-    restart: unless-stopped
-    logging:
-      driver: "json-file"
-      options:
-        max-size: "10m"
-        max-file: "3"
+networks:
+  equiphub-network:
+    driver: bridge
 
 volumes:
   postgres_data:
@@ -121,10 +101,3 @@ volumes:
     driver: local
   pgadmin_data:
     driver: local
-
-networks:
-  equiphub-network:
-    driver: bridge
-    ipam:
-      config:
-        - subnet: 172.20.0.0/16
