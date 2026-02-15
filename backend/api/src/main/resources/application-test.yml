@@ -1,11 +1,83 @@
-# Test Profile
+# ========================================
+# TEST PROFILE
+# For unit and integration tests
+# ========================================
+
 spring:
+  # Use H2 in-memory database for tests
   datasource:
-    url: jdbc:h2:mem:testdb
+    url: jdbc:h2:mem:testdb;MODE=PostgreSQL;DATABASE_TO_LOWER=TRUE;DEFAULT_NULL_ORDERING=HIGH
     driver-class-name: org.h2.Driver
+    username: sa
+    password: 
+    hikari:
+      maximum-pool-size: 5
+  
   jpa:
     hibernate:
       ddl-auto: create-drop
+    show-sql: false
+    properties:
+      hibernate:
+        format_sql: false
+        dialect: org.hibernate.dialect.H2Dialect
+  
+  # Use embedded Redis for tests (requires embedded-redis dependency)
+  data:
+    redis:
+      host: localhost
+      port: 6370  # Different port to avoid conflicts
+  
+  # Disable mail sending in tests
+  mail:
+    host: localhost
+    port: 3025
+    username: test@example.com
+    password: testpassword
+    properties:
+      mail:
+        smtp:
+          auth: "false"
+          starttls:
+            enable: "false"
+          ssl:
+            trust: "*"
+  
   h2:
     console:
-      enabled: true
+      enabled: false
+
+# Test-specific JWT secret
+jwt:
+  secret: TestSecretKeyForJWTTokenGenerationInTestEnvironmentOnly256Bits
+  access-token-expiration: 60000  # 1 minute for tests
+  refresh-token-expiration: 120000  # 2 minutes for tests
+
+# Disable CORS checks in tests
+cors:
+  allowed-origins: "*"
+  allow-credentials: false
+
+# Minimal logging in tests
+logging:
+  level:
+    root: WARN
+    com.equiphub.api: INFO
+    org.hibernate.SQL: INFO
+
+# Disable Swagger in tests
+springdoc:
+  api-docs:
+    enabled: false
+  swagger-ui:
+    enabled: false
+
+# Minimal actuator endpoints
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      show-details: never
