@@ -19,7 +19,6 @@ import org.springframework.util.StringUtils;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
-import java.util.UUID;
 
 @Component
 @RequiredArgsConstructor
@@ -36,17 +35,17 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             @NonNull HttpServletResponse response,
             @NonNull FilterChain filterChain
     ) throws ServletException, IOException {
-
         try {
             // Extract JWT token from request
             String jwt = extractJwtFromRequest(request);
 
             // Validate token and set authentication
             if (StringUtils.hasText(jwt) && jwtUtils.validateToken(jwt)) {
-                UUID userId = jwtUtils.getUserIdFromToken(jwt);
+                // Get email from token (not userId)
+                String email = jwtUtils.getEmailFromToken(jwt);
 
-                // Load user details
-                UserDetails userDetails = customUserDetailsService.loadUserById(userId);
+                // Load user details by email
+                UserDetails userDetails = customUserDetailsService.loadUserByUsername(email);
 
                 // Create authentication object
                 UsernamePasswordAuthenticationToken authentication =
@@ -55,19 +54,19 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                                 null,
                                 userDetails.getAuthorities()
                         );
-
+                
                 authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
 
                 // Set authentication in security context
                 SecurityContextHolder.getContext().setAuthentication(authentication);
-
-                log.debug("Set authentication for user: {}", userId);
+                log.debug("Set authentication for user: {}", email);
             }
         } catch (ExpiredJwtException ex) {
             log.error("JWT token is expired: {}", ex.getMessage());
+            response.setContentType("application/json");
             response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
             response.getWriter().write("{\"error\": \"Token expired\", \"message\": \"JWT token has expired. Please login again.\"}");
-            return;
+            return; // Stop filter chain
         } catch (Exception ex) {
             log.error("Cannot set user authentication: {}", ex.getMessage());
         }
@@ -80,18 +79,15 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
      */
     private String extractJwtFromRequest(HttpServletRequest request) {
         String bearerToken = request.getHeader(jwtConfig.getHeaderName());
-
         if (StringUtils.hasText(bearerToken) && bearerToken.startsWith(jwtConfig.getTokenPrefix())) {
             return bearerToken.substring(jwtConfig.getTokenPrefix().length());
         }
-
         return null;
     }
 
     @Override
     protected boolean shouldNotFilter(HttpServletRequest request) {
         String path = request.getRequestURI();
-        
         // Skip filter for public endpoints
         return path.startsWith("/api/v1/auth/") ||
                path.startsWith("/api/v1/public/") ||

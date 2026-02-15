@@ -5,10 +5,11 @@ import com.equiphub.api.security.CustomUserDetails;
 import io.jsonwebtoken.*;
 import io.jsonwebtoken.security.Keys;
 import io.jsonwebtoken.security.SignatureException;
+import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.core.Authentication;
-import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Component;
 
 import javax.crypto.SecretKey;
@@ -17,70 +18,87 @@ import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
-import java.util.stream.Collectors;
 
+@Slf4j
 @Component
 @RequiredArgsConstructor
-@Slf4j
 public class JwtUtils {
 
     private final JwtConfig jwtConfig;
+    private SecretKey key;
 
     /**
      * Generate secret key from configuration
      */
-    private SecretKey getSigningKey() {
-        byte[] keyBytes = jwtConfig.getSecret().getBytes(StandardCharsets.UTF_8);
-        return Keys.hmacShaKeyFor(keyBytes);
+    @PostConstruct
+    public void init() {
+        // Ensure key is at least 256 bits for HS256
+        this.key = Keys.hmacShaKeyFor(jwtConfig.getSecret().getBytes(StandardCharsets.UTF_8));
+        log.info("JWT signing key initialized");
     }
 
     /**
-     * Generate JWT token from Authentication
+     * Generate JWT token from Authentication object
      */
     public String generateToken(Authentication authentication) {
         CustomUserDetails userDetails = (CustomUserDetails) authentication.getPrincipal();
-        return generateTokenFromUserId(userDetails.getUserId(), userDetails.getEmail(), 
-                                       userDetails.getAuthorities().stream()
-                                           .map(GrantedAuthority::getAuthority)
-                                           .collect(Collectors.toList()));
-    }
-
-    /**
-     * Generate JWT token from user ID and email
-     */
-    public String generateTokenFromUserId(UUID userId, String email, java.util.List<String> roles) {
+        
+        Map<String, Object> claims = new HashMap<>();
+        claims.put("userId", userDetails.getUserId().toString());
+        claims.put("email", userDetails.getEmail());
+        claims.put("role", userDetails.getRole().name());
+        claims.put("firstName", userDetails.getFirstName());
+        claims.put("lastName", userDetails.getLastName());
+        
         Date now = new Date();
         Date expiryDate = new Date(now.getTime() + jwtConfig.getExpiration());
 
+        return Jwts.builder()
+                .subject(userDetails.getEmail()) // Use email as subject
+                .claims(claims)
+                .issuedAt(now)
+                .expiration(expiryDate)
+                .issuer(jwtConfig.getIssuer())
+                .signWith(key)
+                .compact();
+    }
+
+    /**
+     * Generate JWT token from user ID, email and role
+     */
+    public String generateTokenFromUserDetails(UUID userId, String email, String role) {
         Map<String, Object> claims = new HashMap<>();
         claims.put("userId", userId.toString());
-        claims.put("email", email);
-        claims.put("roles", roles);
+        claims.put("role", role);
+        
+        Date now = new Date();
+        Date expiryDate = new Date(now.getTime() + jwtConfig.getExpiration());
 
         return Jwts.builder()
-                .setClaims(claims)
-                .setSubject(userId.toString())
-                .setIssuedAt(now)
-                .setExpiration(expiryDate)
-                .setIssuer(jwtConfig.getIssuer())
-                .setAudience(jwtConfig.getAudience())
-                .signWith(getSigningKey(), SignatureAlgorithm.HS256)
+                .subject(email) // Email as subject
+                .claims(claims)
+                .issuedAt(now)
+                .expiration(expiryDate)
+                .issuer(jwtConfig.getIssuer())
+                .signWith(key)
                 .compact();
     }
 
     /**
      * Generate refresh token with longer expiration
      */
-    public String generateRefreshToken(UUID userId) {
+    public String generateRefreshToken(UUID userId, String email) {
         Date now = new Date();
         Date expiryDate = new Date(now.getTime() + jwtConfig.getRefreshExpiration());
 
         return Jwts.builder()
-                .setSubject(userId.toString())
-                .setIssuedAt(now)
-                .setExpiration(expiryDate)
-                .setIssuer(jwtConfig.getIssuer())
-                .signWith(getSigningKey(), SignatureAlgorithm.HS256)
+                .subject(email)
+                .claim("userId", userId.toString())
+                .claim("type", "refresh")
+                .issuedAt(now)
+                .expiration(expiryDate)
+                .issuer(jwtConfig.getIssuer())
+                .signWith(key)
                 .compact();
     }
 
@@ -88,26 +106,24 @@ public class JwtUtils {
      * Get user ID from JWT token
      */
     public UUID getUserIdFromToken(String token) {
-        Claims claims = Jwts.parser()
-                .setSigningKey(getSigningKey())
-                .build()
-                .parseClaimsJws(token)
-                .getBody();
-
-        return UUID.fromString(claims.getSubject());
+        Claims claims = getClaimsFromToken(token);
+        return UUID.fromString(claims.get("userId", String.class));
     }
 
     /**
-     * Get email from JWT token
+     * Get email from JWT token (from subject)
      */
     public String getEmailFromToken(String token) {
-        Claims claims = Jwts.parser()
-                .setSigningKey(getSigningKey())
-                .build()
-                .parseClaimsJws(token)
-                .getBody();
+        Claims claims = getClaimsFromToken(token);
+        return claims.getSubject(); // Email is in subject
+    }
 
-        return claims.get("email", String.class);
+    /**
+     * Get role from JWT token
+     */
+    public String getRoleFromToken(String token) {
+        Claims claims = getClaimsFromToken(token);
+        return claims.get("role", String.class);
     }
 
     /**
@@ -115,10 +131,10 @@ public class JwtUtils {
      */
     public Claims getClaimsFromToken(String token) {
         return Jwts.parser()
-                .setSigningKey(getSigningKey())
+                .verifyWith(key)
                 .build()
-                .parseClaimsJws(token)
-                .getBody();
+                .parseSignedClaims(token)
+                .getPayload();
     }
 
     /**
@@ -127,9 +143,9 @@ public class JwtUtils {
     public boolean validateToken(String token) {
         try {
             Jwts.parser()
-                    .setSigningKey(getSigningKey())
+                    .verifyWith(key)
                     .build()
-                    .parseClaimsJws(token);
+                    .parseSignedClaims(token);
             return true;
         } catch (SignatureException ex) {
             log.error("Invalid JWT signature: {}", ex.getMessage());

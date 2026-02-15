@@ -81,6 +81,10 @@ public class User extends BaseEntity {
     @Column(name = "lastlogin")
     private LocalDateTime lastLogin;
 
+    public boolean isActive(){
+        return status == Status.ACTIVE;
+    }
+
     public enum Role {
         SYSTEMADMIN,
         DEPARTMENTADMIN,

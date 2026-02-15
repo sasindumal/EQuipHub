@@ -23,4 +23,5 @@ public class JwtConfig {
     private boolean useCookie = false;
     private String cookieName = "equiphub-token";
     private int cookieMaxAge = 86400; // 24 hours in seconds
+
 }

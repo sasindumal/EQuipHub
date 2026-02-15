@@ -2,8 +2,6 @@ package com.equiphub.api.config;
 
 import com.equiphub.api.security.jwt.JwtAuthenticationEntryPoint;
 import com.equiphub.api.security.jwt.JwtAuthenticationFilter;
-import com.equiphub.api.security.oauth2.CustomOAuth2UserService;
-import com.equiphub.api.security.oauth2.OAuth2SuccessHandler;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -21,6 +19,11 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.web.cors.CorsConfiguration;
+import org.springframework.web.cors.CorsConfigurationSource;
+import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
+
+import java.util.Arrays;
 
 @Configuration
 @EnableWebSecurity
@@ -31,51 +34,49 @@ public class SecurityConfig {
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
     private final JwtAuthenticationEntryPoint jwtAuthenticationEntryPoint;
     private final UserDetailsService userDetailsService;
-    // private final CustomOAuth2UserService customOAuth2UserService;
-    // private final OAuth2SuccessHandler oAuth2SuccessHandler;
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
             .csrf(AbstractHttpConfigurer::disable)
-            .cors(cors -> cors.configure(http))
+            .cors(cors -> cors.configurationSource(corsConfigurationSource()))
             
-            // Authorization rules
+            // Authorization rules (paths WITHOUT /api/v1 prefix)
             .authorizeHttpRequests(auth -> auth
-                // Public endpoints
+                // Public endpoints - NO AUTHENTICATION REQUIRED
                 .requestMatchers(
-                    "/api/v1/auth/**",
-                    "/api/v1/public/**",
-                    "/api/v1/swagger-ui/**",
-                    "/api/v1/swagger-ui.html",
-                    "/api/v1/api-docs/**",
-                    "/v3/api-docs/**",
+                    "/auth/**",           // Auth endpoints
+                    "/public/**",         // Public endpoints
+                    "/swagger-ui/**",     // Swagger UI
+                    "/swagger-ui.html",   // Swagger UI HTML
+                    "/v3/api-docs/**",    // OpenAPI docs
+                    "/api-docs/**",       // OpenAPI docs
                     "/swagger-resources/**",
                     "/webjars/**",
-                    "/actuator/health",
-                    "/actuator/info"
+                    "/actuator/health",   // Health check
+                    "/actuator/info"      // Info endpoint
                 ).permitAll()
                 
-                // OAuth2 endpoints
+                // OAuth2 endpoints (if used later)
                 .requestMatchers("/oauth2/**", "/login/oauth2/**").permitAll()
                 
                 // Admin endpoints - SYSTEM_ADMIN only
-                .requestMatchers("/api/v1/admin/**").hasRole("SYSTEMADMIN")
+                .requestMatchers("/admin/**").hasRole("SYSTEMADMIN")
                 
                 // Department Admin endpoints
-                .requestMatchers("/api/v1/department-admin/**")
+                .requestMatchers("/department-admin/**")
                     .hasAnyRole("DEPARTMENTADMIN", "HEADOFDEPARTMENT", "SYSTEMADMIN")
                 
                 // Technical Officer endpoints
-                .requestMatchers("/api/v1/equipment/manage/**")
+                .requestMatchers("/equipment/manage/**")
                     .hasAnyRole("TECHNICALOFFICER", "DEPARTMENTADMIN", "SYSTEMADMIN")
                 
                 // Approval endpoints - Lecturers and above
-                .requestMatchers("/api/v1/approvals/**")
+                .requestMatchers("/approvals/**")
                     .hasAnyRole("LECTURER", "HEADOFDEPARTMENT", "DEPARTMENTADMIN", "SYSTEMADMIN")
                 
                 // Student endpoints
-                .requestMatchers("/api/v1/requests/student/**")
+                .requestMatchers("/requests/student/**")
                     .hasAnyRole("STUDENT", "INSTRUCTOR", "LECTURER")
                 
                 // All other requests require authentication
@@ -83,21 +84,12 @@ public class SecurityConfig {
             )
             
             // Session management - stateless (JWT)
-            .sessionManagement(session -> 
+            .sessionManagement(session ->
                 session.sessionCreationPolicy(SessionCreationPolicy.STATELESS)
             )
             
-            // OAuth2 Login
-            // .oauth2Login(oauth2 -> oauth2
-            //     .userInfoEndpoint(userInfo -> 
-            //         userInfo.userService(customOAuth2UserService)
-            //     )
-            //     .successHandler(oAuth2SuccessHandler)
-            //     .failureUrl("/login?error=true")
-            // )
-            
             // Exception handling
-            .exceptionHandling(exception -> 
+            .exceptionHandling(exception ->
                 exception.authenticationEntryPoint(jwtAuthenticationEntryPoint)
             )
             
@@ -106,7 +98,7 @@ public class SecurityConfig {
             
             // JWT filter
             .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
-
+        
         return http.build();
     }
 
@@ -126,5 +118,24 @@ public class SecurityConfig {
     @Bean
     public PasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder(12); // strength 12 for production
+    }
+
+    @Bean
+    public CorsConfigurationSource corsConfigurationSource() {
+        CorsConfiguration configuration = new CorsConfiguration();
+        configuration.setAllowedOrigins(Arrays.asList(
+            "http://localhost:3000",
+            "http://localhost:5173",
+            "http://127.0.0.1:3000",
+            "http://127.0.0.1:5173"
+        ));
+        configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"));
+        configuration.setAllowedHeaders(Arrays.asList("*"));
+        configuration.setAllowCredentials(true);
+        configuration.setMaxAge(3600L);
+        
+        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
+        source.registerCorsConfiguration("/**", configuration);
+        return source;
     }
 }
