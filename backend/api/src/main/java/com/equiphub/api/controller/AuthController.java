@@ -10,6 +10,7 @@ import com.equiphub.api.security.CustomUserDetails;
 import com.equiphub.api.security.jwt.JwtUtils;
 import com.equiphub.api.service.EmailVerificationService;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -28,6 +29,7 @@ import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.regex.Pattern;
+import java.util.UUID;
 
 @Slf4j
 @RestController
@@ -177,6 +179,8 @@ public class AuthController {
         }
     }
 
+    
+
     @PostMapping("/login")
     @Operation(summary = "User login", description = "Authenticate user and return JWT token")
     public ResponseEntity<?> login(@Valid @RequestBody LoginRequest loginRequest) {
@@ -189,16 +193,14 @@ public class AuthController {
 
             // Check if email is verified (PRODUCTION MODE)
             // Uncomment in production after testing
-            /*
-            if (!user.getEmailVerified()) {
-                return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of(
-                    "error", "Email not verified",
-                    "message", "Please verify your email before logging in",
-                    "email", user.getEmail()
-                ));
-            }
-            */
-
+            
+            // if (!user.getEmailVerified()) {
+            //     return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of(
+            //         "error", "Email not verified",
+            //         "message", "Please verify your email before logging in",
+            //         "email", user.getEmail()
+            //     ));
+            // }
             // Authenticate user
             Authentication authentication = authenticationManager.authenticate(
                 new UsernamePasswordAuthenticationToken(
@@ -249,37 +251,77 @@ public class AuthController {
     }
 
     @GetMapping("/me")
-    @Operation(summary = "Get current user", description = "Get currently authenticated user details")
+    @Operation(
+        summary = "Get current user", 
+        description = "Get currently authenticated user details. Requires valid JWT token."
+    )
+    @SecurityRequirement(name = "bearerAuth") // ← Add this annotation
     public ResponseEntity<?> getCurrentUser(Authentication authentication) {
-        if (authentication == null || !authentication.isAuthenticated()) {
+        try {
+            // Check authentication
+            if (authentication == null || !authentication.isAuthenticated()) {
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(Map.of(
+                        "error", "User not authenticated",
+                        "message", "Please login and provide a valid JWT token",
+                        "hint", "Click 'Authorize' button and enter: Bearer YOUR_TOKEN"
+                    ));
+            }
+
+            // Check if principal is anonymous
+            if (authentication.getPrincipal() instanceof String 
+                && "anonymousUser".equals(authentication.getPrincipal())) {
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(Map.of(
+                        "error", "Anonymous user",
+                        "message", "Please login first"
+                    ));
+            }
+
+            CustomUserDetails userDetails = (CustomUserDetails) authentication.getPrincipal();
+
+            Map<String, Object> response = new HashMap<>();
+            response.put("userId", userDetails.getUserId());
+            response.put("email", userDetails.getEmail());
+            response.put("firstName", userDetails.getFirstName());
+            response.put("lastName", userDetails.getLastName());
+            response.put("role", userDetails.getRole().name());
+            response.put("status", userDetails.getStatus().name());
+            response.put("departmentId", userDetails.getDepartmentId());
+            response.put("emailVerified", userDetails.isEmailVerified());
+
+            return ResponseEntity.ok(response);
+            
+        } catch (ClassCastException e) {
+            log.error("Invalid principal type: {}", e.getMessage());
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                .body(Map.of("error", "User not authenticated"));
+                .body(Map.of(
+                    "error", "Invalid authentication",
+                    "message", "Please login again"
+                ));
+        } catch (Exception e) {
+            log.error("Error getting current user: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(Map.of("error", "Server error", "message", e.getMessage()));
         }
-
-        CustomUserDetails userDetails = (CustomUserDetails) authentication.getPrincipal();
-
-        Map<String, Object> response = new HashMap<>();
-        response.put("userId", userDetails.getUserId());
-        response.put("email", userDetails.getEmail());
-        response.put("firstName", userDetails.getFirstName());
-        response.put("lastName", userDetails.getLastName());
-        response.put("role", userDetails.getRole().name());
-        response.put("status", userDetails.getStatus().name());
-        response.put("departmentId", userDetails.getDepartmentId());
-        response.put("emailVerified", userDetails.isEmailVerified());
-
-        return ResponseEntity.ok(response);
     }
 
+
     @PostMapping("/refresh")
-    @Operation(summary = "Refresh token", description = "Generate new JWT token from valid token")
-    public ResponseEntity<?> refreshToken(@RequestHeader("Authorization") String authHeader) {
+    @Operation(summary = "Refresh JWT token", 
+    description = "Generate new JWT token from valid token. Pass token in Authorization header.")
+    @SecurityRequirement(name = "bearerAuth")
+    public ResponseEntity<?> refreshToken(@RequestHeader(value = "Authorization", required = false) String authHeader) {
         try {
             String token = jwtUtils.extractTokenFromHeader(authHeader);
 
             if (token == null || !jwtUtils.validateToken(token)) {
                 return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                    .body(Map.of("error", "Invalid or expired token"));
+                    .body(Map.of(
+                    "error", "Missing Authorization Header",
+                    "message", "Please provide Authorization header with Bearer token",
+                    "example", "Authorization: Bearer YOUR_JWT_TOKEN"
+                ));
             }
 
             String email = jwtUtils.getEmailFromToken(token);

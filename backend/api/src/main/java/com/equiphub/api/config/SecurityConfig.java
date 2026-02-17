@@ -40,7 +40,10 @@ public class SecurityConfig {
         http
             .csrf(AbstractHttpConfigurer::disable)
             .cors(cors -> cors.configurationSource(corsConfigurationSource()))
-            
+            .exceptionHandling(exception -> exception
+            .authenticationEntryPoint(jwtAuthenticationEntryPoint))
+            .sessionManagement(session -> session
+            .sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             // Authorization rules (paths WITHOUT /api/v1 prefix)
             .authorizeHttpRequests(auth -> auth
                 // Public endpoints - NO AUTHENTICATION REQUIRED
@@ -56,6 +59,12 @@ public class SecurityConfig {
                     "/actuator/health",   // Health check
                     "/actuator/info"      // Info endpoint
                 ).permitAll()
+
+                .requestMatchers(
+                "/auth/me",           // User profile endpoint
+                "/auth/refresh",      // Token refresh
+                "/auth/logout"
+                ).authenticated()
                 
                 // OAuth2 endpoints (if used later)
                 .requestMatchers("/oauth2/**", "/login/oauth2/**").permitAll()

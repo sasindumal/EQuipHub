@@ -5,12 +5,11 @@ import jakarta.mail.internet.MimeMessage;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
-import org.thymeleaf.context.Context;
-import org.thymeleaf.spring6.SpringTemplateEngine;
 
 @Slf4j
 @Service
@@ -18,7 +17,6 @@ import org.thymeleaf.spring6.SpringTemplateEngine;
 public class EmailService {
 
     private final JavaMailSender mailSender;
-    private final SpringTemplateEngine templateEngine;
 
     @Value("${spring.mail.username}")
     private String fromEmail;
@@ -27,11 +25,14 @@ public class EmailService {
     private String appName;
 
     /**
-     * Send verification code email
+     * Send verification code email (HTML version)
      */
     @Async
     public void sendVerificationEmail(String toEmail, String userName, String verificationCode) {
         try {
+            log.info("Attempting to send verification email to: {}", toEmail);
+            log.debug("From email configured as: {}", fromEmail);
+
             MimeMessage message = mailSender.createMimeMessage();
             MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
 
@@ -39,23 +40,54 @@ public class EmailService {
             helper.setTo(toEmail);
             helper.setSubject(appName + " - Email Verification Code");
 
-            // Create email context
-            Context context = new Context();
-            context.setVariable("userName", userName);
-            context.setVariable("verificationCode", verificationCode);
-            context.setVariable("appName", appName);
-            context.setVariable("expiryMinutes", 15);
-
-            // Generate HTML content (fallback to plain text if template not found)
+            // Generate HTML content
             String htmlContent = generateVerificationEmailHtml(userName, verificationCode);
             helper.setText(htmlContent, true);
 
+            // Send email
             mailSender.send(message);
+            
             log.info("Verification email sent successfully to: {}", toEmail);
             
         } catch (MessagingException e) {
             log.error("Failed to send verification email to {}: {}", toEmail, e.getMessage());
+            log.error("Full error: ", e);
+            
+            // Fallback to simple text email
+            sendSimpleVerificationEmail(toEmail, userName, verificationCode);
+        } catch (Exception e) {
+            log.error("Unexpected error sending email: {}", e.getMessage());
+            log.error("Full error: ", e);
             throw new RuntimeException("Failed to send verification email", e);
+        }
+    }
+
+    /**
+     * Fallback: Send simple text email
+     */
+    public void sendSimpleVerificationEmail(String toEmail, String userName, String verificationCode) {
+        try {
+            log.info("Attempting fallback: sending simple text email to: {}", toEmail);
+            
+            SimpleMailMessage message = new SimpleMailMessage();
+            message.setFrom(fromEmail);
+            message.setTo(toEmail);
+            message.setSubject(appName + " - Email Verification Code");
+            message.setText(String.format(
+                "Hello %s,\n\n" +
+                "Your verification code is: %s\n\n" +
+                "This code will expire in 15 minutes.\n\n" +
+                "If you didn't request this, please ignore this email.\n\n" +
+                "Best regards,\n%s Team",
+                userName, verificationCode, appName
+            ));
+
+            mailSender.send(message);
+            log.info("Simple verification email sent successfully to: {}", toEmail);
+            
+        } catch (Exception e) {
+            log.error("Even simple email failed: {}", e.getMessage());
+            throw new RuntimeException("Failed to send any email format", e);
         }
     }
 
@@ -68,25 +100,84 @@ public class EmailService {
             <html>
             <head>
                 <meta charset="UTF-8">
+                <meta name="viewport" content="width=device-width, initial-scale=1.0">
                 <style>
-                    body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
-                    .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-                    .header { background: linear-gradient(135deg, #667eea 0%%, #764ba2 100%%); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
-                    .content { background: #f9f9f9; padding: 30px; border-radius: 0 0 10px 10px; }
-                    .code-box { background: #667eea; color: white; font-size: 32px; font-weight: bold; padding: 20px; text-align: center; border-radius: 8px; letter-spacing: 8px; margin: 30px 0; }
-                    .footer { text-align: center; margin-top: 30px; color: #666; font-size: 12px; }
-                    .warning { background: #fff3cd; border-left: 4px solid #ffc107; padding: 15px; margin: 20px 0; }
+                    body { 
+                        font-family: Arial, sans-serif; 
+                        line-height: 1.6; 
+                        color: #333;
+                        margin: 0;
+                        padding: 0;
+                        background-color: #f4f4f4;
+                    }
+                    .container { 
+                        max-width: 600px; 
+                        margin: 20px auto; 
+                        background: white;
+                        border-radius: 10px;
+                        overflow: hidden;
+                        box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+                    }
+                    .header { 
+                        background: linear-gradient(135deg, #667eea 0%%, #764ba2 100%%); 
+                        color: white; 
+                        padding: 40px 30px; 
+                        text-align: center;
+                    }
+                    .header h1 {
+                        margin: 0;
+                        font-size: 28px;
+                    }
+                    .content { 
+                        padding: 40px 30px;
+                    }
+                    .code-box { 
+                        background: #667eea; 
+                        color: white; 
+                        font-size: 36px; 
+                        font-weight: bold; 
+                        padding: 25px; 
+                        text-align: center; 
+                        border-radius: 8px; 
+                        letter-spacing: 10px; 
+                        margin: 30px 0;
+                        font-family: 'Courier New', monospace;
+                    }
+                    .warning { 
+                        background: #fff3cd; 
+                        border-left: 4px solid #ffc107; 
+                        padding: 15px; 
+                        margin: 20px 0;
+                        border-radius: 4px;
+                    }
+                    .warning strong {
+                        color: #856404;
+                    }
+                    .footer { 
+                        text-align: center; 
+                        padding: 20px; 
+                        background: #f8f9fa;
+                        color: #666; 
+                        font-size: 12px;
+                    }
+                    ul {
+                        margin: 10px 0;
+                        padding-left: 20px;
+                    }
+                    li {
+                        margin: 5px 0;
+                    }
                 </style>
             </head>
             <body>
                 <div class="container">
                     <div class="header">
                         <h1>%s</h1>
-                        <p>Email Verification</p>
+                        <p style="margin: 10px 0 0 0; font-size: 16px;">Email Verification</p>
                     </div>
                     <div class="content">
-                        <h2>Hello %s,</h2>
-                        <p>Thank you for registering with %s Equipment Request Management System.</p>
+                        <h2 style="color: #333; margin-top: 0;">Hello %s,</h2>
+                        <p>Thank you for registering with <strong>%s</strong> Equipment Request Management System.</p>
                         <p>Please use the following verification code to complete your registration:</p>
                         
                         <div class="code-box">%s</div>
@@ -97,14 +188,17 @@ public class EmailService {
                                 <li>This code will expire in <strong>15 minutes</strong></li>
                                 <li>Do not share this code with anyone</li>
                                 <li>If you didn't request this, please ignore this email</li>
+                                <li>You can request a new code if this one expires</li>
                             </ul>
                         </div>
                         
                         <p style="margin-top: 30px;">If you have any questions, please contact your department administrator.</p>
                     </div>
                     <div class="footer">
-                        <p>&copy; 2026 University of Jaffna - Faculty of Engineering</p>
-                        <p>This is an automated email. Please do not reply.</p>
+                        <p style="margin: 5px 0;"><strong>University of Jaffna</strong></p>
+                        <p style="margin: 5px 0;">Faculty of Engineering</p>
+                        <p style="margin: 15px 0 5px 0;">&copy; 2026 All rights reserved</p>
+                        <p style="margin: 5px 0;">This is an automated email. Please do not reply.</p>
                     </div>
                 </div>
             </body>
@@ -113,11 +207,38 @@ public class EmailService {
     }
 
     /**
-     * Send generic email (for other notifications)
+     * Test email connection
+     */
+    public boolean testEmailConnection() {
+        try {
+            log.info("Testing email connection...");
+            
+            SimpleMailMessage message = new SimpleMailMessage();
+            message.setFrom(fromEmail);
+            message.setTo(fromEmail); // Send to self
+            message.setSubject("EQuipHub - Email Test");
+            message.setText("Email configuration is working correctly!");
+
+            mailSender.send(message);
+            
+            log.info("Email test successful!");
+            return true;
+            
+        } catch (Exception e) {
+            log.error("Email test failed: {}", e.getMessage());
+            log.error("Full error: ", e);
+            return false;
+        }
+    }
+
+    /**
+     * Send generic email
      */
     @Async
     public void sendEmail(String toEmail, String subject, String content) {
         try {
+            log.info("Sending email to: {}", toEmail);
+            
             MimeMessage message = mailSender.createMimeMessage();
             MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
 
@@ -131,6 +252,8 @@ public class EmailService {
             
         } catch (MessagingException e) {
             log.error("Failed to send email to {}: {}", toEmail, e.getMessage());
+            log.error("Full error: ", e);
         }
     }
+    
 }

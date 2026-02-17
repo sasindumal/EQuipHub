@@ -74,7 +74,7 @@ spring:
       host: smtp.gmail.com
       port: 587
       username: ${MAIL_USERNAME:eqiphub@gmail.com}
-      password: ${MAIL_PASSWORD:rkotlfgqsbhoqhde}
+      password: ${MAIL_PASSWORD:lclezjwwnkyqpgml}
       properties:
         mail:
           smtp:
@@ -82,14 +82,14 @@ spring:
             starttls:
               enable: true
               required: true
-            connectiontimeout: 5000
-            timeout: 5000
-            writetimeout: 5000
+            connectiontimeout: 10000
+            timeout: 10000
+            writetimeout: 10000
             ssl:
               trust: smtp.gmail.com
               protocols: TLSv1.2
       default-encoding: UTF-8
-      test-connection: false
+      test-connection: true
   
   # ========== FILE UPLOAD ==========
   servlet:

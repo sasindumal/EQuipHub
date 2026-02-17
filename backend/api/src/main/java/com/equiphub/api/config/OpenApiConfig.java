@@ -9,8 +9,13 @@ import io.swagger.v3.oas.annotations.info.License;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.security.SecurityScheme;
 import io.swagger.v3.oas.annotations.servers.Server;
-import org.springframework.context.annotation.Configuration;
+import io.swagger.v3.oas.models.Components;
+import io.swagger.v3.oas.models.OpenAPI;
+import java.util.List;
 
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
 @Configuration
 @OpenAPIDefinition(
     info = @Info(
@@ -64,6 +69,60 @@ import org.springframework.context.annotation.Configuration;
     bearerFormat = "JWT",
     in = SecuritySchemeIn.HEADER
 )
+
 public class OpenApiConfig {
-    // Configuration through annotations above
+    
+    @Value("${server.servlet.context-path:/api/v1}")
+    private String contextPath;
+
+    @Bean
+    public OpenAPI customOpenAPI() {
+        // Define the security scheme
+        final String securitySchemeName = "bearerAuth";
+        
+        return new OpenAPI()
+                .info(new io.swagger.v3.oas.models.info.Info()
+                        .title("EQuipHub API v3.8")
+                        .description("""
+                                Equipment Request Management System API
+                                
+                                **Authentication:**
+                                1. Register: POST /auth/register
+                                2. Verify Email: POST /auth/verify-email
+                                3. Login: POST /auth/login (Get JWT token)
+                                4. Click "Authorize" button above and enter: Bearer YOUR_TOKEN
+                                
+                                **University Email Format:** 20xxExxx@eng.jfn.ac.lk
+                                
+                                **Example:** 2021E001@eng.jfn.ac.lk
+                                """)
+                        .version("3.8.0")
+                        .contact(new io.swagger.v3.oas.models.info.Contact()
+                                .name("EQuipHub Support")
+                                .email("support@equiphub.ac.lk")
+                                .url("https://equiphub.ac.lk"))
+                        .license(new io.swagger.v3.oas.models.info.License()
+                                .name("Apache 2.0")
+                                .url("https://www.apache.org/licenses/LICENSE-2.0.html")))
+                .servers(List.of(
+                        new io.swagger.v3.oas.models.servers.Server()
+                                .url("http://localhost:8080" + contextPath)
+                                .description("Local Development Server"),
+                        new io.swagger.v3.oas.models.servers.Server()
+                                .url("https://api.equiphub.ac.lk" + contextPath)
+                                .description("Production Server")
+                ))
+                // Add security scheme definition
+                .components(new Components()
+                        .addSecuritySchemes(securitySchemeName, new io.swagger.v3.oas.models.security.SecurityScheme()
+                                .name(securitySchemeName)
+                                .type(io.swagger.v3.oas.models.security.SecurityScheme.Type.HTTP)
+                                .scheme("bearer")
+                                .bearerFormat("JWT")
+                                .description("Enter JWT token obtained from /auth/login")))
+                // Add global security requirement
+                .addSecurityItem(new io.swagger.v3.oas.models.security.SecurityRequirement().addList(securitySchemeName));
+    }
+
+    
 }
