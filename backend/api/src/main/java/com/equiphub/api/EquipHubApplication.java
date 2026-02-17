@@ -93,37 +93,37 @@ import java.time.format.DateTimeFormatter;
                 
                 **Complete Solution for Laboratory Equipment Management**
                 
-                • Multi-department support (CSE, EEE, expandable)
-                • 7-tier role-based access control
-                • Automated approval workflows with SLA tracking
-                • Penalty system with appeals (0-200+ points)
-                • Real-time equipment availability tracking
-                • Condition monitoring (0-5 scale)
-                • Lab session booking (8-12 AM, 1-4 PM slots)
-                • Research supervisor assignments
-                • Extracurricular activity approvals
-                • Personal project requests with HOD approval
-                • Comprehensive audit logging (7-year retention)
-                • Email notifications for all state changes
-                • Redis caching for optimal performance
+                • Multi-department support (CSE, EEE, expandable) \n
+                • 7-tier role-based access control \n
+                • Automated approval workflows with SLA tracking \n
+                • Penalty system with appeals (0-200+ points) \n
+                • Real-time equipment availability tracking \n
+                • Condition monitoring (0-5 scale) \n
+                • Lab session booking (8-12 AM, 1-4 PM slots) \n
+                • Research supervisor assignments \n
+                • Extracurricular activity approvals \n
+                • Personal project requests with HOD approval \n
+                • Comprehensive audit logging (7-year retention) \n
+                • Email notifications for all state changes \n
+                • Redis caching for optimal performance \n
                 
                 **Authentication:**
-                - JWT Bearer Token (24h validity in dev, 1h in prod)
-                - OAuth2 (Google, GitHub)
-                - Password: BCrypt (cost 12)
+                - JWT Bearer Token (24h validity in dev, 1h in prod) \n
+                - OAuth2 (Google, GitHub) \n
+                - Password: BCrypt (cost 12) \n
                 
                 **Base URL:** `/api/v1`
                 **Documentation:** `/api/v1/swagger-ui.html`
                 **Health Check:** `/api/v1/actuator/health`
                 """,
         contact = @Contact(
-            name = "EQuipHub Support Team",
-            url = "https://github.com/your-org/equiphub",
-            email = "support@equiphub.edu"
+            name = "EQuipHub Support Team\n",
+            url = "https://github.com/your-org/equiphub\n",
+            email = "support@equiphub.edu\n"
         ),
         license = @License(
-            name = "MIT License",
-            url = "https://opensource.org/licenses/MIT"
+            name = "MIT License\n",
+            url = "https://opensource.org/licenses/MIT\n"
         )
     ),
     servers = {

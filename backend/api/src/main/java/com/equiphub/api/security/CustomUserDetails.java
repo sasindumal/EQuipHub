@@ -135,7 +135,7 @@ public class CustomUserDetails implements UserDetails, OAuth2User {
 
     @Override
     public boolean isEnabled() {
-        return status == User.Status.ACTIVE && emailVerified;
+        return status == User.Status.ACTIVE;
     }
 
     // ============= OAuth2User IMPLEMENTATION =============
