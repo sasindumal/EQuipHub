@@ -52,7 +52,7 @@ public class SecurityConfig {
                     "/public/**",         // Public endpoints
                     "/swagger-ui/**",     // Swagger UI
                     "/swagger-ui.html",   // Swagger UI HTML
-                    "/v3/api-docs/**",    // OpenAPI docs
+                    "/v1/api-docs/**",    // OpenAPI docs
                     "/api-docs/**",       // OpenAPI docs
                     "/swagger-resources/**",
                     "/webjars/**",

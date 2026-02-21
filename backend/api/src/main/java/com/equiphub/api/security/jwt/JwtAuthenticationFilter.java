@@ -19,6 +19,8 @@ import org.springframework.util.StringUtils;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
+import java.util.Arrays;
+import java.util.List;
 
 @Component
 @RequiredArgsConstructor
@@ -88,14 +90,33 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     @Override
     protected boolean shouldNotFilter(HttpServletRequest request) {
         String path = request.getRequestURI();
-        // Skip filter for public endpoints
-        return path.startsWith("/api/v1/auth/") ||
-               path.startsWith("/api/v1/public/") ||
-               path.startsWith("/api/v1/swagger-ui") ||
-               path.startsWith("/api/v1/api-docs") ||
-               path.startsWith("/v3/api-docs") ||
-               path.startsWith("/actuator/health") ||
-               path.startsWith("/oauth2/") ||
-               path.startsWith("/login/oauth2/");
+
+        // Define ONLY the public paths that don't need JWT
+        List<String> publicPaths = Arrays.asList(
+            "/api/v1/auth/login",
+            "/api/v1/auth/register",
+            "/api/v1/auth/verify-email",
+            "/api/v1/auth/resend-code"
+        );
+
+        List<String> publicPrefixes = Arrays.asList(
+            "/api/v1/public/",
+            "/api/v1/swagger-ui",
+            "/api/v1/api-docs",
+            "/v3/api-docs",
+            "/actuator/health",
+            "/oauth2/",
+            "/login/oauth2/"
+        );
+
+        // Exact matches for public auth endpoints
+        if (publicPaths.contains(path)) return true;
+
+        // Prefix matches for swagger, actuator, etc.
+        return publicPrefixes.stream().anyMatch(path::startsWith);
+
+        // NOTE: /api/v1/auth/me, /auth/refresh, /auth/logout are NOT skipped
+        // They require the JWT filter to run
     }
+
 }

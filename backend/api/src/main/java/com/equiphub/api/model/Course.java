@@ -19,7 +19,7 @@ public class Course extends BaseEntity {
 
     @Id
     @Column(name = "courseid", length = 20)
-    private String courseId; // CS301
+    private String courseId; 
 
     @Column(name = "coursecode", nullable = false, unique = true, length = 20)
     private String courseCode;
