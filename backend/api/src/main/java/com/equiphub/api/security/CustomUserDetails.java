@@ -86,7 +86,7 @@ public class CustomUserDetails implements UserDetails, OAuth2User {
             user.getLastName(),
             user.getRole(),
             user.getStatus(),
-            user.getDepartment() != null ? user.getDepartment().getDepartmentId() : null,
+            user.getDepartment() != null ? user.getDepartment().getDepartmentId().toString() : null,
             authorities,
             user.getEmailVerified() != null ? user.getEmailVerified() : false
         );

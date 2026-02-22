@@ -1,63 +1,68 @@
 package com.equiphub.api.model;
 
 import jakarta.persistence.*;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Size;
 import lombok.*;
+import java.time.LocalDateTime;
+import java.util.UUID;
 
 @Entity
-@Table(name = "departments",
-       indexes = {
-           @Index(name = "idx_departments_hod", columnList = "hodid"),
-           @Index(name = "idx_departments_admin", columnList = "adminid")
-       })
-@Getter
-@Setter
-@NoArgsConstructor
-@AllArgsConstructor
+@Table(name = "departments", indexes = {
+    @Index(name = "idx_dept_code", columnList = "code", unique = true)
+})
+@Getter @Setter
+@NoArgsConstructor @AllArgsConstructor
 @Builder
-public class Department extends BaseEntity {
+public class Department {
 
     @Id
-    @Column(name = "departmentid", length = 10)
-    private String departmentId; // e.g. CSE, EEE
+    @GeneratedValue(strategy = GenerationType.AUTO)
+    @Column(name = "departmentid", nullable = false, updatable = false)
+    private UUID departmentId;
 
-    @Column(name = "name", nullable = false, unique = true, length = 255)
-    private String name;
+    @NotBlank
+    @Size(max = 10)
+    @Column(name = "code", nullable = false, unique = true, length = 10)
+    private String code; // e.g., "CSE", "EEE"
 
-    @Column(name = "description")
+    @NotBlank
+    @Size(max = 200)
+    @Column(name = "name", nullable = false, length = 200)
+    private String name; // e.g., "Department of Computer Engineering"
+
+    @Size(max = 500)
+    @Column(name = "description", length = 500)
     private String description;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "hodid")
-    private User hod;
+    // HOD linked to user
+    @Column(name = "hodid")
+    private UUID hodId;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "adminid")
-    private User admin;
+    // Department Admin linked to user
+    @Column(name = "adminid")
+    private UUID adminId;
 
-    @Column(name = "maxretentiondayscoursework", nullable = false)
-    private Integer maxRetentionDaysCoursework = 7;
+    @Column(name = "isactive", nullable = false)
+    private Boolean isActive = true;
 
-    @Column(name = "maxretentiondaysresearch", nullable = false)
-    private Integer maxRetentionDaysResearch = 30;
+    @Column(name = "createdat", nullable = false, updatable = false)
+    private LocalDateTime createdAt;
 
-    @Column(name = "maxretentiondaysextracurricular", nullable = false)
-    private Integer maxRetentionDaysExtracurricular = 7;
+    @Column(name = "updatedat")
+    private LocalDateTime updatedAt;
 
-    @Column(name = "maxretentiondayspersonal", nullable = false)
-    private Integer maxRetentionDaysPersonal = 3;
+    @Column(name = "createdby")
+    private UUID createdBy;
 
-    @Column(name = "penaltyratelatecoursework", nullable = false)
-    private Integer penaltyRateLateCoursework = 10;
+    @PrePersist
+    protected void onCreate() {
+        createdAt = LocalDateTime.now();
+        updatedAt = LocalDateTime.now();
+    }
 
-    @Column(name = "penaltyratelateresearch", nullable = false)
-    private Integer penaltyRateLateResearch = 20;
-
-    @Column(name = "penaltyratelatepersonal", nullable = false)
-    private Integer penaltyRateLatePersonal = 5;
-
-    @Column(name = "penaltyrateoverride", nullable = false)
-    private Integer penaltyRateOverride = 50;
-
-    @Column(name = "damagemultiplierpersonal", nullable = false)
-    private Double damageMultiplierPersonal = 2.0;
+    @PreUpdate
+    protected void onUpdate() {
+        updatedAt = LocalDateTime.now();
+    }
 }

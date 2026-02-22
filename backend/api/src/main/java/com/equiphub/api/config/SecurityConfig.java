@@ -87,6 +87,21 @@ public class SecurityConfig {
                 // Student endpoints
                 .requestMatchers("/requests/student/**")
                     .hasAnyRole("STUDENT", "INSTRUCTOR", "LECTURER")
+
+                    // ── Phase 1: Admin & User Management ──────────────────────────────────
+                .requestMatchers("/admin/departments/**")
+                    .hasAnyRole("SYSTEMADMIN", "DEPARTMENTADMIN", "HEADOFDEPARTMENT")
+
+                .requestMatchers("/admin/users/**")
+                    .hasAnyRole("SYSTEMADMIN", "DEPARTMENTADMIN", "HEADOFDEPARTMENT")
+
+                // ── Phase 2: Equipment (add in next phase) ────────────────────────────
+                .requestMatchers("/equipment/**")
+                    .hasAnyRole("TECHNICALOFFICER", "DEPARTMENTADMIN", "SYSTEMADMIN")
+
+                // ── Phase 3-4: Requests & Approvals (add in future phases) ───────────
+                .requestMatchers("/requests/**").authenticated()
+                .requestMatchers("/approvals/**").authenticated()
                 
                 // All other requests require authentication
                 .anyRequest().authenticated()

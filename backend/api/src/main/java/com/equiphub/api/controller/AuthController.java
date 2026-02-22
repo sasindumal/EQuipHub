@@ -48,63 +48,76 @@ public class AuthController {
     private static final Pattern UNIVERSITY_EMAIL_PATTERN = 
         Pattern.compile("^20\\d{2}[A-Za-z]\\d{3}@eng\\.jfn\\.ac\\.lk$");
 
-    @PostMapping("/register")
-    @Operation(summary = "User registration", description = "Register a new user with university email")
-    public ResponseEntity<?> register(@Valid @RequestBody RegisterRequest registerRequest) {
+@PostMapping("/register")
+@Operation(
+    summary = "Student registration",
+    description = "Self-registration for students only. University email required."
+)
+    public ResponseEntity<Map<String, Object>> register(
+            @Valid @RequestBody RegisterRequest registerRequest) {
         try {
             log.info("Registration attempt for email: {}", registerRequest.getEmail());
 
-            // Validate university email format
+            // 1. Validate university email format
             if (!UNIVERSITY_EMAIL_PATTERN.matcher(registerRequest.getEmail()).matches()) {
-                Map<String, String> error = new HashMap<>();
-                error.put("error", "Invalid email format");
-                error.put("message", "Email must be in format: 20xxExxx@eng.jfn.ac.lk (e.g., 2021E001@eng.jfn.ac.lk)");
-                return ResponseEntity.badRequest().body(error);
+                return ResponseEntity.badRequest().body(Map.of(
+                    "error", "Invalid email format",
+                    "message", "Email must be in format: 20xxExxx@eng.jfn.ac.lk (e.g., 2021E001@eng.jfn.ac.lk)"
+                ));
             }
 
-            // Check if email exists
+            // 2. Check if email already exists
             if (userRepository.existsByEmail(registerRequest.getEmail())) {
-                Map<String, String> error = new HashMap<>();
-                error.put("error", "Registration failed");
-                error.put("message", "Email is already registered!");
-                return ResponseEntity.badRequest().body(error);
+                return ResponseEntity.badRequest().body(Map.of(
+                    "error", "Registration failed",
+                    "message", "Email is already registered!"
+                ));
             }
 
-            // Create new user
+            // 3. Check if index number already exists
+            if (userRepository.existsByIndexNumber(registerRequest.getIndexNumber())) {
+                return ResponseEntity.badRequest().body(Map.of(
+                    "error", "Registration failed",
+                    "message", "Index number is already registered!"
+                ));
+            }
+
+            // 4. Create new STUDENT user — role is hardcoded, never from request
             User user = new User();
             user.setEmail(registerRequest.getEmail());
             user.setPasswordHash(passwordEncoder.encode(registerRequest.getPassword()));
             user.setFirstName(registerRequest.getFirstName());
             user.setLastName(registerRequest.getLastName());
-            user.setRole(User.Role.valueOf(registerRequest.getRole()));
+            user.setRole(User.Role.STUDENT);           // ✅ Always STUDENT
             user.setStatus(User.Status.ACTIVE);
-            user.setEmailVerified(false); // Require email verification
+            user.setEmailVerified(false);
+            user.setSemesterYear(registerRequest.getSemesterYear());
+            user.setIndexNumber(registerRequest.getIndexNumber().toUpperCase());
 
             userRepository.save(user);
 
-            // Generate and send verification code
+            // 5. Send verification email
             emailVerificationService.generateAndSendVerificationCode(user);
 
-            log.info("User registered successfully: {}", registerRequest.getEmail());
+            log.info("Student registered successfully: {}", registerRequest.getEmail());
 
-            Map<String, String> response = new HashMap<>();
-            response.put("message", "Registration successful! Please check your email for verification code.");
-            response.put("email", user.getEmail());
-            response.put("userId", user.getUserId().toString());
-            response.put("nextStep", "Verify your email using the code sent to " + user.getEmail());
-
-            return ResponseEntity.status(HttpStatus.CREATED).body(response);
+            return ResponseEntity.status(HttpStatus.CREATED).body(Map.of(
+                "message", "Registration successful! Please check your email for verification code.",
+                "email", user.getEmail(),
+                "userId", user.getUserId().toString(),
+                "role", "STUDENT",
+                "nextStep", "Verify your email using the code sent to " + user.getEmail()
+            ));
 
         } catch (Exception e) {
             log.error("Registration failed: {}", e.getMessage());
-
-            Map<String, String> error = new HashMap<>();
-            error.put("error", "Registration failed");
-            error.put("message", e.getMessage());
-
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(error);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(Map.of(
+                "error", "Registration failed",
+                "message", e.getMessage()
+            ));
         }
     }
+
 
     @PostMapping("/verify-email")
     @Operation(summary = "Verify email", description = "Verify email with 6-digit code")
