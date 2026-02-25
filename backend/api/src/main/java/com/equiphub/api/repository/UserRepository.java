@@ -96,4 +96,7 @@ public interface UserRepository extends JpaRepository<User, UUID> {
        @Query("SELECT COUNT(u) FROM User u WHERE u.department.departmentId = :deptId " +
               "AND u.role = 'STUDENT' AND u.status = 'ACTIVE'")
        long countActiveStudentsByDepartment(@Param("deptId") UUID departmentId);
+
+       @Query("SELECT u FROM User u WHERE u.role <> 'STUDENT' AND u.deletedAt IS NULL")
+       List<User> findAllStaff();
 }
