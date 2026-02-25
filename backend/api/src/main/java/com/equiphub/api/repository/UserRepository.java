@@ -13,53 +13,87 @@ import java.util.UUID;
 @Repository
 public interface UserRepository extends JpaRepository<User, UUID> {
 
-    Optional<User> findByEmail(String email);
-    boolean existsByEmail(String email);
-    boolean existsByIndexNumber(String indexNumber);
+       Optional<User> findByEmail(String email);
 
-    // Find users by role
-    List<User> findByRole(User.Role role);
+       boolean existsByEmail(String email);
 
-    // Find users by department
-    List<User> findByDepartment_DepartmentId(UUID departmentId);
+       boolean existsByIndexNumber(String indexNumber);
 
-    // Find users by department and role
-    List<User> findByDepartment_DepartmentIdAndRole(UUID departmentId, User.Role role);
-    List<User> findByDepartment_DepartmentIdAndIsActive(UUID departmentId, boolean isActive);
+       // Find users by role
+       List<User> findByRole(User.Role role);
 
-    // Find all staff in a department (non-student)
-    @Query("SELECT u FROM User u WHERE u.department.departmentId = :deptId " +
-           "AND u.role != 'STUDENT' AND u.deletedAt IS NULL")
-    List<User> findStaffByDepartmentId(@Param("deptId") UUID departmentId);
+       // Find users by department
+       List<User> findByDepartmentDepartmentId(UUID departmentId);
 
-    // Find active users by role
-    List<User> findByRoleAndStatus(User.Role role, User.Status status);
+       // Find users by department and role
+       List<User> findByDepartmentDepartmentIdAndRole(UUID departmentId, User.Role role);
 
-    // Find HOD of a department
-    @Query("SELECT u FROM User u WHERE u.department.departmentId = :deptId " +
-           "AND u.role = 'HEADOFDEPARTMENT' AND u.status = 'ACTIVE'")
-    Optional<User> findHodByDepartmentId(@Param("deptId") UUID departmentId);
+       List<User> findByDepartmentDepartmentIdAndStatus(UUID departmentId, User.Status status);
 
-    // Search users
-    @Query("SELECT u FROM User u WHERE " +
-           "(LOWER(u.firstName) LIKE LOWER(CONCAT('%', :keyword, '%')) OR " +
-           "LOWER(u.lastName) LIKE LOWER(CONCAT('%', :keyword, '%')) OR " +
-           "LOWER(u.email) LIKE LOWER(CONCAT('%', :keyword, '%'))) " +
-           "AND u.deletedAt IS NULL")
-    List<User> searchUsers(@Param("keyword") String keyword);
+       // ✅ FIX 1: replaced `!= STUDENT` (unqualified literal) with `<> 'STUDENT'` (string literal)
+       @Query("SELECT u FROM User u WHERE u.department.departmentId = :deptId " +
+              "AND u.role <> 'STUDENT' AND u.deletedAt IS NULL")
+       List<User> findStaffByDepartmentId(@Param("deptId") UUID departmentId);
 
-    // ── Combined queries ─────────────────────────────────────────────────────
-    @Query("SELECT u FROM User u WHERE u.department.departmentId = :deptId " +
-           "AND u.role = :role AND u.isActive = true")
-    List<User> findActiveByDepartmentAndRole(
-            @Param("deptId") UUID departmentId,
-            @Param("role") User.Role role);
+       // Find active users by role
+       List<User> findByRoleAndStatus(User.Role role, User.Status status);
 
-    @Query("SELECT COUNT(u) FROM User u WHERE u.department.departmentId = :deptId " +
-           "AND u.role = 'STAFF' AND u.isActive = true")
-    long countActiveStaffByDepartment(@Param("deptId") UUID departmentId);
+       // ✅ FIX 2: replaced bare `HEADOFDEPARTMENT` and `ACTIVE` literals with quoted string literals
+       @Query("SELECT u FROM User u WHERE u.department.departmentId = :deptId " +
+              "AND u.role = 'HEADOFDEPARTMENT' AND u.status = 'ACTIVE'")
+       Optional<User> findHodByDepartmentId(@Param("deptId") UUID departmentId);
 
-    @Query("SELECT COUNT(u) FROM User u WHERE u.department.departmentId = :deptId " +
-           "AND u.role = 'STUDENT' AND u.isActive = true")
-    long countActiveStudentsByDepartment(@Param("deptId") UUID departmentId);
+       // Search users
+       @Query("SELECT u FROM User u WHERE " +
+              "(LOWER(u.firstName) LIKE LOWER(CONCAT('%', :keyword, '%')) " +
+              "OR LOWER(u.lastName) LIKE LOWER(CONCAT('%', :keyword, '%')) " +
+              "OR LOWER(u.email) LIKE LOWER(CONCAT('%', :keyword, '%'))) " +
+              "AND u.deletedAt IS NULL")
+       List<User> searchUsers(@Param("keyword") String keyword);
+
+       // ✅ FIX 3: replaced `com.equiphub.api.model.User.Status.ACTIVE` (FQN — CRASHES Hibernate 6)
+       //           with `'ACTIVE'` string literal. Named param :role kept as-is.
+       @Query("SELECT u FROM User u WHERE u.department.departmentId = :deptId " +
+              "AND u.role = :role AND u.status = 'ACTIVE'")
+       List<User> findActiveByDepartmentAndRole(
+              @Param("deptId") UUID departmentId,
+              @Param("role") User.Role role);
+
+              // Role-specific convenience queries
+       @Query("SELECT u FROM User u WHERE u.role = 'SYSTEMADMIN' AND u.deletedAt IS NULL")
+       List<User> findSystemAdmins();
+
+       @Query("SELECT u FROM User u WHERE u.department.departmentId = :deptId " +
+              "AND u.role = 'DEPARTMENTADMIN' AND u.status = 'ACTIVE'")
+       List<User> findDepartmentAdminsByDepartmentId(@Param("deptId") UUID departmentId);
+
+              // Head of Department: `findHodByDepartmentId` already exists and returns Optional<User>
+
+       @Query("SELECT u FROM User u WHERE u.department.departmentId = :deptId " +
+              "AND u.role = 'LECTURER' AND u.status = 'ACTIVE'")
+       List<User> findLecturersByDepartmentId(@Param("deptId") UUID departmentId);
+
+       @Query("SELECT u FROM User u WHERE u.department.departmentId = :deptId " +
+              "AND u.role = 'INSTRUCTOR' AND u.status = 'ACTIVE'")
+       List<User> findInstructorsByDepartmentId(@Param("deptId") UUID departmentId);
+
+       @Query("SELECT u FROM User u WHERE u.department.departmentId = :deptId " +
+              "AND u.role = 'APPOINTEDLECTURER' AND u.status = 'ACTIVE'")
+       List<User> findAppointedLecturersByDepartmentId(@Param("deptId") UUID departmentId);
+
+       @Query("SELECT u FROM User u WHERE u.department.departmentId = :deptId " +
+              "AND u.role = 'TECHNICALOFFICER' AND u.status = 'ACTIVE'")
+       List<User> findTechnicalOfficersByDepartmentId(@Param("deptId") UUID departmentId);
+
+       // ✅ FIX 4: count users with staff-like roles (non-students)
+       @Query("SELECT COUNT(u) FROM User u WHERE u.department.departmentId = :deptId " +
+              "AND u.role IN ('SYSTEMADMIN','DEPARTMENTADMIN','HEADOFDEPARTMENT','LECTURER','INSTRUCTOR','APPOINTEDLECTURER','TECHNICALOFFICER') " +
+              "AND u.status = 'ACTIVE' AND u.deletedAt IS NULL")
+       long countActiveStaffByDepartment(@Param("deptId") UUID departmentId);
+
+       // ✅ FIX 5: THE CRASH CAUSE — replaced `com.equiphub.api.model.User.Status.ACTIVE`
+       //           (FQN enum path unsupported in Hibernate 6) with `'ACTIVE'` string literal
+       @Query("SELECT COUNT(u) FROM User u WHERE u.department.departmentId = :deptId " +
+              "AND u.role = 'STUDENT' AND u.status = 'ACTIVE'")
+       long countActiveStudentsByDepartment(@Param("deptId") UUID departmentId);
 }

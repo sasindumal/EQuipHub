@@ -20,7 +20,7 @@ import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
-@NoArgsConstructor(force = true)
+// @NoArgsConstructor(force = true)
 @Slf4j
 public class DepartmentService {
 
@@ -124,7 +124,9 @@ public class DepartmentService {
                 .orElseThrow(() -> new RuntimeException("Department not found: " + departmentId));
 
         // Check no active staff/students
-        List<User> activeUsers = userRepository.findByDepartment_DepartmentId(departmentId);
+        List<User> activeUsers = userRepository.findByDepartmentDepartmentIdAndStatus(
+            departmentId, User.Status.ACTIVE
+        );
         if (!activeUsers.isEmpty()) {
             throw new RuntimeException(
                 "Cannot deactivate department with " + activeUsers.size() + " active users. Reassign them first."
@@ -139,9 +141,9 @@ public class DepartmentService {
     // ─── MAPPER ───────────────────────────────────────────────────────────────
 
     private DepartmentResponse mapToResponse(Department dept) {
-        long totalStaff = userRepository.findByDepartment_DepartmentId(dept.getDepartmentId())
+        long totalStaff = userRepository.findByDepartmentDepartmentId(dept.getDepartmentId())
                 .stream().filter(u -> u.getRole() != User.Role.STUDENT).count();
-        long totalStudents = userRepository.findByDepartment_DepartmentId(dept.getDepartmentId())
+        long totalStudents = userRepository.findByDepartmentDepartmentId(dept.getDepartmentId())
                 .stream().filter(u -> u.getRole() == User.Role.STUDENT).count();
 
         String hodName = null;

@@ -51,14 +51,10 @@ public class UserManagementService {
         }
 
         // Validate: non-SYSTEMADMIN roles must have a department
-        if (role != User.Role.DEPARTMENTADMIN && department == null) {
-            // SYSTEMADMIN can exist without a department
-            if (role != User.Role.DEPARTMENTADMIN) {
-                // Allow roles that need department
-                log.warn("Creating {} without department assignment", role);
-            }
+        if (role != User.Role.SYSTEMADMIN && department == null) {
+            throw new RuntimeException("Non-SYSTEMADMIN roles require a department assignment");
         }
-
+        
         User user = User.builder()
                 .email(req.getEmail())
                 .passwordHash(passwordEncoder.encode(req.getTemporaryPassword()))
@@ -101,7 +97,7 @@ public class UserManagementService {
     }
 
     public List<UserResponse> getUsersByDepartment(UUID departmentId) {
-        return userRepository.findByDepartment_DepartmentId(departmentId)
+        return userRepository.findByDepartmentDepartmentId(departmentId)
                 .stream()
                 .map(this::mapToResponse)
                 .collect(Collectors.toList());

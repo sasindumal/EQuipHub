@@ -5,6 +5,7 @@ import lombok.*;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.util.UUID;
 
 @Entity
 @Table(name = "equipment",
@@ -23,9 +24,11 @@ import java.time.LocalDate;
 @Builder
 public class Equipment extends BaseEntity {
 
-    @Id
-    @Column(name = "equipmentid", length = 50)
-    private String equipmentId; // e.g. MULTI-001
+     @Id
+    @GeneratedValue(strategy = GenerationType.AUTO)
+    @Column(name = "equipmentid", nullable = false, updatable = false,
+            columnDefinition = "uuid")                  // ✅ UUID — not String
+    private UUID equipmentId;
 
     @Column(name = "name", nullable = false, length = 255)
     private String name;
