@@ -8,6 +8,7 @@ import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 import lombok.Data;
+import com.equiphub.api.model.User.Role;
 
 @Data
 public class RegisterRequest {
@@ -26,6 +27,9 @@ public class RegisterRequest {
     @NotBlank(message = "Last name is required")
     private String lastName;
 
+    @NotNull(message = "Role is required")
+    private Role role;
+
     // Student-specific fields
     @NotNull(message = "Semester year is required")
     @Min(value = 1, message = "Semester year must be at least 1")
@@ -35,4 +39,6 @@ public class RegisterRequest {
     @NotBlank(message = "Index number is required")
     @Pattern(regexp = "^\\d{2}[A-Za-z]\\d{3}$", message = "Index must be in format: 21E001")
     private String indexNumber;
+
+    
 }

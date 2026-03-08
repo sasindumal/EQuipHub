@@ -6,13 +6,15 @@ import jakarta.validation.constraints.Size;
 import lombok.*;
 import java.time.LocalDateTime;
 import java.util.UUID;
+import java.util.List;
 
 @Entity
 @Table(name = "departments", indexes = {
     @Index(name = "idx_dept_code", columnList = "code", unique = true)
 })
 @Getter @Setter
-@NoArgsConstructor @AllArgsConstructor
+@NoArgsConstructor 
+@AllArgsConstructor
 @Builder
 public class Department {
 
@@ -65,4 +67,5 @@ public class Department {
     protected void onUpdate() {
         updatedAt = LocalDateTime.now();
     }
+
 }

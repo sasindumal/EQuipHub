@@ -16,4 +16,5 @@ public interface DepartmentRepository extends JpaRepository<Department, UUID> {
     Optional<Department> findByCode(String code);
     List<Department> findAllByIsActiveTrue();
     Optional<Department> findByDepartmentIdAndIsActiveTrue(UUID departmentId);
+    
 }

@@ -13,7 +13,10 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -26,37 +29,29 @@ public class UserManagementService {
     private final DepartmentRepository departmentRepository;
     private final PasswordEncoder passwordEncoder;
 
-    // ─── CREATE STAFF ─────────────────────────────────────────────────────────
-
+    // ─────────────────────────────────────────────────────────────
+    //  CREATE STAFF
+    // ─────────────────────────────────────────────────────────────
     @Transactional
     public UserResponse createStaff(CreateStaffRequest req, UUID createdBy) {
-
-        // Check duplicate email
         if (userRepository.existsByEmail(req.getEmail())) {
             throw new RuntimeException("Email already registered: " + req.getEmail());
         }
 
-        // Validate role is not STUDENT (students self-register)
         User.Role role = req.getRole();
         if (role == User.Role.STUDENT) {
             throw new RuntimeException("Students must self-register through /auth/register");
         }
 
-        // Resolve department
         Department department = null;
-        if (req.getDepartmentId() != null && !req.getDepartmentId().isEmpty()) {
+        if (req.getDepartmentId() != null && !req.getDepartmentId().isBlank()) {
             UUID deptId = UUID.fromString(req.getDepartmentId());
             department = departmentRepository.findById(deptId)
                     .orElseThrow(() -> new RuntimeException("Department not found: " + deptId));
         }
 
-        // Validate: non-SYSTEMADMIN roles must have a department
-        if (role != User.Role.DEPARTMENTADMIN && department == null) {
-            // SYSTEMADMIN can exist without a department
-            if (role != User.Role.DEPARTMENTADMIN) {
-                // Allow roles that need department
-                log.warn("Creating {} without department assignment", role);
-            }
+        if (role != User.Role.SYSTEMADMIN && department == null) {
+            throw new RuntimeException("Non-SYSTEMADMIN roles require a department assignment");
         }
 
         User user = User.builder()
@@ -68,27 +63,29 @@ public class UserManagementService {
                 .role(role)
                 .department(department)
                 .status(User.Status.ACTIVE)
-                .emailVerified(true) // Admin-created staff don't need email verification
+                .emailVerified(true)
                 .createdBy(createdBy)
                 .build();
 
         User saved = userRepository.save(user);
-        log.info("Staff created: {} ({}) by admin {}", saved.getEmail(), saved.getRole(), createdBy);
+        log.info("Staff created: {} [{}] by {}", saved.getEmail(), saved.getRole(), createdBy);
         return mapToResponse(saved);
     }
 
-    // ─── GET ALL USERS ────────────────────────────────────────────────────────
-
+    // ─────────────────────────────────────────────────────────────
+    //  READ
+    // ─────────────────────────────────────────────────────────────
     public List<UserResponse> getAllUsers() {
         return userRepository.findAll()
                 .stream()
+                .filter(u -> u.getDeletedAt() == null)
                 .map(this::mapToResponse)
                 .collect(Collectors.toList());
     }
 
     public List<UserResponse> getAllStaff() {
-        return userRepository.findAll().stream()
-                .filter(u -> u.getRole() != User.Role.STUDENT)
+        return userRepository.findAllStaff()        // uses @Query — no full table scan
+                .stream()
                 .map(this::mapToResponse)
                 .collect(Collectors.toList());
     }
@@ -96,13 +93,30 @@ public class UserManagementService {
     public List<UserResponse> getAllStudents() {
         return userRepository.findByRole(User.Role.STUDENT)
                 .stream()
+                .filter(u -> u.getDeletedAt() == null)
+                .map(this::mapToResponse)
+                .collect(Collectors.toList());
+    }
+
+    public List<UserResponse> getStaffByDepartment(UUID departmentId) {
+        return userRepository.findStaffByDepartmentId(departmentId)
+                .stream()
+                .map(this::mapToResponse)
+                .collect(Collectors.toList());
+    }
+
+    public List<UserResponse> getStudentsByDepartment(UUID departmentId) {
+        return userRepository.findByDepartmentDepartmentIdAndRole(departmentId, User.Role.STUDENT)
+                .stream()
+                .filter(u -> u.getDeletedAt() == null)
                 .map(this::mapToResponse)
                 .collect(Collectors.toList());
     }
 
     public List<UserResponse> getUsersByDepartment(UUID departmentId) {
-        return userRepository.findByDepartment_DepartmentId(departmentId)
+        return userRepository.findByDepartmentDepartmentId(departmentId)
                 .stream()
+                .filter(u -> u.getDeletedAt() == null)
                 .map(this::mapToResponse)
                 .collect(Collectors.toList());
     }
@@ -110,6 +124,14 @@ public class UserManagementService {
     public List<UserResponse> getUsersByRole(String role) {
         User.Role userRole = User.Role.valueOf(role);
         return userRepository.findByRole(userRole)
+                .stream()
+                .filter(u -> u.getDeletedAt() == null)
+                .map(this::mapToResponse)
+                .collect(Collectors.toList());
+    }
+
+    public List<UserResponse> searchUsers(String keyword) {
+        return userRepository.searchUsers(keyword)
                 .stream()
                 .map(this::mapToResponse)
                 .collect(Collectors.toList());
@@ -121,16 +143,17 @@ public class UserManagementService {
         return mapToResponse(user);
     }
 
-    // ─── UPDATE USER ──────────────────────────────────────────────────────────
-
+    // ─────────────────────────────────────────────────────────────
+    //  UPDATE
+    // ─────────────────────────────────────────────────────────────
     @Transactional
     public UserResponse updateUser(UUID userId, UpdateUserRequest req, UUID updatedBy) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new RuntimeException("User not found: " + userId));
 
-        if (req.getFirstName() != null) user.setFirstName(req.getFirstName());
-        if (req.getLastName() != null)  user.setLastName(req.getLastName());
-        if (req.getPhone() != null)     user.setPhone(req.getPhone());
+        if (req.getFirstName() != null)  user.setFirstName(req.getFirstName());
+        if (req.getLastName() != null)   user.setLastName(req.getLastName());
+        if (req.getPhone() != null)      user.setPhone(req.getPhone());
 
         if (req.getStatus() != null) {
             user.setStatus(User.Status.valueOf(req.getStatus()));
@@ -148,12 +171,18 @@ public class UserManagementService {
         return mapToResponse(updated);
     }
 
-    // ─── SUSPEND / ACTIVATE ───────────────────────────────────────────────────
-
+    // ─────────────────────────────────────────────────────────────
+    //  SUSPEND / ACTIVATE
+    // ─────────────────────────────────────────────────────────────
     @Transactional
     public UserResponse suspendUser(UUID userId, UUID suspendedBy) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new RuntimeException("User not found: " + userId));
+
+        if (user.getStatus() == User.Status.SUSPENDED) {
+            throw new RuntimeException("User is already suspended");
+        }
+
         user.setStatus(User.Status.SUSPENDED);
         log.info("User {} suspended by {}", userId, suspendedBy);
         return mapToResponse(userRepository.save(user));
@@ -163,27 +192,77 @@ public class UserManagementService {
     public UserResponse activateUser(UUID userId, UUID activatedBy) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new RuntimeException("User not found: " + userId));
+
+        if (user.getStatus() == User.Status.ACTIVE) {
+            throw new RuntimeException("User is already active");
+        }
+
         user.setStatus(User.Status.ACTIVE);
         log.info("User {} activated by {}", userId, activatedBy);
         return mapToResponse(userRepository.save(user));
     }
 
-    // ─── RESET PASSWORD (Admin) ───────────────────────────────────────────────
-
+    // ─────────────────────────────────────────────────────────────
+    //  RESET PASSWORD
+    // ─────────────────────────────────────────────────────────────
     @Transactional
     public void resetPassword(UUID userId, String newPassword, UUID resetBy) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new RuntimeException("User not found: " + userId));
+
         user.setPasswordHash(passwordEncoder.encode(newPassword));
         userRepository.save(user);
         log.info("Password reset for user {} by admin {}", userId, resetBy);
     }
 
-    // ─── MAPPER ───────────────────────────────────────────────────────────────
+    // ─────────────────────────────────────────────────────────────
+    //  SOFT DELETE
+    // ─────────────────────────────────────────────────────────────
+    @Transactional
+    public void deleteUser(UUID userId, UUID deletedBy) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("User not found: " + userId));
 
+        if (user.getDeletedAt() != null) {
+            throw new RuntimeException("User is already deleted");
+        }
+
+        user.setDeletedAt(LocalDateTime.now());
+        user.setStatus(User.Status.INACTIVE);
+        userRepository.save(user);
+        log.warn("User {} soft-deleted by {}", userId, deletedBy);
+    }
+
+    // ─────────────────────────────────────────────────────────────
+    //  DEPARTMENT STATISTICS
+    // ─────────────────────────────────────────────────────────────
+    public Map<String, Object> getDepartmentStats(UUID departmentId) {
+        long totalStaff    = userRepository.countActiveStaffByDepartment(departmentId);
+        long totalStudents = userRepository.countActiveStudentsByDepartment(departmentId);
+
+        Map<String, Long> roleBreakdown = new HashMap<>();
+        for (User.Role role : User.Role.values()) {
+            if (role != User.Role.STUDENT) {
+                long count = userRepository.findByDepartmentDepartmentIdAndRole(departmentId, role)
+                        .stream().filter(u -> u.getDeletedAt() == null).count();
+                if (count > 0) roleBreakdown.put(role.name(), count);
+            }
+        }
+
+        Map<String, Object> stats = new HashMap<>();
+        stats.put("departmentId", departmentId);
+        stats.put("totalStaff", totalStaff);
+        stats.put("totalStudents", totalStudents);
+        stats.put("totalUsers", totalStaff + totalStudents);
+        stats.put("roleBreakdown", roleBreakdown);
+        return stats;
+    }
+
+    // ─────────────────────────────────────────────────────────────
+    //  MAPPER
+    // ─────────────────────────────────────────────────────────────
     public UserResponse mapToResponse(User user) {
-        String deptName = null;
-        String deptCode = null;
+        String deptName = null, deptCode = null;
         UUID deptId = null;
 
         if (user.getDepartment() != null) {
