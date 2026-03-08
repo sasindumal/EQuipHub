@@ -1,0 +1,14 @@
+{
+    "configurations": [
+        {
+            "type": "java",
+            "name": "Spring Boot-EquipHubApplication<api>",
+            "request": "launch",
+            "cwd": "${workspaceFolder}",
+            "mainClass": "com.equiphub.api.EquipHubApplication",
+            "projectName": "api",
+            "args": "",
+            "envFile": "${workspaceFolder}/.env"
+        }
+    ]
+}

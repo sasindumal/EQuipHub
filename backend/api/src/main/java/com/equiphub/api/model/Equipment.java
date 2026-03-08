@@ -24,10 +24,9 @@ import java.util.UUID;
 @Builder
 public class Equipment extends BaseEntity {
 
-     @Id
+    @Id
     @GeneratedValue(strategy = GenerationType.AUTO)
-    @Column(name = "equipmentid", nullable = false, updatable = false,
-            columnDefinition = "uuid")                  // ✅ UUID — not String
+    @Column(name = "equipmentid", nullable = false, updatable = false)      
     private UUID equipmentId;
 
     @Column(name = "name", nullable = false, length = 255)
