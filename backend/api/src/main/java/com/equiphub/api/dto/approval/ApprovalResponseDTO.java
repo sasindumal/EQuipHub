@@ -22,7 +22,7 @@ public class ApprovalResponseDTO {
     private String actorEmail;
     private String actorRole;
     private RequestApproval.ApprovalAction action;
-    private com.equiphub.api.model.ApprovalDecision decision;
+    private RequestApproval.ApprovalDecision decision;
     private String reason;
     private String comments;
     private LocalDateTime decidedAt;

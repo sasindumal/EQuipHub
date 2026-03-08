@@ -17,7 +17,7 @@ public class RequestApprovalResponseDTO {
     private String actorName;
     private String actorRole;
     private RequestApproval.ApprovalAction action;
-    private com.equiphub.api.model.ApprovalDecision decision;
+    private RequestApproval.ApprovalDecision decision;
     private String reason;
     private String comments;
     private LocalDateTime decidedAt;

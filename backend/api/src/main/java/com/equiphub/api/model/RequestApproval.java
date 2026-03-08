@@ -46,7 +46,8 @@ public class RequestApproval {
 
     @Enumerated(EnumType.STRING)
     @Column(name = "decision", nullable = false, length = 50)
-    private com.equiphub.api.model.ApprovalDecision decision;
+    private ApprovalDecision decision;           // ✅ FIXED — uses nested enum below
+
     @Column(name = "reason")
     private String reason;
 
@@ -72,5 +73,14 @@ public class RequestApproval {
         REJECT,
         MODIFY,
         REVERSE
+    }
+
+    public enum ApprovalDecision {
+        PENDING,
+        APPROVED,
+        REJECTED,
+        ESCALATED,
+        RECOMMENDED,
+        MODIFIED
     }
 }

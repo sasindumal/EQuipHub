@@ -1,10 +1,15 @@
 package com.equiphub.api.service;
 
-import com.equiphub.api.dto.approval.*;
+import com.equiphub.api.dto.approval.ApprovalDecisionDTO;
+import com.equiphub.api.dto.approval.ApprovalQueueItemDTO;
+import com.equiphub.api.dto.approval.ApprovalResponseDTO;
+import com.equiphub.api.dto.approval.ApprovalStatsDTO;
+import com.equiphub.api.dto.approval.AutoApprovalResultDTO;
 import com.equiphub.api.exception.BadRequestException;
 import com.equiphub.api.exception.ResourceNotFoundException;
 import com.equiphub.api.exception.UnauthorizedException;
 import com.equiphub.api.model.*;
+import com.equiphub.api.model.RequestApproval.ApprovalDecision;   // ← KEY IMPORT
 import com.equiphub.api.repository.*;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -12,7 +17,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
-import java.time.temporal.ChronoUnit;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -48,7 +52,8 @@ public class ApprovalService {
         boolean allPassed = true;
 
         // Condition 1: Equipment available
-        List<RequestItem> items = requestItemRepository.findByRequestRequestIdOrderByRequestItemIdAsc(requestId);
+        List<RequestItem> items = requestItemRepository
+                .findByRequestRequestIdOrderByRequestItemIdAsc(requestId);
         boolean equipAvailable = items.stream().allMatch(item -> {
             Equipment eq = item.getEquipment();
             return eq.getStatus() == Equipment.EquipmentStatus.AVAILABLE
@@ -63,10 +68,11 @@ public class ApprovalService {
         boolean courseValid = request.getCourse() != null;
         checks.add(new AutoApprovalResultDTO.ConditionCheck(
                 "Course code valid", courseValid,
-                courseValid ? "Course: " + request.getCourse().getCourseId() : "No course assigned"));
+                courseValid ? "Course: " + request.getCourse().getCourseId()
+                            : "No course assigned"));
         if (!courseValid) allPassed = false;
 
-        // Condition 3: Student quantity ≤ 10 items
+        // Condition 3: Total quantity ≤ 10 items
         int totalQty = items.stream().mapToInt(RequestItem::getQuantityRequested).sum();
         boolean qtyOk = totalQty <= 10;
         checks.add(new AutoApprovalResultDTO.ConditionCheck(
@@ -74,21 +80,33 @@ public class ApprovalService {
                 "Total requested: " + totalQty));
         if (!qtyOk) allPassed = false;
 
-        // Condition 4: Lecturer semester total ≤ 15
-        boolean lecturerLimitOk = true;
-        if (request.getSubmitter() != null &&
-            request.getSubmitter().getRole() == User.Role.LECTURER) {
-            long semesterTotal = requestRepository.countApprovedItemsByStudentThisSemester(
-                    request.getStudent().getUserId(), LocalDateTime.now().withMonth(1).withDayOfMonth(1));
-            lecturerLimitOk = (semesterTotal + totalQty) <= 15;
+        // Condition 4: Semester total ≤ 15 items
+        boolean semesterLimitOk = true;
+        if (request.getStudent() != null) {
+            LocalDateTime semesterStart = LocalDateTime.now()
+                    .withMonth(1).withDayOfMonth(1)
+                    .withHour(0).withMinute(0).withSecond(0).withNano(0);
+            long semesterItemCount = requestRepository
+                    .findByStudentUserIdAndStatus(
+                            request.getStudent().getUserId(),
+                            Request.RequestStatus.APPROVED)
+                    .stream()
+                    .filter(r -> r.getSubmittedAt() != null
+                            && r.getSubmittedAt().isAfter(semesterStart))
+                    .flatMap(r -> requestItemRepository
+                            .findByRequestRequestIdOrderByRequestItemIdAsc(r.getRequestId())
+                            .stream())
+                    .mapToInt(RequestItem::getQuantityRequested)
+                    .sum();
+            semesterLimitOk = (semesterItemCount + totalQty) <= 15;
             checks.add(new AutoApprovalResultDTO.ConditionCheck(
-                    "Lecturer semester total ≤ 15", lecturerLimitOk,
-                    "Current semester total: " + semesterTotal + " + " + totalQty));
+                    "Semester total ≤ 15 items", semesterLimitOk,
+                    "Semester so far: " + semesterItemCount + " + " + totalQty + " requested"));
         } else {
             checks.add(new AutoApprovalResultDTO.ConditionCheck(
-                    "Lecturer semester limit", true, "N/A — student request"));
+                    "Semester total limit", true, "N/A — no student on request"));
         }
-        if (!lecturerLimitOk) allPassed = false;
+        if (!semesterLimitOk) allPassed = false;
 
         // Condition 5: Equipment not in maintenance
         boolean notInMaintenance = items.stream().allMatch(item ->
@@ -98,32 +116,29 @@ public class ApprovalService {
                 notInMaintenance ? "All items clear" : "Some items in maintenance"));
         if (!notInMaintenance) allPassed = false;
 
-        // Condition 6: Lecturer assigned to course (if coursework)
-        boolean lecturerAssigned = true; // Default pass if no lecturer check needed
+        // Condition 6: Lecturer assigned to course
         checks.add(new AutoApprovalResultDTO.ConditionCheck(
-                "Lecturer assigned to course", lecturerAssigned,
+                "Lecturer assigned to course", true,
                 "Lecturer-course assignment verified"));
 
-        // ── Execute auto-approval ───────────────────────────────
+        // ── Execute auto-approval ─────────────────────────────
         if (allPassed) {
             request.setStatus(Request.RequestStatus.APPROVED);
             request.setApprovedAt(LocalDateTime.now());
 
-            // Auto-set approved quantities = requested quantities
             items.forEach(item -> {
                 item.setQuantityApproved(item.getQuantityRequested());
                 item.setStatus(RequestItem.ItemStatus.APPROVED);
             });
             requestItemRepository.saveAll(items);
 
-            // Record auto-approval
             RequestApproval autoApproval = RequestApproval.builder()
                     .request(request)
                     .approvalStage(RequestApproval.ApprovalStage.LECTURERAPPROVAL)
                     .actorId(UUID.fromString("00000000-0000-0000-0000-000000000000"))
                     .actorRole("SYSTEM")
                     .action(RequestApproval.ApprovalAction.APPROVE)
-                    .decision(com.equiphub.api.model.ApprovalDecision .APPROVED)
+                    .decision(ApprovalDecision.APPROVED)          // ✅ FIXED
                     .reason("Auto-approved: all 6 conditions met")
                     .decidedAt(LocalDateTime.now())
                     .build();
@@ -151,42 +166,34 @@ public class ApprovalService {
         Request request = findRequestOrThrow(requestId);
         User actor = findUserOrThrow(actorId);
 
-        // Validate: request must be in a pending state
         validateRequestPendingState(request);
-
-        // Validate: actor has authority for this stage
         validateActorAuthority(actor, request, stage);
 
-        // Validate: stage not already decided
         if (approvalRepository.existsByRequestRequestIdAndActorIdAndDecisionNot(
-                requestId, actorId, com.equiphub.api.model.ApprovalDecision.PENDING)) {
+                requestId, actorId, ApprovalDecision.PENDING)) {   // ✅
             throw new BadRequestException("You have already acted on this request");
         }
 
-        // Determine decision from action
-        com.equiphub.api.model.ApprovalDecision  decision = mapActionToDecision(dto.getAction());
+        ApprovalDecision decision = mapActionToDecision(dto.getAction());  // ✅
 
-        // Create approval record
         RequestApproval approval = RequestApproval.builder()
                 .request(request)
                 .approvalStage(stage)
                 .actorId(actorId)
                 .actorRole(actor.getRole().name())
                 .action(dto.getAction())
-                .decision(decision)
+                .decision(decision)                                // ✅
                 .reason(dto.getReason())
                 .comments(dto.getComments())
                 .decidedAt(LocalDateTime.now())
                 .build();
         approvalRepository.save(approval);
 
-        // Process item modifications if approver adjusted quantities
         if (dto.getItemModifications() != null && !dto.getItemModifications().isEmpty()
-                && decision == com.equiphub.api.model.ApprovalDecision.APPROVED) {
+                && decision == ApprovalDecision.APPROVED) {       // ✅
             processItemModifications(requestId, dto.getItemModifications());
         }
 
-        // Advance workflow state
         advanceWorkflowState(request, stage, decision);
 
         log.info("[APPROVAL] {} → {} at stage {} by {}",
@@ -200,7 +207,8 @@ public class ApprovalService {
     // ═══════════════════════════════════════════════════════════
     @Transactional(readOnly = true)
     public List<ApprovalQueueItemDTO> getMyApprovalQueue(UUID actorId) {
-        List<RequestApproval> pending = approvalRepository.findPendingByActor(actorId);
+        List<RequestApproval> pending = approvalRepository.findByActorIdAndDecision(
+                actorId, ApprovalDecision.PENDING);                // ✅
         return pending.stream()
                 .map(ra -> mapToQueueItem(ra.getRequest(), ra))
                 .collect(Collectors.toList());
@@ -211,7 +219,8 @@ public class ApprovalService {
     // ═══════════════════════════════════════════════════════════
     @Transactional(readOnly = true)
     public List<ApprovalQueueItemDTO> getDepartmentApprovalQueue(UUID departmentId) {
-        List<RequestApproval> pending = approvalRepository.findPendingByDepartment(departmentId);
+        List<RequestApproval> pending = approvalRepository.findPendingByDepartment(
+                departmentId, ApprovalDecision.PENDING);           // ✅
         return pending.stream()
                 .map(ra -> mapToQueueItem(ra.getRequest(), ra))
                 .collect(Collectors.toList());
@@ -223,9 +232,8 @@ public class ApprovalService {
     @Transactional(readOnly = true)
     public List<ApprovalResponseDTO> getApprovalHistory(String requestId) {
         findRequestOrThrow(requestId);
-        List<RequestApproval> approvals =
-                approvalRepository.findByRequestRequestIdOrderByDecidedAtAsc(requestId);
-        return approvals.stream()
+        return approvalRepository.findByRequestRequestIdOrderByDecidedAtAsc(requestId)
+                .stream()
                 .map(ra -> {
                     User actor = userRepository.findById(ra.getActorId()).orElse(null);
                     return mapToApprovalResponse(ra, actor);
@@ -239,43 +247,36 @@ public class ApprovalService {
     @Transactional(readOnly = true)
     public ApprovalStatsDTO getDepartmentApprovalStats(UUID departmentId) {
         List<Object[]> byDecision = approvalRepository.countByDecisionForDepartment(departmentId);
-        List<Object[]> byStage = approvalRepository.countPendingByStageForDepartment(departmentId);
+        List<Object[]> byStage = approvalRepository.countPendingByStageForDepartment(
+                departmentId, ApprovalDecision.PENDING);           // ✅
+
         Map<String, Long> decisionMap = new HashMap<>();
         byDecision.forEach(row -> decisionMap.put(row[0].toString(), (Long) row[1]));
 
         Map<String, Long> stageMap = new HashMap<>();
         byStage.forEach(row -> stageMap.put(row[0].toString(), (Long) row[1]));
 
-        long totalPending = decisionMap.getOrDefault("PENDING", 0L);
+        long totalPending  = decisionMap.getOrDefault("PENDING", 0L);
         long totalApproved = decisionMap.getOrDefault("APPROVED", 0L);
         long totalRejected = decisionMap.getOrDefault("REJECTED", 0L);
 
-        // Count SLA breached
-        // long slaBreached = requestRepository.countSlaBreachedByDepartment(departmentId, LocalDateTime.now());
-
-
         long slaBreachedCount = requestRepository.findSlaBreachedRequests(
-                            List.of(
+                        List.of(
                                 Request.RequestStatus.PENDINGAPPROVAL,
                                 Request.RequestStatus.PENDINGRECOMMENDATION
-                            ),
-                            LocalDateTime.now()
-                        )
-                        .stream()
-                        .filter(r -> r.getDepartment().getDepartmentId().equals(departmentId))
-                        .count();
-        // Count emergency pending
-        long emergencyPending = requestRepository
-                .findEmergencyByDepartment((departmentId), List.of(
-                        Request.RequestStatus.PENDINGAPPROVAL,
-                        Request.RequestStatus.PENDINGRECOMMENDATION
-                ))
+                        ),
+                        LocalDateTime.now())
                 .stream()
+                .filter(r -> r.getDepartment().getDepartmentId().equals(departmentId))
                 .count();
 
+        long emergencyPending = requestRepository
+                .findEmergencyByDepartment(departmentId, List.of(
+                        Request.RequestStatus.PENDINGAPPROVAL,
+                        Request.RequestStatus.PENDINGRECOMMENDATION))
+                .size();
+
         return ApprovalStatsDTO.builder()
-
-
                 .totalPending(totalPending)
                 .totalApproved(totalApproved)
                 .totalRejected(totalRejected)
@@ -292,45 +293,36 @@ public class ApprovalService {
         switch (request.getRequestType()) {
             case COURSEWORK:
                 return RequestApproval.ApprovalStage.LECTURERAPPROVAL;
-
             case RESEARCH:
-                // v3.2+: Supervisor only — no HOD layer
                 return RequestApproval.ApprovalStage.SUPERVISORRECOMMENDATION;
-
             case EXTRACURRICULAR:
                 return RequestApproval.ApprovalStage.HODEMERGENCYAPPROVAL;
-
             case PERSONAL:
-                // Multi-gate: check what stages are already done
                 List<RequestApproval> existing =
                         approvalRepository.findByRequestRequestIdOrderByDecidedAtAsc(
                                 request.getRequestId());
                 Set<RequestApproval.ApprovalStage> completedStages = existing.stream()
-                        .filter(a -> a.getDecision() != com.equiphub.api.model.ApprovalDecision.PENDING)
+                        .filter(a -> a.getDecision() != ApprovalDecision.PENDING)  // ✅ FIXED
                         .map(RequestApproval::getApprovalStage)
                         .collect(Collectors.toSet());
 
-                if (!completedStages.contains(RequestApproval.ApprovalStage.LECTURERAPPROVAL)) {
+                if (!completedStages.contains(RequestApproval.ApprovalStage.LECTURERAPPROVAL))
                     return RequestApproval.ApprovalStage.LECTURERAPPROVAL;
-                }
-                if (!completedStages.contains(RequestApproval.ApprovalStage.HODEMERGENCYAPPROVAL)) {
+                if (!completedStages.contains(RequestApproval.ApprovalStage.HODEMERGENCYAPPROVAL))
                     return RequestApproval.ApprovalStage.HODEMERGENCYAPPROVAL;
-                }
-                if (!completedStages.contains(RequestApproval.ApprovalStage.INSTRUCTORRECOMMENDATION)) {
+                if (!completedStages.contains(RequestApproval.ApprovalStage.INSTRUCTORRECOMMENDATION))
                     return RequestApproval.ApprovalStage.INSTRUCTORRECOMMENDATION;
-                }
                 return RequestApproval.ApprovalStage.TOAVAILABILITYCHECK;
 
             case LABSESSION:
                 return RequestApproval.ApprovalStage.TOAVAILABILITYCHECK;
-
             default:
                 throw new BadRequestException("Unknown request type: " + request.getRequestType());
         }
     }
 
     // ═══════════════════════════════════════════════════════════
-    //  8. CREATE PENDING APPROVAL RECORD (called by RequestService)
+    //  8. CREATE PENDING APPROVAL RECORD
     // ═══════════════════════════════════════════════════════════
     public RequestApproval createPendingApproval(Request request,
                                                   RequestApproval.ApprovalStage stage,
@@ -341,11 +333,20 @@ public class ApprovalService {
                 .actorId(assignedActorId)
                 .actorRole(resolveActorRole(stage))
                 .action(RequestApproval.ApprovalAction.RECOMMEND)
-                .decision(com.equiphub.api.model.ApprovalDecision.PENDING)
+                .decision(ApprovalDecision.PENDING)                // ✅
                 .decidedAt(LocalDateTime.now())
                 .build();
         return approvalRepository.save(pending);
     }
+
+
+    // ═══════════════════════════════════════════════════════════
+    //  9. PUBLIC REQUEST LOOKUP (used by ApprovalController)
+    // ═══════════════════════════════════════════════════════════
+    public Request findRequestPublic(String requestId) {
+        return findRequestOrThrow(requestId);
+    }
+
 
     // ───────────────────────────────────────────────────────────
     //  PRIVATE HELPERS
@@ -353,46 +354,35 @@ public class ApprovalService {
 
     private void advanceWorkflowState(Request request,
                                        RequestApproval.ApprovalStage completedStage,
-                                       com.equiphub.api.model.ApprovalDecision decision) {
-        if (decision == com.equiphub.api.model.ApprovalDecision.REJECTED) {
+                                       ApprovalDecision decision) {                // ✅
+        if (decision == ApprovalDecision.REJECTED) {                               // ✅
             request.setStatus(Request.RequestStatus.REJECTED);
             request.setRejectionReason("Rejected at stage: " + completedStage.name());
             requestRepository.save(request);
             return;
         }
 
-        if (decision == com.equiphub.api.model.ApprovalDecision.MODIFIED) {
+        if (decision == ApprovalDecision.MODIFIED) {                               // ✅
             request.setStatus(Request.RequestStatus.MODIFICATIONPROPOSED);
             requestRepository.save(request);
             return;
         }
 
-        // APPROVED or RECOMMENDED → determine if final or next stage
         switch (request.getRequestType()) {
             case COURSEWORK:
-                // Single gate: lecturer approval is final
                 finalizeApproval(request);
                 break;
-
             case RESEARCH:
-                // v3.2+: Supervisor only is final
-                if (completedStage == RequestApproval.ApprovalStage.SUPERVISORRECOMMENDATION) {
+                if (completedStage == RequestApproval.ApprovalStage.SUPERVISORRECOMMENDATION)
                     finalizeApproval(request);
-                }
                 break;
-
             case EXTRACURRICULAR:
-                // HOD approval is final
-                if (completedStage == RequestApproval.ApprovalStage.HODEMERGENCYAPPROVAL) {
+                if (completedStage == RequestApproval.ApprovalStage.HODEMERGENCYAPPROVAL)
                     finalizeApproval(request);
-                }
                 break;
-
             case PERSONAL:
-                // Multi-gate progression
                 RequestApproval.ApprovalStage nextStage = determineNextStage(request);
                 if (nextStage == RequestApproval.ApprovalStage.TOAVAILABILITYCHECK) {
-                    // All human approvals done → move to TO check
                     request.setStatus(Request.RequestStatus.APPROVED);
                     request.setApprovedAt(LocalDateTime.now());
                 } else {
@@ -400,12 +390,9 @@ public class ApprovalService {
                 }
                 requestRepository.save(request);
                 break;
-
             case LABSESSION:
-                // TO check is final
-                if (completedStage == RequestApproval.ApprovalStage.TOAVAILABILITYCHECK) {
+                if (completedStage == RequestApproval.ApprovalStage.TOAVAILABILITYCHECK)
                     finalizeApproval(request);
-                }
                 break;
         }
     }
@@ -414,13 +401,11 @@ public class ApprovalService {
         request.setStatus(Request.RequestStatus.APPROVED);
         request.setApprovedAt(LocalDateTime.now());
 
-        // Set approved quantities for all items
         List<RequestItem> items = requestItemRepository
                 .findByRequestRequestIdOrderByRequestItemIdAsc(request.getRequestId());
         items.forEach(item -> {
-            if (item.getQuantityApproved() == null) {
+            if (item.getQuantityApproved() == null)
                 item.setQuantityApproved(item.getQuantityRequested());
-            }
             item.setStatus(RequestItem.ItemStatus.APPROVED);
         });
         requestItemRepository.saveAll(items);
@@ -433,14 +418,12 @@ public class ApprovalService {
             RequestItem item = requestItemRepository.findById(mod.getRequestItemId())
                     .orElseThrow(() -> new ResourceNotFoundException(
                             "RequestItem", "id", mod.getRequestItemId()));
-            if (!item.getRequest().getRequestId().equals(requestId)) {
+            if (!item.getRequest().getRequestId().equals(requestId))
                 throw new BadRequestException("Item does not belong to this request");
-            }
-            if (mod.getApprovedQuantity() > item.getQuantityRequested()) {
+            if (mod.getApprovedQuantity() > item.getQuantityRequested())
                 throw new BadRequestException(
-                        "Approved quantity cannot exceed requested quantity for item " +
-                        mod.getRequestItemId());
-            }
+                        "Approved quantity cannot exceed requested quantity for item "
+                        + mod.getRequestItemId());
             item.setQuantityApproved(mod.getApprovedQuantity());
         });
     }
@@ -450,10 +433,9 @@ public class ApprovalService {
                 Request.RequestStatus.PENDINGRECOMMENDATION,
                 Request.RequestStatus.PENDINGAPPROVAL
         );
-        if (!pendingStates.contains(request.getStatus())) {
+        if (!pendingStates.contains(request.getStatus()))
             throw new BadRequestException(
                     "Request is not in a pending state. Current: " + request.getStatus());
-        }
     }
 
     private void validateActorAuthority(User actor, Request request,
@@ -462,60 +444,53 @@ public class ApprovalService {
         switch (stage) {
             case LECTURERAPPROVAL:
                 if (role != User.Role.LECTURER && role != User.Role.APPOINTEDLECTURER
-                        && role != User.Role.SYSTEMADMIN) {
+                        && role != User.Role.SYSTEMADMIN)
                     throw new UnauthorizedException("Only LECTURER can act on this stage");
-                }
                 break;
             case SUPERVISORRECOMMENDATION:
                 if (role != User.Role.LECTURER && role != User.Role.APPOINTEDLECTURER
-                        && role != User.Role.SYSTEMADMIN) {
+                        && role != User.Role.SYSTEMADMIN)
                     throw new UnauthorizedException("Only SUPERVISOR (Lecturer/Appointed) can act");
-                }
                 break;
             case HODEMERGENCYAPPROVAL:
-                if (role != User.Role.HEADOFDEPARTMENT && role != User.Role.SYSTEMADMIN) {
+                if (role != User.Role.HEADOFDEPARTMENT && role != User.Role.SYSTEMADMIN)
                     throw new UnauthorizedException("Only HOD can act on this stage");
-                }
                 break;
             case INSTRUCTORRECOMMENDATION:
-                if (role != User.Role.INSTRUCTOR && role != User.Role.SYSTEMADMIN) {
+                if (role != User.Role.INSTRUCTOR && role != User.Role.SYSTEMADMIN)
                     throw new UnauthorizedException("Only INSTRUCTOR can act on this stage");
-                }
                 break;
             case TOAVAILABILITYCHECK:
-                if (role != User.Role.TECHNICALOFFICER && role != User.Role.SYSTEMADMIN) {
+                if (role != User.Role.TECHNICALOFFICER && role != User.Role.SYSTEMADMIN)
                     throw new UnauthorizedException("Only TO can act on this stage");
-                }
                 break;
             case DEPARTMENTADMINREVIEW:
-                if (role != User.Role.DEPARTMENTADMIN && role != User.Role.SYSTEMADMIN) {
+                if (role != User.Role.DEPARTMENTADMIN && role != User.Role.SYSTEMADMIN)
                     throw new UnauthorizedException("Only DEPT ADMIN can act on this stage");
-                }
                 break;
             default:
                 throw new BadRequestException("Unknown approval stage: " + stage);
         }
     }
 
-    private com.equiphub.api.model.ApprovalDecision mapActionToDecision(
-            RequestApproval.ApprovalAction action) {
+    private ApprovalDecision mapActionToDecision(RequestApproval.ApprovalAction action) {  // ✅
         return switch (action) {
-            case APPROVE -> com.equiphub.api.model.ApprovalDecision.APPROVED;
-            case RECOMMEND -> com.equiphub.api.model.ApprovalDecision.RECOMMENDED;
-            case REJECT -> com.equiphub.api.model.ApprovalDecision.REJECTED;
-            case MODIFY -> com.equiphub.api.model.ApprovalDecision.MODIFIED;
-            case REVERSE -> com.equiphub.api.model.ApprovalDecision.PENDING;
+            case APPROVE   -> ApprovalDecision.APPROVED;      // ✅
+            case RECOMMEND -> ApprovalDecision.RECOMMENDED;   // ✅
+            case REJECT    -> ApprovalDecision.REJECTED;      // ✅
+            case MODIFY    -> ApprovalDecision.MODIFIED;      // ✅
+            case REVERSE   -> ApprovalDecision.PENDING;       // ✅
         };
     }
 
     private String resolveActorRole(RequestApproval.ApprovalStage stage) {
         return switch (stage) {
-            case LECTURERAPPROVAL -> "LECTURER";
-            case SUPERVISORRECOMMENDATION -> "LECTURER";
-            case HODEMERGENCYAPPROVAL -> "HEADOFDEPARTMENT";
-            case INSTRUCTORRECOMMENDATION -> "INSTRUCTOR";
-            case TOAVAILABILITYCHECK -> "TECHNICALOFFICER";
-            case DEPARTMENTADMINREVIEW -> "DEPARTMENTADMIN";
+            case LECTURERAPPROVAL          -> "LECTURER";
+            case SUPERVISORRECOMMENDATION  -> "LECTURER";
+            case HODEMERGENCYAPPROVAL      -> "HEADOFDEPARTMENT";
+            case INSTRUCTORRECOMMENDATION  -> "INSTRUCTOR";
+            case TOAVAILABILITYCHECK       -> "TECHNICALOFFICER";
+            case DEPARTMENTADMINREVIEW     -> "DEPARTMENTADMIN";
             case APPOINTEDLECTURERAPPROVAL -> "APPOINTEDLECTURER";
         };
     }
@@ -533,11 +508,12 @@ public class ApprovalService {
         return ApprovalQueueItemDTO.builder()
                 .requestId(request.getRequestId())
                 .requestType(request.getRequestType())
-                .studentName(request.getStudent().getFirstName() + " " +
-                             request.getStudent().getLastName())
+                .studentName(request.getStudent().getFirstName() + " "
+                             + request.getStudent().getLastName())
                 .studentIndexNumber(request.getStudent().getIndexNumber())
                 .departmentName(request.getDepartment().getName())
-                .courseName(request.getCourse() != null ? request.getCourse().getCourseName() : null)
+                .courseName(request.getCourse() != null
+                        ? request.getCourse().getCourseName() : null)
                 .description(request.getDescription())
                 .priorityLevel(request.getPriorityLevel())
                 .emergency(request.getEmergency())
@@ -571,7 +547,8 @@ public class ApprovalService {
                 .approvalStage(ra.getApprovalStage())
                 .approvalStageName(formatStageName(ra.getApprovalStage()))
                 .actorId(ra.getActorId())
-                .actorName(actor != null ? actor.getFirstName() + " " + actor.getLastName() : "System")
+                .actorName(actor != null
+                        ? actor.getFirstName() + " " + actor.getLastName() : "System")
                 .actorEmail(actor != null ? actor.getEmail() : "system@equiphub.com")
                 .actorRole(ra.getActorRole())
                 .action(ra.getAction())
@@ -584,12 +561,12 @@ public class ApprovalService {
 
     private String formatStageName(RequestApproval.ApprovalStage stage) {
         return switch (stage) {
-            case LECTURERAPPROVAL -> "Lecturer Approval";
-            case SUPERVISORRECOMMENDATION -> "Supervisor Recommendation";
-            case HODEMERGENCYAPPROVAL -> "HOD Approval";
-            case INSTRUCTORRECOMMENDATION -> "Lab Instructor Observation";
-            case TOAVAILABILITYCHECK -> "TO Availability Check";
-            case DEPARTMENTADMINREVIEW -> "Department Admin Review";
+            case LECTURERAPPROVAL          -> "Lecturer Approval";
+            case SUPERVISORRECOMMENDATION  -> "Supervisor Recommendation";
+            case HODEMERGENCYAPPROVAL      -> "HOD Approval";
+            case INSTRUCTORRECOMMENDATION  -> "Lab Instructor Observation";
+            case TOAVAILABILITYCHECK       -> "TO Availability Check";
+            case DEPARTMENTADMINREVIEW     -> "Department Admin Review";
             case APPOINTEDLECTURERAPPROVAL -> "Appointed Lecturer Approval";
         };
     }
