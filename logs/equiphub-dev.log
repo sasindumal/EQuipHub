@@ -36729,3 +36729,30 @@ Unconditional classes:
 2026-03-08 14:19:21.630 [EQuipHubHikariCP housekeeper] DEBUG com.zaxxer.hikari.pool.HikariPool - EQuipHubHikariCP - Before cleanup stats (total=6, active=0, idle=6, waiting=0)
 2026-03-08 14:19:21.630 [EQuipHubHikariCP housekeeper] DEBUG com.zaxxer.hikari.pool.HikariPool - EQuipHubHikariCP - After cleanup  stats (total=6, active=0, idle=6, waiting=0)
 2026-03-08 14:19:21.630 [EQuipHubHikariCP housekeeper] DEBUG com.zaxxer.hikari.pool.HikariPool - EQuipHubHikariCP - Fill pool skipped, pool has sufficient level or currently being filled (queueDepth=0).
+2026-03-08 14:19:51.630 [EQuipHubHikariCP housekeeper] DEBUG com.zaxxer.hikari.pool.HikariPool - EQuipHubHikariCP - Before cleanup stats (total=6, active=0, idle=6, waiting=0)
+2026-03-08 14:19:51.630 [EQuipHubHikariCP housekeeper] DEBUG com.zaxxer.hikari.pool.HikariPool - EQuipHubHikariCP - After cleanup  stats (total=6, active=0, idle=6, waiting=0)
+2026-03-08 14:19:51.630 [EQuipHubHikariCP housekeeper] DEBUG com.zaxxer.hikari.pool.HikariPool - EQuipHubHikariCP - Fill pool skipped, pool has sufficient level or currently being filled (queueDepth=0).
+2026-03-08 14:20:21.630 [EQuipHubHikariCP housekeeper] DEBUG com.zaxxer.hikari.pool.HikariPool - EQuipHubHikariCP - Before cleanup stats (total=6, active=0, idle=6, waiting=0)
+2026-03-08 14:20:21.631 [EQuipHubHikariCP housekeeper] DEBUG com.zaxxer.hikari.pool.HikariPool - EQuipHubHikariCP - After cleanup  stats (total=6, active=0, idle=6, waiting=0)
+2026-03-08 14:20:21.631 [EQuipHubHikariCP housekeeper] DEBUG com.zaxxer.hikari.pool.HikariPool - EQuipHubHikariCP - Fill pool skipped, pool has sufficient level or currently being filled (queueDepth=0).
+2026-03-08 14:20:51.631 [EQuipHubHikariCP housekeeper] DEBUG com.zaxxer.hikari.pool.HikariPool - EQuipHubHikariCP - Before cleanup stats (total=6, active=0, idle=6, waiting=0)
+2026-03-08 14:20:51.631 [EQuipHubHikariCP housekeeper] DEBUG com.zaxxer.hikari.pool.HikariPool - EQuipHubHikariCP - After cleanup  stats (total=6, active=0, idle=6, waiting=0)
+2026-03-08 14:20:51.631 [EQuipHubHikariCP housekeeper] DEBUG com.zaxxer.hikari.pool.HikariPool - EQuipHubHikariCP - Fill pool skipped, pool has sufficient level or currently being filled (queueDepth=0).
+2026-03-08 14:21:21.631 [EQuipHubHikariCP housekeeper] DEBUG com.zaxxer.hikari.pool.HikariPool - EQuipHubHikariCP - Before cleanup stats (total=6, active=0, idle=6, waiting=0)
+2026-03-08 14:21:21.631 [EQuipHubHikariCP housekeeper] DEBUG com.zaxxer.hikari.pool.HikariPool - EQuipHubHikariCP - After cleanup  stats (total=6, active=0, idle=6, waiting=0)
+2026-03-08 14:21:21.631 [EQuipHubHikariCP housekeeper] DEBUG com.zaxxer.hikari.pool.HikariPool - EQuipHubHikariCP - Fill pool skipped, pool has sufficient level or currently being filled (queueDepth=0).
+2026-03-08 14:21:51.632 [EQuipHubHikariCP housekeeper] DEBUG com.zaxxer.hikari.pool.HikariPool - EQuipHubHikariCP - Before cleanup stats (total=6, active=0, idle=6, waiting=0)
+2026-03-08 14:21:51.632 [EQuipHubHikariCP housekeeper] DEBUG com.zaxxer.hikari.pool.HikariPool - EQuipHubHikariCP - After cleanup  stats (total=6, active=0, idle=6, waiting=0)
+2026-03-08 14:21:51.632 [EQuipHubHikariCP housekeeper] DEBUG com.zaxxer.hikari.pool.HikariPool - EQuipHubHikariCP - Fill pool skipped, pool has sufficient level or currently being filled (queueDepth=0).
+2026-03-08 14:22:21.632 [EQuipHubHikariCP housekeeper] DEBUG com.zaxxer.hikari.pool.HikariPool - EQuipHubHikariCP - Before cleanup stats (total=6, active=0, idle=6, waiting=0)
+2026-03-08 14:22:21.632 [EQuipHubHikariCP housekeeper] DEBUG com.zaxxer.hikari.pool.HikariPool - EQuipHubHikariCP - After cleanup  stats (total=6, active=0, idle=6, waiting=0)
+2026-03-08 14:22:21.632 [EQuipHubHikariCP housekeeper] DEBUG com.zaxxer.hikari.pool.HikariPool - EQuipHubHikariCP - Fill pool skipped, pool has sufficient level or currently being filled (queueDepth=0).
+2026-03-08 14:22:51.632 [EQuipHubHikariCP housekeeper] DEBUG com.zaxxer.hikari.pool.HikariPool - EQuipHubHikariCP - Before cleanup stats (total=6, active=0, idle=6, waiting=0)
+2026-03-08 14:22:51.632 [EQuipHubHikariCP housekeeper] DEBUG com.zaxxer.hikari.pool.HikariPool - EQuipHubHikariCP - After cleanup  stats (total=6, active=0, idle=6, waiting=0)
+2026-03-08 14:22:51.632 [EQuipHubHikariCP housekeeper] DEBUG com.zaxxer.hikari.pool.HikariPool - EQuipHubHikariCP - Fill pool skipped, pool has sufficient level or currently being filled (queueDepth=0).
+2026-03-08 14:23:21.633 [EQuipHubHikariCP housekeeper] DEBUG com.zaxxer.hikari.pool.HikariPool - EQuipHubHikariCP - Before cleanup stats (total=6, active=0, idle=6, waiting=0)
+2026-03-08 14:23:21.633 [EQuipHubHikariCP housekeeper] DEBUG com.zaxxer.hikari.pool.HikariPool - EQuipHubHikariCP - After cleanup  stats (total=6, active=0, idle=6, waiting=0)
+2026-03-08 14:23:21.633 [EQuipHubHikariCP housekeeper] DEBUG com.zaxxer.hikari.pool.HikariPool - EQuipHubHikariCP - Fill pool skipped, pool has sufficient level or currently being filled (queueDepth=0).
+2026-03-08 14:23:51.633 [EQuipHubHikariCP housekeeper] DEBUG com.zaxxer.hikari.pool.HikariPool - EQuipHubHikariCP - Before cleanup stats (total=6, active=0, idle=6, waiting=0)
+2026-03-08 14:23:51.633 [EQuipHubHikariCP housekeeper] DEBUG com.zaxxer.hikari.pool.HikariPool - EQuipHubHikariCP - After cleanup  stats (total=6, active=0, idle=6, waiting=0)
+2026-03-08 14:23:51.633 [EQuipHubHikariCP housekeeper] DEBUG com.zaxxer.hikari.pool.HikariPool - EQuipHubHikariCP - Fill pool skipped, pool has sufficient level or currently being filled (queueDepth=0).

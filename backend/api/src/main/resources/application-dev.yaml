@@ -33,6 +33,9 @@ spring:
     livereload:
       enabled: true
 
+  thymeleaf:
+    check-template-location: false
+
 # CORS - Allow local development origins
 cors:
   allowed-origins: http://localhost:3000,http://localhost:5173,http://127.0.0.1:3000,http://127.0.0.1:5173
@@ -47,6 +50,8 @@ logging:
     org.hibernate.SQL: DEBUG
     org.hibernate.type.descriptor.sql.BasicBinder: TRACE
     org.springframework.data.redis: DEBUG
+    org.hibernate.resource.transaction: WARN
+  
   pattern:
     console: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n"
   file:
