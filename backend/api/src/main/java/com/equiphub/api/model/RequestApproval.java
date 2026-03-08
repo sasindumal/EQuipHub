@@ -46,8 +46,7 @@ public class RequestApproval {
 
     @Enumerated(EnumType.STRING)
     @Column(name = "decision", nullable = false, length = 50)
-    private ApprovalDecision decision;
-
+    private com.equiphub.api.model.ApprovalDecision decision;
     @Column(name = "reason")
     private String reason;
 
@@ -73,13 +72,5 @@ public class RequestApproval {
         REJECT,
         MODIFY,
         REVERSE
-    }
-
-    public enum ApprovalDecision {
-        PENDING,
-        APPROVED,
-        REJECTED,
-        RECOMMENDED,
-        MODIFIED
     }
 }

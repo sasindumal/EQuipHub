@@ -23,4 +23,6 @@ public interface RequestItemRepository extends JpaRepository<RequestItem, Intege
     List<RequestItem> findActiveByEquipment(@Param("equipmentId") UUID equipmentId);
 
     void deleteByRequestRequestId(String requestId);
+
+    List<RequestItem> findByRequestRequestIdOrderByRequestItemIdAsc(String requestId);
 }

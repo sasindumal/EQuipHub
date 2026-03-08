@@ -111,4 +111,25 @@ public interface RequestRepository extends JpaRepository<Request, String> {
             List<Request> findByStatusAndType(
                 @Param("requestStatus") RequestStatus status, 
                 @Param("requestType") RequestType requestType);
+
+    @Query("SELECT COUNT(r) FROM Request r " +
+       "WHERE r.department.departmentId = :deptId " +
+       "AND r.submittedAt IS NOT NULL " +
+       "AND r.status IN :pendingStatuses")
+    long countSlaBreachedByDepartment(
+            @Param("deptId") UUID deptId,
+            @Param("pendingStatuses") List<Request.RequestStatus> pendingStatuses);
+            
+    @Query("SELECT COUNT(ri) FROM RequestItem ri " +
+            "JOIN ri.request r " +
+            "WHERE r.student.userId = :studentId " +
+            "AND r.status = 'APPROVED' " +
+            "AND r.submittedAt >= :semesterStart")
+        long countApprovedItemsByStudentThisSemester(
+                @Param("studentId") UUID studentId,
+                @Param("semesterStart") LocalDateTime semesterStart);
+
+
     }
+
+    
