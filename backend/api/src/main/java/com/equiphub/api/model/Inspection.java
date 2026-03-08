@@ -70,8 +70,8 @@ public class Inspection extends BaseEntity {
     @Column(name = "inspectedat", nullable = false)
     private LocalDateTime inspectedAt;
 
-    public enum InspectionType {
-        PREISSUANCE,
-        POSTRETURN
-    }
+    @Enumerated(EnumType.STRING)
+    @Column(name = "inspectionstatus", nullable = false, length = 50)
+    private com.equiphub.api.model.InspectionType inspectionSType;
+
 }

@@ -15,7 +15,7 @@ public class CreateInspectionDTO {
     private Integer requestItemId;
 
     @NotNull(message = "Inspection type is required")
-    private Inspection.InspectionType inspectionType;
+    private com.equiphub.api.model.InspectionType inspectionType;
 
     @NotNull(message = "Condition before rating is required")
     @Min(value = 0, message = "Condition must be between 0 and 100")

@@ -19,7 +19,7 @@ public interface InspectionRepository extends JpaRepository<Inspection, Integer>
 
     // ── By type for a request item ──────────────────────────────
     Optional<Inspection> findByRequestItemRequestItemIdAndInspectionType(
-            Integer requestItemId, Inspection.InspectionType type);
+            Integer requestItemId, com.equiphub.api.model.InspectionType type);
 
     // ── All inspections by inspector ────────────────────────────
     List<Inspection> findByInspectorIdOrderByInspectedAtDesc(UUID inspectorId);
@@ -70,16 +70,15 @@ public interface InspectionRepository extends JpaRepository<Inspection, Integer>
     Object[] avgConditionScoresForDepartment(@Param("departmentId") UUID departmentId);
 
     // ── Unacknowledged inspections (student didn't sign) ────────
-    @Query("SELECT i FROM Inspection i " +
-           "WHERE i.studentAcknowledged = false " +
-           "AND i.inspectionType = com.equiphub.api.model.Inspection.InspectionType.POSTRETURN " +
-           "AND i.damageLevel IS NOT NULL AND i.damageLevel > 0 " +
-           "ORDER BY i.inspectedAt ASC")
-    List<Inspection> findUnacknowledgedDamage();
+@Query("SELECT i FROM Inspection i WHERE i.inspectionType = :type " +
+       "AND i.damageLevel IS NOT NULL " +
+       "AND i.studentAcknowledged = false")
+List<Inspection> findUnacknowledgedDamage(@Param("type") com.equiphub.api.model.InspectionType type);
+
 
     // ── Check if pre-issuance inspection exists ─────────────────
     boolean existsByRequestItemRequestItemIdAndInspectionType(
-            Integer requestItemId, Inspection.InspectionType type);
+            Integer requestItemId,com.equiphub.api.model.InspectionType type);
 
     // ── Count damage inspections by level ───────────────────────
     @Query("SELECT i.damageLevel, COUNT(i) FROM Inspection i " +

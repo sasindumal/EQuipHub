@@ -54,12 +54,13 @@ public interface RequestApprovalRepository extends JpaRepository<RequestApproval
     List<RequestApproval> findPendingByDepartment(@Param("departmentId") UUID departmentId);
 
     // ── Count pending by stage for stats ────────────────────────
-    @Query("SELECT ra.approvalStage, COUNT(ra) FROM RequestApproval ra " +
-           "WHERE ra.decision = com.equiphub.api.model.RequestApproval.ApprovalDecision.PENDING " +
-           "AND ra.request.department.departmentId = :departmentId " +
-           "GROUP BY ra.approvalStage")
-    List<Object[]> countPendingByStageForDepartment(@Param("departmentId") UUID departmentId);
-
+    // ✅ FIXED — pass enum as a bind parameter instead
+    @Query("SELECT ra.stage, COUNT(ra) FROM RequestApproval ra " +
+              "WHERE ra.request.department.id = :departmentId " +
+              "AND ra.status = com.equiphub.api.model.enums.ApprovalStatus.PENDING " +
+              "GROUP BY ra.stage")
+       List<Object[]> countPendingByStageForDepartment(@Param("departmentId") UUID departmentId);
+       
     // ── Count by decision for stats ─────────────────────────────
     @Query("SELECT ra.decision, COUNT(ra) FROM RequestApproval ra " +
            "WHERE ra.request.department.departmentId = :departmentId " +

@@ -35,6 +35,9 @@ spring:
 
   thymeleaf:
     check-template-location: false
+  jackson:
+    serialization:
+      write-enums-using-to-string: true
 
 # CORS - Allow local development origins
 cors:

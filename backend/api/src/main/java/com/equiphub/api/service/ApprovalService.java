@@ -240,7 +240,6 @@ public class ApprovalService {
     public ApprovalStatsDTO getDepartmentApprovalStats(UUID departmentId) {
         List<Object[]> byDecision = approvalRepository.countByDecisionForDepartment(departmentId);
         List<Object[]> byStage = approvalRepository.countPendingByStageForDepartment(departmentId);
-
         Map<String, Long> decisionMap = new HashMap<>();
         byDecision.forEach(row -> decisionMap.put(row[0].toString(), (Long) row[1]));
 

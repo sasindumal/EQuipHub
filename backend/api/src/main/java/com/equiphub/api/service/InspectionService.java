@@ -64,7 +64,7 @@ public class InspectionService {
             // Create PRE-ISSUANCE inspection
             Inspection inspection = Inspection.builder()
                     .requestItem(item)
-                    .inspectionType(Inspection.InspectionType.PREISSUANCE)
+                    .inspectionType(com.equiphub.api.model.InspectionType.PREISSUANCE)
                     .inspectorId(inspectorId)
                     .conditionBefore(itemDto.getConditionBefore())
                     .notes(itemDto.getNotes())
@@ -126,7 +126,7 @@ public class InspectionService {
             // Get pre-issuance condition for comparison
             Inspection preInspection = inspectionRepository
                     .findByRequestItemRequestItemIdAndInspectionType(
-                            item.getRequestItemId(), Inspection.InspectionType.PREISSUANCE)
+                            item.getRequestItemId(), com.equiphub.api.model.InspectionType.PREISSUANCE)
                     .orElse(null);
             int conditionBefore = preInspection != null
                     ? preInspection.getConditionBefore()
@@ -143,7 +143,7 @@ public class InspectionService {
             // Create POST-RETURN inspection
             Inspection inspection = Inspection.builder()
                     .requestItem(item)
-                    .inspectionType(Inspection.InspectionType.POSTRETURN)
+                    .inspectionType(com.equiphub.api.model.InspectionType.POSTRETURN)
                     .inspectorId(inspectorId)
                     .conditionBefore(conditionBefore)
                     .conditionAfter(itemDto.getConditionAfter())
@@ -283,7 +283,7 @@ public class InspectionService {
     // ═══════════════════════════════════════════════════════════
     @Transactional(readOnly = true)
     public List<InspectionResponseDTO> getUnacknowledgedDamage() {
-        return inspectionRepository.findUnacknowledgedDamage().stream()
+        return inspectionRepository.findUnacknowledgedDamage(com.equiphub.api.model.InspectionType.POSTRETURN).stream()
                 .map(i -> {
                     User inspector = userRepository.findById(i.getInspectorId()).orElse(null);
                     return mapToResponse(i, inspector, i.getRequestItem());
@@ -388,36 +388,38 @@ public class InspectionService {
             condDelta = inspection.getConditionBefore() - inspection.getConditionAfter();
         }
 
-        return InspectionResponseDTO.builder()
-                .inspectionId(inspection.getInspectionId())
-                .requestItemId(item.getRequestItemId())
-                .requestId(item.getRequest().getRequestId())
-                .inspectionType(inspection.getInspectionType())
-                .inspectionTypeName(formatInspectionType(inspection.getInspectionType()))
-                .inspectorId(inspection.getInspectorId())
-                .inspectorName(inspector != null
-                        ? inspector.getFirstName() + " " + inspector.getLastName() : "Unknown")
-                .inspectorEmail(inspector != null ? inspector.getEmail() : null)
-                .equipmentId(equipment.getEquipmentId())
-                .equipmentName(equipment.getName())
-                .equipmentSerialNumber(equipment.getSerialNumber())
-                .conditionBefore(inspection.getConditionBefore())
-                .conditionBeforeLabel(conditionLabel(inspection.getConditionBefore()))
-                .conditionAfter(inspection.getConditionAfter())
-                .conditionAfterLabel(conditionLabel(inspection.getConditionAfter()))
-                .conditionDelta(condDelta)
-                .damageLevel(inspection.getDamageLevel())
-                .damageLevelLabel(damageLevelLabel(inspection.getDamageLevel()))
-                .damageDescription(inspection.getDamageDescription())
-                .damagePhotos(inspection.getDamagePhotos())
-                .preDamageEvidence(inspection.getPreDamageEvidence())
-                .penaltyApplicable(inspection.getPenaltyApplicable())
-                .studentAcknowledged(inspection.getStudentAcknowledged())
-                .studentAcknowledgementAt(inspection.getStudentAcknowledgementAt())
-                .notes(inspection.getNotes())
-                .inspectedAt(inspection.getInspectedAt())
-                .build();
+       return InspectionResponseDTO.builder()
+        .inspectionId(inspection.getInspectionId())
+        .requestItemId(item.getRequestItemId())
+        .requestId(item.getRequest().getRequestId())
+        .inspectionType(inspection.getInspectionType())                          // ✅ pass enum directly
+        .inspectionTypeName(formatInspectionType(inspection.getInspectionType()))
+        .inspectorId(inspection.getInspectorId())
+        .inspectorName(inspector != null
+                ? inspector.getFirstName() + " " + inspector.getLastName() : "Unknown")
+        .inspectorEmail(inspector != null ? inspector.getEmail() : null)
+        .equipmentId(equipment.getEquipmentId())
+        .equipmentName(equipment.getName())
+        .equipmentSerialNumber(equipment.getSerialNumber())
+        .conditionBefore(inspection.getConditionBefore())
+        .conditionBeforeLabel(conditionLabel(inspection.getConditionBefore()))
+        .conditionAfter(inspection.getConditionAfter())
+        .conditionAfterLabel(conditionLabel(inspection.getConditionAfter()))
+        .conditionDelta(condDelta)
+        .damageLevel(inspection.getDamageLevel())
+        .damageLevelLabel(damageLevelLabel(inspection.getDamageLevel()))
+        .damageDescription(inspection.getDamageDescription())
+        .damagePhotos(inspection.getDamagePhotos())
+        .preDamageEvidence(inspection.getPreDamageEvidence())
+        .penaltyApplicable(inspection.getPenaltyApplicable())
+        .studentAcknowledged(inspection.getStudentAcknowledged())
+        .studentAcknowledgementAt(inspection.getStudentAcknowledgementAt())
+        .notes(inspection.getNotes())
+        .inspectedAt(inspection.getInspectedAt())
+        .build();
     }
+
+
 
     private String conditionLabel(Integer score) {
         if (score == null) return null;
@@ -440,10 +442,10 @@ public class InspectionService {
         };
     }
 
-    private String formatInspectionType(Inspection.InspectionType type) {
+    private String formatInspectionType(com.equiphub.api.model.InspectionType type) {
         return switch (type) {
-            case PREISSUANCE -> "Pre-Issuance Inspection";
-            case POSTRETURN -> "Post-Return Inspection";
+            case com.equiphub.api.model.InspectionType.PREISSUANCE -> "Pre-Issuance Inspection";
+            case com.equiphub.api.model.InspectionType.POSTRETURN -> "Post-Return Inspection";
         };
     }
 
