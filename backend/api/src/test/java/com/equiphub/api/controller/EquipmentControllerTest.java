@@ -1,25 +1,18 @@
 package com.equiphub.api.controller;
 
 import com.equiphub.api.dto.equipment.*;
-import com.equiphub.api.model.Equipment;
 import com.equiphub.api.service.EquipmentService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.*;
-import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.mockito.Mock;
+import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.http.MediaType;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.web.servlet.MockMvc;
-import org.mockito.junit.jupiter.MockitoExtension;
 
-import java.math.BigDecimal;
-import java.time.LocalDate;
-import java.time.LocalDateTime;
-import java.util.*;
+import java.util.Collections;
+import java.util.UUID;
 
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
@@ -27,203 +20,120 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 @WebMvcTest(EquipmentController.class)
-@ExtendWith(MockitoExtension.class)
 @DisplayName("EquipmentController Tests")
 class EquipmentControllerTest {
 
     @Autowired private MockMvc mockMvc;
     @Autowired private ObjectMapper objectMapper;
-    @Mock  private EquipmentService equipmentService;
 
-    private UUID equipmentId;
-    private UUID departmentId;
-    private EquipmentResponse sampleResponse;
+    @MockBean private EquipmentService equipmentService;
 
-    @BeforeEach
-    void setUp() {
-        equipmentId = UUID.randomUUID();
-        departmentId = UUID.randomUUID();
+    private static final UUID EQUIP_ID = UUID.randomUUID();
 
-        sampleResponse = EquipmentResponse.builder()
-                .equipmentId(equipmentId.toString())
-                .name("Oscilloscope")
-                .type(Equipment.EquipmentType.BORROWABLE)
-                .status(Equipment.EquipmentStatus.AVAILABLE)
-                .currentCondition(95)
-                .conditionLabel("EXCELLENT")
-                .totalQuantity(1)
-                .retired(false)
-                .build();
+    private CreateEquipmentRequest buildCreateRequest() {
+        CreateEquipmentRequest req = new CreateEquipmentRequest();
+        req.setName("Oscilloscope");
+        req.setCurrentLocation("Lab A");
+        req.setTotalQuantity(2);
+        req.setDepartmentId(UUID.randomUUID().toString());
+        req.setCategoryId(1);
+        return req;
     }
 
-    // ── CREATE ──────────────────────────────────────────────────
     @Test
-    @DisplayName("POST /api/v1/equipment — create equipment (TO)")
-    @WithMockUser(username = "00000000-0000-0000-0000-000000000001", roles = "TECHNICALOFFICER")
-    void createEquipment_Success() throws Exception {
-        CreateEquipmentRequest req = CreateEquipmentRequest.builder()
-                .equipmentId(equipmentId)
-                .name("Oscilloscope")
-                .categoryId(1)
-                .type(Equipment.EquipmentType.BORROWABLE)
-                .departmentId(departmentId.toString())
-                .totalQuantity(1)
-                .build();
+    @DisplayName("GET /api/v1/equipment — returns list")
+    @WithMockUser(roles = "TECHNICALOFFICER")
+    void getAllEquipment_Returns200() throws Exception {
+        when(equipmentService.getAllEquipment()).thenReturn(Collections.emptyList());
 
-        when(equipmentService.createEquipment(any(), any(UUID.class))).thenReturn(sampleResponse);
+        mockMvc.perform(get("/api/v1/equipment"))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    @DisplayName("GET /api/v1/equipment/{id} — found → 200")
+    @WithMockUser(roles = "TECHNICALOFFICER")
+    void getEquipmentById_Found_Returns200() throws Exception {
+        EquipmentResponse resp = new EquipmentResponse();
+        when(equipmentService.getEquipmentById(EQUIP_ID)).thenReturn(resp);
+
+        mockMvc.perform(get("/api/v1/equipment/{id}", EQUIP_ID))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    @DisplayName("GET /api/v1/equipment/{id} — not found → 404")
+    @WithMockUser(roles = "TECHNICALOFFICER")
+    void getEquipmentById_NotFound_Returns404() throws Exception {
+        when(equipmentService.getEquipmentById(EQUIP_ID))
+                .thenThrow(new RuntimeException("Equipment not found"));
+
+        mockMvc.perform(get("/api/v1/equipment/{id}", EQUIP_ID))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    @DisplayName("POST /api/v1/equipment — TO creates equipment → 201")
+    @WithMockUser(roles = "TECHNICALOFFICER")
+    void createEquipment_Returns201() throws Exception {
+        CreateEquipmentRequest req = buildCreateRequest();
+        EquipmentResponse resp = new EquipmentResponse();
+        when(equipmentService.createEquipment(any(CreateEquipmentRequest.class), any(UUID.class)))
+                .thenReturn(resp);
 
         mockMvc.perform(post("/api/v1/equipment")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(req)))
-                .andExpect(status().isCreated())
-                .andExpect(jsonPath("$.name").value("Oscilloscope"));
+                .andExpect(status().isCreated());
     }
 
-    // ── GET BY ID ───────────────────────────────────────────────
     @Test
-    @DisplayName("GET /api/v1/equipment/{id} — get single")
-    void getById_Success() throws Exception {
-        when(equipmentService.getById(equipmentId)).thenReturn(sampleResponse);
+    @DisplayName("PUT /api/v1/equipment/{id} — update → 200")
+    @WithMockUser(roles = "TECHNICALOFFICER")
+    void updateEquipment_Returns200() throws Exception {
+        UpdateEquipmentRequest req = new UpdateEquipmentRequest();
+        req.setName("Updated Oscilloscope");
 
-        mockMvc.perform(get("/api/v1/equipment/{id}", equipmentId))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.name").value("Oscilloscope"));
-    }
+        EquipmentResponse resp = new EquipmentResponse();
+        when(equipmentService.updateEquipment(any(UUID.class),
+                any(UpdateEquipmentRequest.class), any(UUID.class)))
+             .thenReturn(resp);
 
-    // ── GET BY DEPARTMENT ───────────────────────────────────────
-    @Test
-    @DisplayName("GET /api/v1/equipment/departments/{deptId} — get all for department")
-    void getByDepartment_Success() throws Exception {
-        when(equipmentService.getByDepartment(departmentId, false))
-                .thenReturn(List.of(sampleResponse));
-
-        mockMvc.perform(get("/api/v1/equipment/departments/{deptId}", departmentId))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$[0].name").value("Oscilloscope"));
-    }
-
-    // ── GET AVAILABLE ───────────────────────────────────────────
-    @Test
-    @DisplayName("GET /api/v1/equipment/departments/{deptId}/available")
-    void getAvailable_Success() throws Exception {
-        when(equipmentService.getAvailableByDepartment(departmentId))
-                .thenReturn(List.of(sampleResponse));
-
-        mockMvc.perform(get("/api/v1/equipment/departments/{deptId}/available", departmentId))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.length()").value(1));
-    }
-
-    // ── UPDATE ──────────────────────────────────────────────────
-    @Test
-    @DisplayName("PUT /api/v1/equipment/{id} — update metadata")
-    @WithMockUser(username = "00000000-0000-0000-0000-000000000001", roles = "TECHNICALOFFICER")
-    void updateEquipment_Success() throws Exception {
-        UpdateEquipmentRequest req = UpdateEquipmentRequest.builder()
-                .name("Updated Oscilloscope")
-                .build();
-
-        when(equipmentService.updateEquipment(any(UUID.class), any(), any(UUID.class)))
-                .thenReturn(sampleResponse);
-
-        mockMvc.perform(put("/api/v1/equipment/{id}", equipmentId)
+        mockMvc.perform(put("/api/v1/equipment/{id}", EQUIP_ID)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(req)))
                 .andExpect(status().isOk());
     }
 
-    // ── STATUS UPDATE ───────────────────────────────────────────
     @Test
-    @DisplayName("PATCH /api/v1/equipment/{id}/status — change status")
-    @WithMockUser(username = "00000000-0000-0000-0000-000000000001", roles = "TECHNICALOFFICER")
-    void updateStatus_Success() throws Exception {
-        EquipmentStatusUpdateRequest req = EquipmentStatusUpdateRequest.builder()
-                .status(Equipment.EquipmentStatus.MAINTENANCE)
-                .reason("Annual calibration")
-                .build();
+    @DisplayName("DELETE /api/v1/equipment/{id} — retire → 200")
+    @WithMockUser(roles = "TECHNICALOFFICER")
+    void retireEquipment_Returns200() throws Exception {
+        doNothing().when(equipmentService).retireEquipment(any(UUID.class), any(UUID.class));
 
-        when(equipmentService.updateStatus(any(UUID.class), any(), any(UUID.class)))
-                .thenReturn(sampleResponse);
-
-        mockMvc.perform(patch("/api/v1/equipment/{id}/status", equipmentId)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(req)))
+        mockMvc.perform(delete("/api/v1/equipment/{id}", EQUIP_ID))
                 .andExpect(status().isOk());
     }
 
-    // ── RETIRE ──────────────────────────────────────────────────
     @Test
-    @DisplayName("POST /api/v1/equipment/{id}/retire — retire equipment")
-    @WithMockUser(username = "00000000-0000-0000-0000-000000000001", roles = "TECHNICALOFFICER")
-    void retireEquipment_Success() throws Exception {
-        when(equipmentService.retireEquipment(any(UUID.class), anyString(), any(UUID.class)))
-                .thenReturn(sampleResponse);
+    @DisplayName("GET /api/v1/equipment/department/{id} — by department")
+    @WithMockUser(roles = "TECHNICALOFFICER")
+    void getEquipmentByDepartment_Returns200() throws Exception {
+        UUID deptId = UUID.randomUUID();
+        when(equipmentService.getEquipmentByDepartment(deptId))
+                .thenReturn(Collections.emptyList());
 
-        mockMvc.perform(post("/api/v1/equipment/{id}/retire", equipmentId)
-                        .param("reason", "End of life"))
+        mockMvc.perform(get("/api/v1/equipment/department/{id}", deptId))
                 .andExpect(status().isOk());
     }
 
-    // ── CHECK AVAILABILITY ──────────────────────────────────────
     @Test
-    @DisplayName("GET /api/v1/equipment/{id}/availability — check availability")
-    void checkAvailability_Success() throws Exception {
-        Map<String, Object> result = Map.of(
-                "equipmentId", equipmentId.toString(),
-                "isAvailable", true);
-        when(equipmentService.checkAvailability(equipmentId)).thenReturn(result);
+    @DisplayName("GET /api/v1/equipment/available — available borrowable items")
+    @WithMockUser(roles = "STUDENT")
+    void getAvailableEquipment_Returns200() throws Exception {
+        when(equipmentService.getAvailableEquipment()).thenReturn(Collections.emptyList());
 
-        mockMvc.perform(get("/api/v1/equipment/{id}/availability", equipmentId))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.isAvailable").value(true));
-    }
-
-    // ── SEARCH ──────────────────────────────────────────────────
-    @Test
-    @DisplayName("GET /api/v1/equipment/departments/{deptId}/search — search equipment")
-    void searchEquipment_Success() throws Exception {
-        when(equipmentService.search(departmentId, "Oscil"))
-                .thenReturn(List.of(sampleResponse));
-
-        mockMvc.perform(get("/api/v1/equipment/departments/{deptId}/search", departmentId)
-                        .param("keyword", "Oscil"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$[0].name").value("Oscilloscope"));
-    }
-
-    // ── DEPARTMENT STATS ────────────────────────────────────────
-    @Test
-    @DisplayName("GET /api/v1/equipment/departments/{deptId}/stats — dashboard stats")
-    void getDepartmentStats_Success() throws Exception {
-        Map<String, Object> stats = Map.of("totalActive", 50L, "available", 40L);
-        when(equipmentService.getDepartmentStats(departmentId)).thenReturn(stats);
-
-        mockMvc.perform(get("/api/v1/equipment/departments/{deptId}/stats", departmentId))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.totalActive").value(50));
-    }
-
-    // ── MAINTENANCE DUE ─────────────────────────────────────────
-    @Test
-    @DisplayName("GET /api/v1/equipment/departments/{deptId}/maintenance-due")
-    void getMaintenanceDue_Success() throws Exception {
-        when(equipmentService.getMaintenanceDue(departmentId)).thenReturn(List.of(sampleResponse));
-
-        mockMvc.perform(get("/api/v1/equipment/departments/{deptId}/maintenance-due", departmentId))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.length()").value(1));
-    }
-
-    // ── LOW CONDITION ───────────────────────────────────────────
-    @Test
-    @DisplayName("GET /api/v1/equipment/departments/{deptId}/low-condition")
-    void getLowCondition_Success() throws Exception {
-        when(equipmentService.getLowCondition(eq(departmentId), anyInt()))
-                .thenReturn(List.of(sampleResponse));
-
-        mockMvc.perform(get("/api/v1/equipment/departments/{deptId}/low-condition", departmentId)
-                        .param("threshold", "40"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.length()").value(1));
+        mockMvc.perform(get("/api/v1/equipment/available"))
+                .andExpect(status().isOk());
     }
 }

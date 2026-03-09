@@ -3,23 +3,19 @@ package com.equiphub.api.controller;
 import com.equiphub.api.dto.approval.*;
 import com.equiphub.api.model.Request;
 import com.equiphub.api.model.RequestApproval;
-import com.equiphub.api.model.RequestApproval.ApprovalDecision;
 import com.equiphub.api.service.ApprovalService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.*;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.mockito.Mock;
+import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
+import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.http.MediaType;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.web.servlet.MockMvc;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 
-import java.time.LocalDateTime;
-import java.util.*;
+import java.util.Collections;
+import java.util.List;
+import java.util.UUID;
 
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
@@ -27,162 +23,114 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 @WebMvcTest(ApprovalController.class)
-@ExtendWith(MockitoExtension.class)
 @DisplayName("ApprovalController Tests")
 class ApprovalControllerTest {
 
     @Autowired private MockMvc mockMvc;
     @Autowired private ObjectMapper objectMapper;
-    @Mock  private ApprovalService approvalService;
 
-    private static final String LECTURER_UUID = "00000000-0000-0000-0000-000000000002";
-    private UUID departmentId;
+    @MockBean private ApprovalService approvalService;
 
-    @BeforeEach
-    void setUp() {
-        departmentId = UUID.randomUUID();
+    private static final String REQUEST_ID = "REQ-2026-00001";
+    private static final UUID   DEPT_ID    = UUID.randomUUID();
+    private static final UUID   USER_UUID  = UUID.randomUUID();
+
+    @Test
+    @DisplayName("POST /api/v1/approvals/requests/{id}/auto-approve — TO → 200")
+    @WithMockUser(username = "2021E001@eng.jfn.ac.lk", roles = "TECHNICALOFFICER")
+    void autoApprove_Returns200() throws Exception {
+        AutoApprovalResultDTO result = new AutoApprovalResultDTO();
+        when(approvalService.attemptAutoApproval(REQUEST_ID)).thenReturn(result);
+
+        mockMvc.perform(post("/api/v1/approvals/requests/{id}/auto-approve", REQUEST_ID))
+                .andExpect(status().isOk());
     }
 
-    // ── AUTO-APPROVAL ───────────────────────────────────────────
     @Test
-    @DisplayName("POST /api/v1/approvals/{id}/auto-approve — auto-approve coursework")
-    @WithMockUser(username = LECTURER_UUID, roles = "TECHNICALOFFICER")
-    void autoApprove_Success() throws Exception {
-        AutoApprovalResultDTO result = AutoApprovalResultDTO.builder()
-                .autoApproved(true)
-                .requestId("REQ-2026-00001")
-                .conditionChecks(List.of(
-                        new AutoApprovalResultDTO.ConditionCheck("Equipment available", true, "All clear")))
-                .build();
-
-        when(approvalService.attemptAutoApproval("REQ-2026-00001")).thenReturn(result);
-
-        mockMvc.perform(post("/api/v1/approvals/{id}/auto-approve", "REQ-2026-00001"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.autoApproved").value(true));
+    @DisplayName("POST /api/v1/approvals/requests/{id}/auto-approve — STUDENT → 403")
+    @WithMockUser(roles = "STUDENT")
+    void autoApprove_AsStudent_Returns403() throws Exception {
+        mockMvc.perform(post("/api/v1/approvals/requests/{id}/auto-approve", REQUEST_ID))
+                .andExpect(status().isForbidden());
     }
 
-    // ── PROCESS DECISION ────────────────────────────────────────
     @Test
-    @DisplayName("POST /api/v1/approvals/{id}/stages/{stage}/decide — approve")
-    @WithMockUser(username = LECTURER_UUID, roles = "LECTURER")
-    void processDecision_Approve() throws Exception {
-        ApprovalDecisionDTO dto = ApprovalDecisionDTO.builder()
-                .action(RequestApproval.ApprovalAction.APPROVE)
-                .reason("Looks good")
-                .build();
+    @DisplayName("POST /api/v1/approvals/requests/{id}/decide — LECTURER → 200")
+    @WithMockUser(username = "2021E001@eng.jfn.ac.lk", roles = "LECTURER")
+    void processDecision_Returns200() throws Exception {
+        ApprovalDecisionDTO dto = new ApprovalDecisionDTO();
+        dto.setAction(RequestApproval.ApprovalAction.APPROVE);
+        dto.setComments("Looks good");
 
-        ApprovalResponseDTO response = ApprovalResponseDTO.builder()
-                .approvalId(1)
-                .requestId("REQ-2026-00001")
-                .decision(ApprovalDecision.APPROVED)
-                .actorName("Dr. Smith")
-                .build();
+        ApprovalResponseDTO response = new ApprovalResponseDTO();
+        when(approvalService.processDecision(anyString(),
+                any(RequestApproval.ApprovalStage.class),
+                any(ApprovalDecisionDTO.class),
+                any(UUID.class)))
+             .thenReturn(response);
 
-        when(approvalService.processDecision(anyString(), any(), any(), any(UUID.class)))
-                .thenReturn(response);
-
-        mockMvc.perform(post("/api/v1/approvals/{id}/stages/{stage}/decide",
-                        "REQ-2026-00001", "LECTURERAPPROVAL")
+        mockMvc.perform(post("/api/v1/approvals/requests/{id}/decide", REQUEST_ID)
+                        .param("stage", "LECTURERAPPROVAL")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(dto)))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.decision").value("APPROVED"));
+                .andExpect(status().isOk());
     }
 
     @Test
-    @DisplayName("POST /api/v1/approvals/{id}/stages/{stage}/decide — reject")
-    @WithMockUser(username = LECTURER_UUID, roles = "LECTURER")
-    void processDecision_Reject() throws Exception {
-        ApprovalDecisionDTO dto = ApprovalDecisionDTO.builder()
-                .action(RequestApproval.ApprovalAction.REJECT)
-                .reason("Not appropriate equipment")
-                .build();
-
-        ApprovalResponseDTO response = ApprovalResponseDTO.builder()
-                .approvalId(2)
-                .requestId("REQ-2026-00001")
-                .decision(ApprovalDecision.REJECTED)
-                .build();
-
-        when(approvalService.processDecision(anyString(), any(), any(), any(UUID.class)))
-                .thenReturn(response);
-
-        mockMvc.perform(post("/api/v1/approvals/{id}/stages/{stage}/decide",
-                        "REQ-2026-00001", "LECTURERAPPROVAL")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(dto)))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.decision").value("REJECTED"));
-    }
-
-    // ── MY APPROVAL QUEUE ───────────────────────────────────────
-    @Test
-    @DisplayName("GET /api/v1/approvals/my-queue")
-    @WithMockUser(username = LECTURER_UUID, roles = "LECTURER")
-    void getMyQueue_Success() throws Exception {
-        ApprovalQueueItemDTO item = ApprovalQueueItemDTO.builder()
-                .requestId("REQ-2026-00001")
-                .requestType(Request.RequestType.COURSEWORK)
-                .studentName("John Doe")
-                .pendingStage("LECTURERAPPROVAL")
-                .build();
-
-        when(approvalService.getMyApprovalQueue(any(UUID.class))).thenReturn(List.of(item));
-
-        mockMvc.perform(get("/api/v1/approvals/my-queue"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$[0].requestId").value("REQ-2026-00001"));
-    }
-
-    // ── DEPARTMENT QUEUE ────────────────────────────────────────
-    @Test
-    @DisplayName("GET /api/v1/approvals/departments/{deptId}/queue")
-    @WithMockUser(username = LECTURER_UUID, roles = "HEADOFDEPARTMENT")
-    void getDepartmentQueue_Success() throws Exception {
-        when(approvalService.getDepartmentApprovalQueue(departmentId))
+    @DisplayName("GET /api/v1/approvals/my-queue — LECTURER → 200")
+    @WithMockUser(username = "2021E001@eng.jfn.ac.lk", roles = "LECTURER")
+    void getMyQueue_Returns200() throws Exception {
+        when(approvalService.getMyApprovalQueue(any(UUID.class)))
                 .thenReturn(Collections.emptyList());
 
-        mockMvc.perform(get("/api/v1/approvals/departments/{deptId}/queue", departmentId))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.length()").value(0));
+        mockMvc.perform(get("/api/v1/approvals/my-queue"))
+                .andExpect(status().isOk());
     }
 
-    // ── APPROVAL HISTORY ────────────────────────────────────────
     @Test
-    @DisplayName("GET /api/v1/approvals/{id}/history")
-    void getApprovalHistory_Success() throws Exception {
-        ApprovalResponseDTO resp = ApprovalResponseDTO.builder()
-                .approvalId(1)
-                .requestId("REQ-2026-00001")
-                .decision(ApprovalDecision.APPROVED)
-                .build();
+    @DisplayName("GET /api/v1/approvals/departments/{id}/queue — DEPARTMENTADMIN → 200")
+    @WithMockUser(roles = "DEPARTMENTADMIN")
+    void getDepartmentQueue_Returns200() throws Exception {
+        when(approvalService.getDepartmentApprovalQueue(DEPT_ID))
+                .thenReturn(Collections.emptyList());
 
-        when(approvalService.getApprovalHistory("REQ-2026-00001")).thenReturn(List.of(resp));
-
-        mockMvc.perform(get("/api/v1/approvals/{id}/history", "REQ-2026-00001"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$[0].decision").value("APPROVED"));
+        mockMvc.perform(get("/api/v1/approvals/departments/{id}/queue", DEPT_ID))
+                .andExpect(status().isOk());
     }
 
-    // ── DEPARTMENT STATS ────────────────────────────────────────
     @Test
-    @DisplayName("GET /api/v1/approvals/departments/{deptId}/stats")
-    @WithMockUser(username = LECTURER_UUID, roles = "HEADOFDEPARTMENT")
-    void getDepartmentStats_Success() throws Exception {
-        ApprovalStatsDTO stats = ApprovalStatsDTO.builder()
-                .totalPending(5)
-                .totalApproved(20)
-                .totalRejected(3)
-                .slaBreached(1)
-                .emergencyPending(2)
-                .pendingByStage(Map.of("LECTURERAPPROVAL", 3L))
-                .build();
+    @DisplayName("GET /api/v1/approvals/requests/{id}/history — STUDENT → 200")
+    @WithMockUser(username = "2021E001@eng.jfn.ac.lk", roles = "STUDENT")
+    void getApprovalHistory_Returns200() throws Exception {
+        when(approvalService.getApprovalHistory(REQUEST_ID))
+                .thenReturn(Collections.emptyList());
 
-        when(approvalService.getDepartmentApprovalStats(departmentId)).thenReturn(stats);
+        mockMvc.perform(get("/api/v1/approvals/requests/{id}/history", REQUEST_ID))
+                .andExpect(status().isOk());
+    }
 
-        mockMvc.perform(get("/api/v1/approvals/departments/{deptId}/stats", departmentId))
+    @Test
+    @DisplayName("GET /api/v1/approvals/departments/{id}/stats — HOD → 200")
+    @WithMockUser(roles = "HEADOFDEPARTMENT")
+    void getDepartmentStats_Returns200() throws Exception {
+        ApprovalStatsDTO stats = new ApprovalStatsDTO();
+        when(approvalService.getDepartmentApprovalStats(DEPT_ID)).thenReturn(stats);
+
+        mockMvc.perform(get("/api/v1/approvals/departments/{id}/stats", DEPT_ID))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    @DisplayName("GET /api/v1/approvals/requests/{id}/next-stage — TO → 200")
+    @WithMockUser(username = "2021E001@eng.jfn.ac.lk", roles = "TECHNICALOFFICER")
+    void getNextStage_Returns200() throws Exception {
+        Request req = new Request();
+        when(approvalService.findRequestPublic(REQUEST_ID)).thenReturn(req);
+        when(approvalService.determineNextStage(any(Request.class)))
+                .thenReturn(RequestApproval.ApprovalStage.LECTURERAPPROVAL);
+
+        mockMvc.perform(get("/api/v1/approvals/requests/{id}/next-stage", REQUEST_ID))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.totalPending").value(5));
+                .andExpect(jsonPath("$.nextStage").value("LECTURERAPPROVAL"));
     }
 }

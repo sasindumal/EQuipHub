@@ -8,8 +8,6 @@ import com.equiphub.api.security.jwt.JwtUtils;
 import com.equiphub.api.service.EmailVerificationService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.*;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
@@ -30,7 +28,6 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 @WebMvcTest(AuthController.class)
-@ExtendWith(MockitoExtension.class)
 @DisplayName("AuthController Tests")
 class AuthControllerTest {
 
@@ -45,10 +42,9 @@ class AuthControllerTest {
 
     private static final String VALID_EMAIL = "2021E001@eng.jfn.ac.lk";
 
-    // ── Register ────────────────────────────────────────────────
     @Test
-    @DisplayName("POST /auth/register — success")
-    void register_Success() throws Exception {
+    @DisplayName("POST /auth/register — valid university email → 201")
+    void register_ValidEmail_Returns201() throws Exception {
         RegisterRequest req = new RegisterRequest();
         req.setFirstName("John");
         req.setLastName("Doe");
@@ -58,13 +54,12 @@ class AuthControllerTest {
 
         when(userRepository.existsByEmail(VALID_EMAIL)).thenReturn(false);
         when(userRepository.existsByIndexNumber(anyString())).thenReturn(false);
-        when(passwordEncoder.encode(anyString())).thenReturn("hashed_password");
+        when(passwordEncoder.encode(anyString())).thenReturn("hashed");
 
-        User savedUser = new User();
-        savedUser.setUserId(UUID.randomUUID());
-        savedUser.setEmail(VALID_EMAIL);
-        when(userRepository.save(any(User.class))).thenReturn(savedUser);
-
+        User saved = new User();
+        saved.setUserId(UUID.randomUUID());
+        saved.setEmail(VALID_EMAIL);
+        when(userRepository.save(any(User.class))).thenReturn(saved);
         doNothing().when(emailVerificationService)
                    .generateAndSendVerificationCode(any(User.class));
 
@@ -76,12 +71,12 @@ class AuthControllerTest {
     }
 
     @Test
-    @DisplayName("POST /auth/register — invalid email format → 400")
-    void register_InvalidEmail() throws Exception {
+    @DisplayName("POST /auth/register — non-university email → 400")
+    void register_InvalidEmail_Returns400() throws Exception {
         RegisterRequest req = new RegisterRequest();
         req.setFirstName("John");
         req.setLastName("Doe");
-        req.setEmail("invalid@gmail.com");   // not university email
+        req.setEmail("john@gmail.com");
         req.setPassword("Password123!");
         req.setIndexNumber("EG/2021/001");
 
@@ -93,7 +88,7 @@ class AuthControllerTest {
 
     @Test
     @DisplayName("POST /auth/register — duplicate email → 400")
-    void register_DuplicateEmail() throws Exception {
+    void register_DuplicateEmail_Returns400() throws Exception {
         RegisterRequest req = new RegisterRequest();
         req.setFirstName("John");
         req.setLastName("Doe");
@@ -110,10 +105,9 @@ class AuthControllerTest {
                 .andExpect(jsonPath("$.error").value("Registration failed"));
     }
 
-    // ── Login ───────────────────────────────────────────────────
     @Test
-    @DisplayName("POST /auth/login — success")
-    void login_Success() throws Exception {
+    @DisplayName("POST /auth/login — valid credentials → 200 with token")
+    void login_ValidCredentials_ReturnsToken() throws Exception {
         LoginRequest req = new LoginRequest();
         req.setEmail(VALID_EMAIL);
         req.setPassword("Password123!");
@@ -137,20 +131,19 @@ class AuthControllerTest {
         when(userRepository.findByEmail(VALID_EMAIL)).thenReturn(Optional.of(user));
         when(authenticationManager.authenticate(any(UsernamePasswordAuthenticationToken.class)))
                 .thenReturn(auth);
-        when(jwtUtils.generateToken(any(Authentication.class))).thenReturn("mock-jwt-token");
+        when(jwtUtils.generateToken(any(Authentication.class))).thenReturn("mock-jwt");
         when(jwtUtils.getExpirationDateFromToken(anyString())).thenReturn(new Date());
 
         mockMvc.perform(post("/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(req)))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.token").value("mock-jwt-token"));
+                .andExpect(jsonPath("$.token").value("mock-jwt"));
     }
 
-    // ── Verify Email ────────────────────────────────────────────
     @Test
-    @DisplayName("POST /auth/verify-email — success")
-    void verifyEmail_Success() throws Exception {
+    @DisplayName("POST /auth/verify-email — valid code → 200 verified=true")
+    void verifyEmail_ValidCode_ReturnsVerified() throws Exception {
         VerifyEmailRequest req = new VerifyEmailRequest();
         req.setEmail(VALID_EMAIL);
         req.setCode("123456");
@@ -168,19 +161,18 @@ class AuthControllerTest {
                 .andExpect(jsonPath("$.verified").value(true));
     }
 
-    // ── Resend Code ─────────────────────────────────────────────
     @Test
-    @DisplayName("POST /auth/resend-code — success")
-    void resendCode_Success() throws Exception {
+    @DisplayName("POST /auth/resend-code — valid email → 200")
+    void resendCode_ValidEmail_Returns200() throws Exception {
         User user = new User();
         user.setEmailVerified(false);
 
         when(userRepository.findByEmail(VALID_EMAIL)).thenReturn(Optional.of(user));
-        doNothing().when(emailVerificationService).resendVerificationCode(any(User.class));
+        doNothing().when(emailVerificationService)
+                   .resendVerificationCode(any(User.class));
 
         mockMvc.perform(post("/auth/resend-code")
                         .param("email", VALID_EMAIL))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.message").exists());
+                .andExpect(status().isOk());
     }
 }

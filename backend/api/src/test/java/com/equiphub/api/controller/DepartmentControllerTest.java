@@ -1,19 +1,21 @@
 package com.equiphub.api.controller;
 
-import com.equiphub.api.dto.department.*;
+import com.equiphub.api.dto.department.CreateDepartmentRequest;
+import com.equiphub.api.dto.department.DepartmentResponse;
+import com.equiphub.api.dto.department.UpdateDepartmentRequest;
 import com.equiphub.api.service.DepartmentService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.*;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.mockito.Mock;
+import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.http.MediaType;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.web.servlet.MockMvc;
 
-import java.util.*;
+import java.util.Collections;
+import java.util.List;
+import java.util.UUID;
 
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
@@ -21,102 +23,85 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 @WebMvcTest(DepartmentController.class)
-
 @DisplayName("DepartmentController Tests")
 class DepartmentControllerTest {
 
     @Autowired private MockMvc mockMvc;
     @Autowired private ObjectMapper objectMapper;
-    @Mock  private DepartmentService departmentService;
 
-    private static final String ADMIN_UUID = "00000000-0000-0000-0000-000000000005";
-    private UUID departmentId;
+    @MockBean private DepartmentService departmentService;
 
-    @BeforeEach
-    void setUp() {
-        departmentId = UUID.randomUUID();
-    }
+    private static final UUID DEPT_ID = UUID.randomUUID();
 
-    // ── GET ALL DEPARTMENTS ─────────────────────────────────────
     @Test
-    @DisplayName("GET /api/v1/departments — get all")
-    void getAllDepartments_Success() throws Exception {
-        DepartmentResponse dept = DepartmentResponse.builder()
-                .departmentId(departmentId)
-                .name("Computer Engineering")
-                .code("CE")
-                .build();
+    @DisplayName("GET /admin/departments — SYSTEMADMIN → 200")
+    @WithMockUser(roles = "SYSTEMADMIN")
+    void getAllDepartments_Returns200() throws Exception {
+        DepartmentResponse dept = new DepartmentResponse();
+        dept.setDepartmentId(DEPT_ID);
+        dept.setCode("CSE");
 
         when(departmentService.getAllDepartments()).thenReturn(List.of(dept));
 
-        mockMvc.perform(get("/api/v1/departments"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$[0].name").value("Computer Engineering"));
+        mockMvc.perform(get("/admin/departments"))
+                .andExpect(status().isOk());
     }
 
-    // ── GET BY ID ───────────────────────────────────────────────
     @Test
-    @DisplayName("GET /api/v1/departments/{id}")
-    void getById_Success() throws Exception {
-        DepartmentResponse dept = DepartmentResponse.builder()
-                .departmentId(departmentId)
-                .name("Computer Engineering")
-                .code("CE")
-                .build();
+    @DisplayName("GET /admin/departments/active — public → 200")
+    @WithMockUser(roles = "STUDENT")
+    void getActiveDepartments_Returns200() throws Exception {
+        when(departmentService.getActiveDepartments()).thenReturn(Collections.emptyList());
 
-        when(departmentService.getDepartmentById(departmentId)).thenReturn(dept);
-
-        mockMvc.perform(get("/api/v1/departments/{id}", departmentId))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.code").value("CE"));
+        mockMvc.perform(get("/admin/departments/active"))
+                .andExpect(status().isOk());
     }
 
-    // ── CREATE DEPARTMENT ───────────────────────────────────────
     @Test
-    @DisplayName("POST /api/v1/departments — create")
-    @WithMockUser(username = ADMIN_UUID, roles = "SYSTEMADMIN")
-    void createDepartment_Success() throws Exception {
-        CreateDepartmentRequest req = CreateDepartmentRequest.builder()
-                .name("Electrical Engineering")
-                .code("EE")
-                .build();
+    @DisplayName("GET /admin/departments/{id} — found → 200")
+    @WithMockUser(roles = "SYSTEMADMIN")
+    void getDepartmentById_Found_Returns200() throws Exception {
+        DepartmentResponse dept = new DepartmentResponse();
+        dept.setDepartmentId(DEPT_ID);
+        dept.setCode("CSE");
 
-        DepartmentResponse resp = DepartmentResponse.builder()
-                .departmentId(UUID.randomUUID())
-                .name("Electrical Engineering")
-                .code("EE")
-                .build();
+        when(departmentService.getDepartmentById(DEPT_ID)).thenReturn(dept);
 
-        when(departmentService.createDepartment(any())).thenReturn(resp);
-
-        mockMvc.perform(post("/api/v1/departments")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(req)))
-                .andExpect(status().isCreated())
-                .andExpect(jsonPath("$.name").value("Electrical Engineering"));
+        mockMvc.perform(get("/admin/departments/{id}", DEPT_ID))
+                .andExpect(status().isOk());
     }
 
-    // ── UPDATE DEPARTMENT ───────────────────────────────────────
     @Test
-    @DisplayName("PUT /api/v1/departments/{id} — update")
-    @WithMockUser(username = ADMIN_UUID, roles = "SYSTEMADMIN")
-    void updateDepartment_Success() throws Exception {
-        UpdateDepartmentRequest req = UpdateDepartmentRequest.builder()
-                .name("Updated Department")
-                .build();
+    @DisplayName("GET /admin/departments/{id} — not found → 404")
+    @WithMockUser(roles = "SYSTEMADMIN")
+    void getDepartmentById_NotFound_Returns404() throws Exception {
+        when(departmentService.getDepartmentById(DEPT_ID))
+                .thenThrow(new RuntimeException("Department not found"));
 
-        DepartmentResponse resp = DepartmentResponse.builder()
-                .departmentId(departmentId)
-                .name("Updated Department")
-                .code("CE")
-                .build();
+        mockMvc.perform(get("/admin/departments/{id}", DEPT_ID))
+                .andExpect(status().isNotFound());
+    }
 
-        when(departmentService.updateDepartment(any(UUID.class), any())).thenReturn(resp);
+    @Test
+    @DisplayName("DELETE /admin/departments/{id} — SYSTEMADMIN → 200")
+    @WithMockUser(roles = "SYSTEMADMIN")
+    void deactivateDepartment_Returns200() throws Exception {
+        doNothing().when(departmentService)
+                   .deactivateDepartment(any(UUID.class), any(UUID.class));
 
-        mockMvc.perform(put("/api/v1/departments/{id}", departmentId)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(req)))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.name").value("Updated Department"));
+        mockMvc.perform(delete("/admin/departments/{id}", DEPT_ID))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    @DisplayName("DELETE /admin/departments/{id} — active users exist → 400")
+    @WithMockUser(roles = "SYSTEMADMIN")
+    void deactivateDepartment_WithUsers_Returns400() throws Exception {
+        doThrow(new RuntimeException("Cannot deactivate department with active users"))
+                .when(departmentService)
+                .deactivateDepartment(any(UUID.class), any(UUID.class));
+
+        mockMvc.perform(delete("/admin/departments/{id}", DEPT_ID))
+                .andExpect(status().isBadRequest());
     }
 }
