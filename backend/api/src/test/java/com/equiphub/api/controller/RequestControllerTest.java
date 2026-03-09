@@ -15,6 +15,7 @@ import org.springframework.http.MediaType;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.test.web.servlet.MockMvc;
 
+import java.time.LocalDateTime;
 import java.util.*;
 
 import static org.mockito.ArgumentMatchers.*;
@@ -77,16 +78,32 @@ class RequestControllerTest extends BaseControllerTest {
                 .build();
     }
 
+    /**
+     * Returns a fully valid CreateRequestDTO that will pass @Valid checks.
+     * Tests only need to override studentId / departmentId to trigger auth failures.
+     */
+    CreateRequestDTO validCreateDTO(UUID studentId, UUID departmentId) {
+        CreateRequestDTO dto = new CreateRequestDTO();
+        dto.setStudentId(studentId);
+        dto.setDepartmentId(departmentId);
+        dto.setRequestType(Request.RequestType.EQUIPMENT);
+        dto.setFromDateTime(LocalDateTime.now().plusDays(1));
+        dto.setToDateTime(LocalDateTime.now().plusDays(2));
+        dto.setPriorityLevel(1);
+        dto.setSlaHours(24);
+        dto.setItems(List.of(new RequestItemDTO()));
+        return dto;
+    }
+
     // ── 1. CREATE ────────────────────────────────────────────
     @Test @DisplayName("POST /requests — student for self → 201")
     void create_StudentForSelf_201() throws Exception {
-        CreateRequestDTO req = new CreateRequestDTO();
-        req.setStudentId(STUDENT_ID);
-        req.setDepartmentId(DEPT_ID);
+        // validCreateDTO fills all @NotNull/@NotEmpty fields so @Valid passes
+        CreateRequestDTO req = validCreateDTO(STUDENT_ID, DEPT_ID);
         when(requestService.createRequest(any(), any(UUID.class))).thenReturn(sample());
 
         mockMvc.perform(post("/api/v1/requests")
-                        .with(user(studentUser)).with(csrf())     // csrf() required for POST
+                        .with(user(studentUser)).with(csrf())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(req)))
                 .andExpect(status().isCreated())
@@ -95,12 +112,11 @@ class RequestControllerTest extends BaseControllerTest {
 
     @Test @DisplayName("POST /requests — student for other → 403")
     void create_StudentForOther_403() throws Exception {
-        CreateRequestDTO req = new CreateRequestDTO();
-        req.setStudentId(UUID.randomUUID());
-        req.setDepartmentId(DEPT_ID);
+        // Different studentId → auth check fires (validation must pass first)
+        CreateRequestDTO req = validCreateDTO(UUID.randomUUID(), DEPT_ID);
 
         mockMvc.perform(post("/api/v1/requests")
-                        .with(user(studentUser)).with(csrf())     // csrf() required for POST
+                        .with(user(studentUser)).with(csrf())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(req)))
                 .andExpect(status().isForbidden());
@@ -108,12 +124,11 @@ class RequestControllerTest extends BaseControllerTest {
 
     @Test @DisplayName("POST /requests — TO for wrong dept → 403")
     void create_TOWrongDept_403() throws Exception {
-        CreateRequestDTO req = new CreateRequestDTO();
-        req.setStudentId(UUID.randomUUID());
-        req.setDepartmentId(UUID.randomUUID());
+        // Different departmentId → auth check fires (validation must pass first)
+        CreateRequestDTO req = validCreateDTO(UUID.randomUUID(), UUID.randomUUID());
 
         mockMvc.perform(post("/api/v1/requests")
-                        .with(user(toUser)).with(csrf())          // csrf() required for POST
+                        .with(user(toUser)).with(csrf())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(req)))
                 .andExpect(status().isForbidden());
@@ -127,7 +142,7 @@ class RequestControllerTest extends BaseControllerTest {
         when(requestService.submitRequest(anyString(), any(UUID.class))).thenReturn(submitted);
 
         mockMvc.perform(post("/api/v1/requests/{id}/submit", REQ_ID)
-                        .with(user(studentUser)).with(csrf()))    // csrf() required for POST
+                        .with(user(studentUser)).with(csrf()))
                 .andExpect(status().isOk());
     }
 
@@ -202,7 +217,7 @@ class RequestControllerTest extends BaseControllerTest {
         when(requestService.updateRequest(anyString(), any(), any(UUID.class))).thenReturn(sample());
 
         mockMvc.perform(put("/api/v1/requests/{id}", REQ_ID)
-                        .with(user(studentUser)).with(csrf())     // csrf() required for PUT
+                        .with(user(studentUser)).with(csrf())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(body)))
                 .andExpect(status().isOk());
@@ -215,7 +230,7 @@ class RequestControllerTest extends BaseControllerTest {
         when(requestService.getRequestById(anyString())).thenReturn(other);
 
         mockMvc.perform(put("/api/v1/requests/{id}", REQ_ID)
-                        .with(user(studentUser)).with(csrf())     // csrf() required for PUT
+                        .with(user(studentUser)).with(csrf())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(new UpdateRequestDTO())))
                 .andExpect(status().isForbidden());
@@ -230,7 +245,7 @@ class RequestControllerTest extends BaseControllerTest {
         when(requestService.cancelRequest(anyString(), any(UUID.class))).thenReturn(cancelled);
 
         mockMvc.perform(post("/api/v1/requests/{id}/cancel", REQ_ID)
-                        .with(user(studentUser)).with(csrf()))    // csrf() required for POST
+                        .with(user(studentUser)).with(csrf()))
                 .andExpect(status().isOk());
     }
 
@@ -241,7 +256,7 @@ class RequestControllerTest extends BaseControllerTest {
         when(requestService.getRequestById(anyString())).thenReturn(other);
 
         mockMvc.perform(post("/api/v1/requests/{id}/cancel", REQ_ID)
-                        .with(user(studentUser)).with(csrf()))    // csrf() required for POST
+                        .with(user(studentUser)).with(csrf()))
                 .andExpect(status().isForbidden());
     }
 
