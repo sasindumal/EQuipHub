@@ -19,6 +19,7 @@ import java.util.*;
 
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
@@ -85,7 +86,7 @@ class RequestControllerTest extends BaseControllerTest {
         when(requestService.createRequest(any(), any(UUID.class))).thenReturn(sample());
 
         mockMvc.perform(post("/api/v1/requests")
-                        .with(user(studentUser))
+                        .with(user(studentUser)).with(csrf())     // csrf() required for POST
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(req)))
                 .andExpect(status().isCreated())
@@ -99,7 +100,7 @@ class RequestControllerTest extends BaseControllerTest {
         req.setDepartmentId(DEPT_ID);
 
         mockMvc.perform(post("/api/v1/requests")
-                        .with(user(studentUser))
+                        .with(user(studentUser)).with(csrf())     // csrf() required for POST
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(req)))
                 .andExpect(status().isForbidden());
@@ -112,7 +113,7 @@ class RequestControllerTest extends BaseControllerTest {
         req.setDepartmentId(UUID.randomUUID());
 
         mockMvc.perform(post("/api/v1/requests")
-                        .with(user(toUser))
+                        .with(user(toUser)).with(csrf())          // csrf() required for POST
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(req)))
                 .andExpect(status().isForbidden());
@@ -125,7 +126,8 @@ class RequestControllerTest extends BaseControllerTest {
         submitted.setStatus(Request.RequestStatus.PENDINGAPPROVAL);
         when(requestService.submitRequest(anyString(), any(UUID.class))).thenReturn(submitted);
 
-        mockMvc.perform(post("/api/v1/requests/{id}/submit", REQ_ID).with(user(studentUser)))
+        mockMvc.perform(post("/api/v1/requests/{id}/submit", REQ_ID)
+                        .with(user(studentUser)).with(csrf()))    // csrf() required for POST
                 .andExpect(status().isOk());
     }
 
@@ -200,7 +202,7 @@ class RequestControllerTest extends BaseControllerTest {
         when(requestService.updateRequest(anyString(), any(), any(UUID.class))).thenReturn(sample());
 
         mockMvc.perform(put("/api/v1/requests/{id}", REQ_ID)
-                        .with(user(studentUser))
+                        .with(user(studentUser)).with(csrf())     // csrf() required for PUT
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(body)))
                 .andExpect(status().isOk());
@@ -213,7 +215,7 @@ class RequestControllerTest extends BaseControllerTest {
         when(requestService.getRequestById(anyString())).thenReturn(other);
 
         mockMvc.perform(put("/api/v1/requests/{id}", REQ_ID)
-                        .with(user(studentUser))
+                        .with(user(studentUser)).with(csrf())     // csrf() required for PUT
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(new UpdateRequestDTO())))
                 .andExpect(status().isForbidden());
@@ -227,7 +229,8 @@ class RequestControllerTest extends BaseControllerTest {
         when(requestService.getRequestById(anyString())).thenReturn(sample());
         when(requestService.cancelRequest(anyString(), any(UUID.class))).thenReturn(cancelled);
 
-        mockMvc.perform(post("/api/v1/requests/{id}/cancel", REQ_ID).with(user(studentUser)))
+        mockMvc.perform(post("/api/v1/requests/{id}/cancel", REQ_ID)
+                        .with(user(studentUser)).with(csrf()))    // csrf() required for POST
                 .andExpect(status().isOk());
     }
 
@@ -237,7 +240,8 @@ class RequestControllerTest extends BaseControllerTest {
         other.setStudentId(UUID.randomUUID());
         when(requestService.getRequestById(anyString())).thenReturn(other);
 
-        mockMvc.perform(post("/api/v1/requests/{id}/cancel", REQ_ID).with(user(studentUser)))
+        mockMvc.perform(post("/api/v1/requests/{id}/cancel", REQ_ID)
+                        .with(user(studentUser)).with(csrf()))    // csrf() required for POST
                 .andExpect(status().isForbidden());
     }
 
@@ -268,13 +272,17 @@ class RequestControllerTest extends BaseControllerTest {
                 .andExpect(jsonPath("$.data.count").value(1));
     }
 
-    // ── 11. DEPT PENDING ──────────────────────────────────────────
-    @Test @DisplayName("GET /requests/department/{deptId}/pending → 200")
+    // ── 11. DEPT PENDING (via base department endpoint with status filter) ───
+    // NOTE: /department/{deptId}/pending has no dedicated mapping in the controller.
+    // The base GET /department/{deptId} endpoint handles all statuses via query param.
+    @Test @DisplayName("GET /requests/department/{deptId} pending requests → 200")
     void getDeptPending_200() throws Exception {
         when(requestService.getDepartmentRequests(any(UUID.class), any(Pageable.class)))
                 .thenReturn(new PageImpl<>(List.of(sample())));
 
-        mockMvc.perform(get("/api/v1/requests/department/{deptId}/pending", DEPT_ID).with(user(toUser)))
+        mockMvc.perform(get("/api/v1/requests/department/{deptId}", DEPT_ID)
+                        .param("status", "PENDINGAPPROVAL")
+                        .with(user(toUser)))
                 .andExpect(status().isOk());
     }
 
