@@ -4,8 +4,6 @@ import com.equiphub.api.dto.request.*;
 import com.equiphub.api.model.Request;
 import com.equiphub.api.model.User;
 import com.equiphub.api.security.CustomUserDetails;
-import com.equiphub.api.security.CustomUserDetailsService;
-import com.equiphub.api.security.jwt.JwtUtils;
 import com.equiphub.api.service.RequestService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.*;
@@ -26,13 +24,13 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 @WebMvcTest(RequestController.class)
-class RequestControllerTest extends BaseControllerTest{
+class RequestControllerTest extends BaseControllerTest {
 
-        @MockBean JwtUtils jwtUtils;    
+    // NOTE: JwtUtils, CustomUserDetailsService, and JwtConfig are already
+    // provided as @MockBean by BaseControllerTest. Do NOT re-declare them here.
     @Autowired MockMvc mockMvc;
     @Autowired ObjectMapper objectMapper;
     @MockBean RequestService requestService;
-    @MockBean CustomUserDetailsService userDetailsService;
 
     static final UUID STUDENT_ID = UUID.randomUUID();
     static final UUID TO_ID      = UUID.randomUUID();
@@ -69,16 +67,16 @@ class RequestControllerTest extends BaseControllerTest{
         when(toUser.isAdmin()).thenReturn(false);
     }
 
-        RequestResponseDTO sample() {
+    RequestResponseDTO sample() {
         return RequestResponseDTO.builder()
                 .requestId(REQ_ID)
                 .studentId(STUDENT_ID)
                 .departmentId(DEPT_ID)
                 .status(Request.RequestStatus.DRAFT)
                 .build();
-        }
+    }
 
-    // ── 1. CREATE ────────────────────────────────────────────────
+    // ── 1. CREATE ────────────────────────────────────────────
     @Test @DisplayName("POST /requests — student for self → 201")
     void create_StudentForSelf_201() throws Exception {
         CreateRequestDTO req = new CreateRequestDTO();
@@ -120,7 +118,7 @@ class RequestControllerTest extends BaseControllerTest{
                 .andExpect(status().isForbidden());
     }
 
-    // ── 2. SUBMIT ────────────────────────────────────────────────
+    // ── 2. SUBMIT ────────────────────────────────────────────
     @Test @DisplayName("POST /requests/{id}/submit → 200")
     void submit_200() throws Exception {
         RequestResponseDTO submitted = sample();
@@ -131,7 +129,7 @@ class RequestControllerTest extends BaseControllerTest{
                 .andExpect(status().isOk());
     }
 
-    // ── 3. GET BY ID ─────────────────────────────────────────────
+    // ── 3. GET BY ID ───────────────────────────────────────────
     @Test @DisplayName("GET /requests/{id} — student views own → 200")
     void getById_Own_200() throws Exception {
         when(requestService.getRequestById(anyString())).thenReturn(sample());
@@ -162,7 +160,7 @@ class RequestControllerTest extends BaseControllerTest{
                 .andExpect(jsonPath("$.data.totalElements").value(1));
     }
 
-    // ── 5. DEPT REQUESTS ─────────────────────────────────────────
+    // ── 5. DEPT REQUESTS ──────────────────────────────────────────
     @Test @DisplayName("GET /requests/department/{deptId} — own dept → 200")
     void getDeptRequests_Own_200() throws Exception {
         when(requestService.getDepartmentRequests(any(UUID.class), any(Pageable.class)))
@@ -178,7 +176,7 @@ class RequestControllerTest extends BaseControllerTest{
                 .andExpect(status().isForbidden());
     }
 
-    // ── 6. BY STATUS ─────────────────────────────────────────────
+    // ── 6. BY STATUS ───────────────────────────────────────────
     @Test @DisplayName("GET /requests/status/DRAFT → 200")
     void getByStatus_200() throws Exception {
         when(requestService.getRequestsByStatus(any(), any(Pageable.class)))
@@ -194,7 +192,7 @@ class RequestControllerTest extends BaseControllerTest{
                 .andExpect(status().isBadRequest());
     }
 
-    // ── 7. UPDATE ────────────────────────────────────────────────
+    // ── 7. UPDATE ────────────────────────────────────────────
     @Test @DisplayName("PUT /requests/{id} — own draft → 200")
     void update_OwnDraft_200() throws Exception {
         UpdateRequestDTO body = new UpdateRequestDTO();
@@ -221,7 +219,7 @@ class RequestControllerTest extends BaseControllerTest{
                 .andExpect(status().isForbidden());
     }
 
-    // ── 8. CANCEL ────────────────────────────────────────────────
+    // ── 8. CANCEL ────────────────────────────────────────────
     @Test @DisplayName("POST /requests/{id}/cancel — own → 200")
     void cancel_Own_200() throws Exception {
         RequestResponseDTO cancelled = sample();
@@ -243,7 +241,7 @@ class RequestControllerTest extends BaseControllerTest{
                 .andExpect(status().isForbidden());
     }
 
-    // ── 9. EMERGENCY ─────────────────────────────────────────────
+    // ── 9. EMERGENCY ───────────────────────────────────────────
     @Test @DisplayName("GET /requests/department/{deptId}/emergency — own → 200")
     void getEmergency_Own_200() throws Exception {
         when(requestService.getEmergencyRequests(any(UUID.class))).thenReturn(List.of());
@@ -260,7 +258,7 @@ class RequestControllerTest extends BaseControllerTest{
                 .andExpect(status().isForbidden());
     }
 
-    // ── 10. SLA BREACHED ─────────────────────────────────────────
+    // ── 10. SLA BREACHED ──────────────────────────────────────────
     @Test @DisplayName("GET /requests/sla-breached → 200")
     void getSlaBreached_200() throws Exception {
         when(requestService.getSlaBreachedRequests()).thenReturn(List.of(sample()));
@@ -270,16 +268,17 @@ class RequestControllerTest extends BaseControllerTest{
                 .andExpect(jsonPath("$.data.count").value(1));
     }
 
-    // ── 11. DEPT PENDING ─────────────────────────────────────────
-        @Test @DisplayName("GET /requests/department/{deptId}/pending → 200")
-        void getDeptPending_200() throws Exception {
+    // ── 11. DEPT PENDING ──────────────────────────────────────────
+    @Test @DisplayName("GET /requests/department/{deptId}/pending → 200")
+    void getDeptPending_200() throws Exception {
         when(requestService.getDepartmentRequests(any(UUID.class), any(Pageable.class)))
                 .thenReturn(new PageImpl<>(List.of(sample())));
 
         mockMvc.perform(get("/api/v1/requests/department/{deptId}/pending", DEPT_ID).with(user(toUser)))
                 .andExpect(status().isOk());
-        }
-    // ── 12. REQUEST STATS ────────────────────────────────────────
+    }
+
+    // ── 12. REQUEST STATS ──────────────────────────────────────────
     @Test @DisplayName("GET /requests/department/{deptId}/stats → 200")
     void getDeptStats_200() throws Exception {
         when(requestService.getDepartmentRequestStats(any(UUID.class)))
