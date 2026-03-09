@@ -28,8 +28,6 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @WebMvcTest(RequestController.class)
 class RequestControllerTest extends BaseControllerTest {
 
-    // NOTE: JwtUtils, CustomUserDetailsService, and JwtConfig are already
-    // provided as @MockBean by BaseControllerTest. Do NOT re-declare them here.
     @Autowired MockMvc mockMvc;
     @Autowired ObjectMapper objectMapper;
     @MockBean RequestService requestService;
@@ -79,26 +77,30 @@ class RequestControllerTest extends BaseControllerTest {
     }
 
     /**
-     * Returns a fully valid CreateRequestDTO that will pass @Valid checks.
-     * Tests only need to override studentId / departmentId to trigger auth failures.
+     * Returns a fully valid CreateRequestDTO that will pass all @Valid checks,
+     * including nested @NotNull constraints inside RequestItemDTO.
      */
     CreateRequestDTO validCreateDTO(UUID studentId, UUID departmentId) {
+        // Build a valid item — both fields are @NotNull in RequestItemDTO
+        RequestItemDTO item = new RequestItemDTO();
+        item.setEquipmentId(UUID.randomUUID());
+        item.setQuantityRequested(1);
+
         CreateRequestDTO dto = new CreateRequestDTO();
         dto.setStudentId(studentId);
         dto.setDepartmentId(departmentId);
-        dto.setRequestType(Request.RequestType.EQUIPMENT);
+        dto.setRequestType(Request.RequestType.COURSEWORK);
         dto.setFromDateTime(LocalDateTime.now().plusDays(1));
         dto.setToDateTime(LocalDateTime.now().plusDays(2));
         dto.setPriorityLevel(1);
         dto.setSlaHours(24);
-        dto.setItems(List.of(new RequestItemDTO()));
+        dto.setItems(List.of(item));
         return dto;
     }
 
     // ── 1. CREATE ────────────────────────────────────────────
     @Test @DisplayName("POST /requests — student for self → 201")
     void create_StudentForSelf_201() throws Exception {
-        // validCreateDTO fills all @NotNull/@NotEmpty fields so @Valid passes
         CreateRequestDTO req = validCreateDTO(STUDENT_ID, DEPT_ID);
         when(requestService.createRequest(any(), any(UUID.class))).thenReturn(sample());
 
@@ -112,7 +114,6 @@ class RequestControllerTest extends BaseControllerTest {
 
     @Test @DisplayName("POST /requests — student for other → 403")
     void create_StudentForOther_403() throws Exception {
-        // Different studentId → auth check fires (validation must pass first)
         CreateRequestDTO req = validCreateDTO(UUID.randomUUID(), DEPT_ID);
 
         mockMvc.perform(post("/api/v1/requests")
@@ -124,7 +125,6 @@ class RequestControllerTest extends BaseControllerTest {
 
     @Test @DisplayName("POST /requests — TO for wrong dept → 403")
     void create_TOWrongDept_403() throws Exception {
-        // Different departmentId → auth check fires (validation must pass first)
         CreateRequestDTO req = validCreateDTO(UUID.randomUUID(), UUID.randomUUID());
 
         mockMvc.perform(post("/api/v1/requests")
@@ -287,9 +287,7 @@ class RequestControllerTest extends BaseControllerTest {
                 .andExpect(jsonPath("$.data.count").value(1));
     }
 
-    // ── 11. DEPT PENDING (via base department endpoint with status filter) ───
-    // NOTE: /department/{deptId}/pending has no dedicated mapping in the controller.
-    // The base GET /department/{deptId} endpoint handles all statuses via query param.
+    // ── 11. DEPT PENDING ──────────────────────────────────────────
     @Test @DisplayName("GET /requests/department/{deptId} pending requests → 200")
     void getDeptPending_200() throws Exception {
         when(requestService.getDepartmentRequests(any(UUID.class), any(Pageable.class)))
