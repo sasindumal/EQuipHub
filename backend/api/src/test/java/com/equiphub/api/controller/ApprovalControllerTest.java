@@ -3,6 +3,8 @@ package com.equiphub.api.controller;
 import com.equiphub.api.dto.approval.*;
 import com.equiphub.api.model.Request;
 import com.equiphub.api.model.RequestApproval;
+import com.equiphub.api.security.CustomUserDetailsService;
+import com.equiphub.api.security.jwt.JwtUtils;
 import com.equiphub.api.service.ApprovalService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.*;
@@ -24,16 +26,20 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 @WebMvcTest(ApprovalController.class)
 @DisplayName("ApprovalController Tests")
-class ApprovalControllerTest {
+class ApprovalControllerTest extends BaseControllerTest{
+    @MockBean JwtUtils jwtUtils;        
 
     @Autowired private MockMvc mockMvc;
     @Autowired private ObjectMapper objectMapper;
 
     @MockBean private ApprovalService approvalService;
+    @MockBean private CustomUserDetailsService customUserDetailsService;
 
     private static final String REQUEST_ID = "REQ-2026-00001";
     private static final UUID   DEPT_ID    = UUID.randomUUID();
     private static final UUID   USER_UUID  = UUID.randomUUID();
+
+
 
     @Test
     @DisplayName("POST /api/v1/approvals/requests/{id}/auto-approve — TO → 200")

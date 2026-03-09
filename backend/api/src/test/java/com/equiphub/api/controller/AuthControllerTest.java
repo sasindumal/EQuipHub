@@ -4,6 +4,7 @@ import com.equiphub.api.dto.auth.*;
 import com.equiphub.api.model.User;
 import com.equiphub.api.repository.UserRepository;
 import com.equiphub.api.security.CustomUserDetails;
+import com.equiphub.api.security.CustomUserDetailsService;
 import com.equiphub.api.security.jwt.JwtUtils;
 import com.equiphub.api.service.EmailVerificationService;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -29,8 +30,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 @WebMvcTest(AuthController.class)
 @DisplayName("AuthController Tests")
-class AuthControllerTest {
-
+class AuthControllerTest extends BaseControllerTest{
+    
     @Autowired private MockMvc mockMvc;
     @Autowired private ObjectMapper objectMapper;
 
@@ -39,7 +40,7 @@ class AuthControllerTest {
     @MockBean private PasswordEncoder passwordEncoder;
     @MockBean private JwtUtils jwtUtils;
     @MockBean private EmailVerificationService emailVerificationService;
-
+    @MockBean private CustomUserDetailsService customUserDetailsService;
     private static final String VALID_EMAIL = "2021E001@eng.jfn.ac.lk";
 
     @Test

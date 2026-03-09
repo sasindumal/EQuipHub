@@ -3,6 +3,8 @@ package com.equiphub.api.controller;
 import com.equiphub.api.dto.department.*;
 import com.equiphub.api.dto.user.UserResponse;
 import com.equiphub.api.model.User;
+import com.equiphub.api.security.CustomUserDetailsService;
+import com.equiphub.api.security.jwt.JwtUtils;
 import com.equiphub.api.service.*;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.*;
@@ -28,15 +30,19 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @WebMvcTest(DepartmentAdminController.class)
 @ExtendWith(MockitoExtension.class)
 @DisplayName("DepartmentAdminController Tests")
-class DepartmentAdminControllerTest {
+class DepartmentAdminControllerTest extends BaseControllerTest{
+        @MockBean JwtUtils jwtUtils;    
 
     @Autowired private MockMvc mockMvc;
     @Autowired private ObjectMapper objectMapper;
-    @Mock  private DepartmentService departmentService;
-    @Mock  private UserManagementService userManagementService;
-    @Mock  private EquipmentService equipmentService;
-    @Mock  private RequestService requestService;
-
+    @MockBean DepartmentService departmentService;
+    @MockBean private UserManagementService userManagementService;
+    @MockBean private EquipmentService equipmentService;
+    @MockBean private RequestService requestService;
+    @MockBean private CustomUserDetailsService customUserDetailsService;
+    @MockBean private DepartmentConfigurationService departmentConfigurationService;
+    
+    
     private static final String HOD_UUID = "00000000-0000-0000-0000-000000000004";
     private UUID departmentId;
 
@@ -56,7 +62,7 @@ class DepartmentAdminControllerTest {
                 .code("CE")
                 .build();
 
-        when(departmentService.getDepartmentByUser(any(UUID.class))).thenReturn(resp);
+        when(departmentService.getDepartmentById(any(UUID.class))).thenReturn(resp);
 
         mockMvc.perform(get("/api/v1/department-admin/my-department"))
                 .andExpect(status().isOk())
@@ -72,7 +78,7 @@ class DepartmentAdminControllerTest {
                 .userId(UUID.randomUUID())
                 .firstName("Staff")
                 .lastName("Member")
-                .role(User.Role.TECHNICALOFFICER)
+                .role(User.Role.TECHNICALOFFICER.name())
                 .build();
 
         when(userManagementService.getUsersByDepartment(any(UUID.class)))

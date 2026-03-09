@@ -70,11 +70,9 @@ public interface InspectionRepository extends JpaRepository<Inspection, Integer>
     Object[] avgConditionScoresForDepartment(@Param("departmentId") UUID departmentId);
 
     // ── Unacknowledged inspections (student didn't sign) ────────
-@Query("SELECT i FROM Inspection i WHERE i.inspectionType = :type " +
-       "AND i.damageLevel IS NOT NULL " +
-       "AND i.studentAcknowledged = false")
+   @Query("SELECT i FROM Inspection i WHERE i.inspectionType = :type " +
+       "AND i.damageSeverity IS NOT NULL AND i.acknowledged = false")
 List<Inspection> findUnacknowledgedDamage(@Param("type") com.equiphub.api.model.InspectionType type);
-
 
     // ── Check if pre-issuance inspection exists ─────────────────
     boolean existsByRequestItemRequestItemIdAndInspectionType(

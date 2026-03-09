@@ -38,6 +38,8 @@ public class IssueEquipmentDTO {
         @Min(0) @Max(100)
         private Integer conditionBefore;
 
+        private List<Integer> requestItemIds;
+
         private String notes;
     }
 }

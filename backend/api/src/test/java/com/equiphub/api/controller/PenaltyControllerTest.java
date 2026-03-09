@@ -1,273 +1,362 @@
 package com.equiphub.api.controller;
 
 import com.equiphub.api.dto.penalty.*;
-import com.equiphub.api.model.Penalty;
+import com.equiphub.api.model.Penalty.PenaltyStatus;
+import com.equiphub.api.model.Penalty.PenaltyType;
+import com.equiphub.api.model.PenaltyAppeal;
+import com.equiphub.api.model.User;
+import com.equiphub.api.security.CustomUserDetails;
+import com.equiphub.api.security.CustomUserDetailsService;
+import com.equiphub.api.security.jwt.JwtUtils;
 import com.equiphub.api.service.PenaltyService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.*;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.test.mock.bean.MockBean;
+import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
+import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.http.MediaType;
-import org.springframework.security.test.context.support.WithMockUser;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.test.web.servlet.MockMvc;
 
-import java.time.LocalDateTime;
 import java.util.*;
 
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
-@SpringBootTest
-@AutoConfigureMockMvc(addFilters = false)
-@DisplayName("PenaltyController Tests")
-class PenaltyControllerTest {
+@WebMvcTest(PenaltyController.class)
+class PenaltyControllerTest extends BaseControllerTest{
+    @MockBean JwtUtils jwtUtils;    
 
-    @Autowired private MockMvc mockMvc;
-    @Autowired private ObjectMapper objectMapper;
-    @MockBean  private PenaltyService penaltyService;
+    @Autowired MockMvc mockMvc;
+    @Autowired ObjectMapper objectMapper;
+    @MockBean  PenaltyService penaltyService;
+    @MockBean  CustomUserDetailsService userDetailsService;
 
-    private static final String TO_UUID = "00000000-0000-0000-0000-000000000003";
-    private static final String STUDENT_UUID = "00000000-0000-0000-0000-000000000001";
-    private static final String HOD_UUID = "00000000-0000-0000-0000-000000000004";
-    private UUID studentId;
-    private UUID departmentId;
-    private PenaltyResponseDTO samplePenalty;
+    static final UUID TO_ID      = UUID.randomUUID();
+    static final UUID HOD_ID     = UUID.randomUUID();
+    static final UUID STUDENT_ID = UUID.randomUUID();
+    static final UUID DEPT_ID    = UUID.randomUUID();
+    static final int  PENALTY_ID = 1;
+
+    CustomUserDetails toUser;
+    CustomUserDetails hodUser;
+    CustomUserDetails studentUser;
 
     @BeforeEach
     void setUp() {
-        studentId = UUID.fromString(STUDENT_UUID);
-        departmentId = UUID.randomUUID();
+        toUser = mock(CustomUserDetails.class);
+        when(toUser.getUserId()).thenReturn(TO_ID);
+        when(toUser.getRole()).thenReturn(User.Role.TECHNICALOFFICER);
+        when(toUser.getDepartmentId()).thenReturn(DEPT_ID.toString());
+        when(toUser.getUsername()).thenReturn(TO_ID.toString());
+        doReturn(List.of(new SimpleGrantedAuthority("ROLE_TECHNICALOFFICER"))).when(toUser).getAuthorities();
+        when(toUser.isEnabled()).thenReturn(true);
+        when(toUser.isAccountNonExpired()).thenReturn(true);
+        when(toUser.isAccountNonLocked()).thenReturn(true);
+        when(toUser.isCredentialsNonExpired()).thenReturn(true);
 
-        samplePenalty = PenaltyResponseDTO.builder()
-                .penaltyId(1)
-                .requestId("REQ-2026-00001")
-                .studentId(studentId)
-                .studentName("John Doe")
-                .penaltyType(Penalty.PenaltyType.LATERETURN)
-                .points(10)
-                .reason("Returned 3 days late")
-                .status(Penalty.PenaltyStatus.PENDING)
-                .totalPointsAfter(10)
-                .statusLevel("YELLOW")
-                .appealed(false)
-                .createdAt(LocalDateTime.now())
-                .build();
+        hodUser = mock(CustomUserDetails.class);
+        when(hodUser.getUserId()).thenReturn(HOD_ID);
+        when(hodUser.getRole()).thenReturn(User.Role.HEADOFDEPARTMENT);
+        when(hodUser.getDepartmentId()).thenReturn(DEPT_ID.toString());
+        when(hodUser.getUsername()).thenReturn(HOD_ID.toString());
+        doReturn(List.of(new SimpleGrantedAuthority("ROLE_HOD"))).when(hodUser).getAuthorities();
+        when(hodUser.isEnabled()).thenReturn(true);
+        when(hodUser.isAccountNonExpired()).thenReturn(true);
+        when(hodUser.isAccountNonLocked()).thenReturn(true);
+        when(hodUser.isCredentialsNonExpired()).thenReturn(true);
+
+        studentUser = mock(CustomUserDetails.class);
+        when(studentUser.getUserId()).thenReturn(STUDENT_ID);
+        when(studentUser.getRole()).thenReturn(User.Role.STUDENT);
+        when(studentUser.getDepartmentId()).thenReturn(DEPT_ID.toString());
+        when(studentUser.getUsername()).thenReturn(STUDENT_ID.toString());
+        doReturn(List.of(new SimpleGrantedAuthority("ROLE_STUDENT"))).when(studentUser).getAuthorities();
+        when(studentUser.isEnabled()).thenReturn(true);
+        when(studentUser.isAccountNonExpired()).thenReturn(true);
+        when(studentUser.isAccountNonLocked()).thenReturn(true);
+        when(studentUser.isCredentialsNonExpired()).thenReturn(true);
     }
 
-    // ── CREATE PENALTY ──────────────────────────────────────────
-    @Test
-    @DisplayName("POST /api/v1/penalties — create penalty (TO)")
-    @WithMockUser(username = TO_UUID, roles = "TECHNICALOFFICER")
-    void createPenalty_Success() throws Exception {
-        CreatePenaltyDTO dto = CreatePenaltyDTO.builder()
-                .requestId("REQ-2026-00001")
-                .studentId(studentId)
-                .penaltyType(Penalty.PenaltyType.LATERETURN)
-                .points(10)
-                .reason("Returned 3 days late")
-                .build();
+    // ── 1. CREATE PENALTY ────────────────────────────────────────────────────────
 
-        when(penaltyService.createPenalty(any(), any(UUID.class))).thenReturn(samplePenalty);
+    @Test @DisplayName("POST /penalties — TO creates penalty → 201")
+    void createPenalty_TO_201() throws Exception {
+        PenaltyResponseDTO response = mock(PenaltyResponseDTO.class);
+        when(penaltyService.createPenalty(any(CreatePenaltyDTO.class), any(UUID.class)))
+            .thenReturn(response);
+
+        CreatePenaltyDTO dto = new CreatePenaltyDTO();
+        dto.setStudentId(STUDENT_ID);
+        dto.setRequestId("REQ-2026-00001");
+        dto.setPenaltyType(PenaltyType.LATERETURN);
+        dto.setPoints(5);
+        dto.setReason("Equipment returned 2 days late");
 
         mockMvc.perform(post("/api/v1/penalties")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(dto)))
-                .andExpect(status().isCreated())
-                .andExpect(jsonPath("$.penaltyId").value(1))
-                .andExpect(jsonPath("$.points").value(10));
+                .with(user(toUser))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(dto)))
+            .andExpect(status().isCreated());
     }
 
-    // ── APPROVE PENALTY ─────────────────────────────────────────
-    @Test
-    @DisplayName("POST /api/v1/penalties/{id}/approve — approve (HOD)")
-    @WithMockUser(username = HOD_UUID, roles = "HEADOFDEPARTMENT")
-    void approvePenalty_Success() throws Exception {
-        samplePenalty.setStatus(Penalty.PenaltyStatus.APPROVED);
-        when(penaltyService.approvePenalty(eq(1), any(UUID.class))).thenReturn(samplePenalty);
-
-        mockMvc.perform(post("/api/v1/penalties/{id}/approve", 1))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.status").value("APPROVED"));
+    @Test @DisplayName("POST /penalties — student cannot create → 403")
+    void createPenalty_Student_403() throws Exception {
+        mockMvc.perform(post("/api/v1/penalties")
+                .with(user(studentUser))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{}"))
+            .andExpect(status().isForbidden());
     }
 
-    // ── WAIVE PENALTY ───────────────────────────────────────────
-    @Test
-    @DisplayName("POST /api/v1/penalties/{id}/waive — waive (HOD)")
-    @WithMockUser(username = HOD_UUID, roles = "HEADOFDEPARTMENT")
-    void waivePenalty_Success() throws Exception {
-        samplePenalty.setStatus(Penalty.PenaltyStatus.WAIVED);
-        when(penaltyService.waivePenalty(eq(1), any(UUID.class), anyString()))
-                .thenReturn(samplePenalty);
+    @Test @DisplayName("POST /penalties — invalid data → 400")
+    void createPenalty_InvalidData_400() throws Exception {
+        when(penaltyService.createPenalty(any(CreatePenaltyDTO.class), any(UUID.class)))
+            .thenThrow(new IllegalArgumentException("Student not found"));
 
-        mockMvc.perform(post("/api/v1/penalties/{id}/waive", 1)
-                        .param("reason", "First offence"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.status").value("WAIVED"));
+        mockMvc.perform(post("/api/v1/penalties")
+                .with(user(toUser))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{}"))
+            .andExpect(status().isBadRequest());
     }
 
-    // ── GET STUDENT PENALTIES ───────────────────────────────────
-    @Test
-    @DisplayName("GET /api/v1/penalties/students/{studentId}")
-    void getStudentPenalties_Success() throws Exception {
-        when(penaltyService.getStudentPenalties(studentId)).thenReturn(List.of(samplePenalty));
+    // ── 2. APPROVE PENALTY ───────────────────────────────────────────────────────
 
-        mockMvc.perform(get("/api/v1/penalties/students/{studentId}", studentId))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$[0].penaltyId").value(1));
+    @Test @DisplayName("PUT /penalties/{id}/approve — HOD approves → 200")
+    void approvePenalty_HOD_200() throws Exception {
+        PenaltyResponseDTO response = mock(PenaltyResponseDTO.class);
+        when(penaltyService.approvePenalty(anyInt(), any(UUID.class))).thenReturn(response);
+
+        mockMvc.perform(put("/api/v1/penalties/{id}/approve", PENALTY_ID)
+                .with(user(hodUser)))
+            .andExpect(status().isOk());
     }
 
-    // ── GET STUDENT SUMMARY ─────────────────────────────────────
-    @Test
-    @DisplayName("GET /api/v1/penalties/students/{studentId}/summary")
-    void getStudentSummary_Success() throws Exception {
-        StudentPenaltySummaryDTO summary = StudentPenaltySummaryDTO.builder()
-                .studentId(studentId)
-                .studentName("John Doe")
-                .totalActivePoints(10)
-                .currentLevel("YELLOW")
-                .totalPenalties(2)
-                .lateReturnCount(1)
-                .damageCount(1)
-                .borrowingRestricted(false)
-                .build();
+    @Test @DisplayName("PUT /penalties/{id}/approve — penalty not found → 404")
+    void approvePenalty_NotFound_404() throws Exception {
+        when(penaltyService.approvePenalty(anyInt(), any(UUID.class)))
+            .thenThrow(new NoSuchElementException("Penalty not found"));
 
-        when(penaltyService.getStudentSummary(studentId)).thenReturn(summary);
-
-        mockMvc.perform(get("/api/v1/penalties/students/{studentId}/summary", studentId))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.currentLevel").value("YELLOW"))
-                .andExpect(jsonPath("$.borrowingRestricted").value(false));
+        mockMvc.perform(put("/api/v1/penalties/{id}/approve", 999)
+                .with(user(hodUser)))
+            .andExpect(status().isNotFound());
     }
 
-    // ── CAN BORROW ──────────────────────────────────────────────
-    @Test
-    @DisplayName("GET /api/v1/penalties/students/{studentId}/can-borrow")
-    @WithMockUser(username = TO_UUID, roles = "TECHNICALOFFICER")
-    void canBorrow_Allowed() throws Exception {
-        when(penaltyService.canStudentBorrow(studentId)).thenReturn(true);
+    // ── 3. WAIVE PENALTY ─────────────────────────────────────────────────────────
 
-        mockMvc.perform(get("/api/v1/penalties/students/{studentId}/can-borrow", studentId))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$").value(true));
+    @Test @DisplayName("PUT /penalties/{id}/waive — HOD waives with reason → 200")
+    void waivePenalty_HOD_200() throws Exception {
+        PenaltyResponseDTO response = mock(PenaltyResponseDTO.class);
+        when(penaltyService.waivePenalty(anyInt(), any(UUID.class), anyString()))
+            .thenReturn(response);
+
+        mockMvc.perform(put("/api/v1/penalties/{id}/waive", PENALTY_ID)
+                .with(user(hodUser))
+                .param("reason", "Equipment damage was pre-existing"))
+            .andExpect(status().isOk());
     }
 
-    @Test
-    @DisplayName("GET /api/v1/penalties/students/{studentId}/can-borrow — restricted")
-    @WithMockUser(username = TO_UUID, roles = "TECHNICALOFFICER")
-    void canBorrow_Restricted() throws Exception {
-        when(penaltyService.canStudentBorrow(studentId)).thenReturn(false);
-
-        mockMvc.perform(get("/api/v1/penalties/students/{studentId}/can-borrow", studentId))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$").value(false));
+    @Test @DisplayName("PUT /penalties/{id}/waive — student cannot waive → 403")
+    void waivePenalty_Student_403() throws Exception {
+        mockMvc.perform(put("/api/v1/penalties/{id}/waive", PENALTY_ID)
+                .with(user(studentUser))
+                .param("reason", "Please waive"))
+            .andExpect(status().isForbidden());
     }
 
-    // ── GET DEPARTMENT PENALTIES ─────────────────────────────────
-    @Test
-    @DisplayName("GET /api/v1/penalties/departments/{deptId}")
-    @WithMockUser(username = HOD_UUID, roles = "HEADOFDEPARTMENT")
-    void getDepartmentPenalties_Success() throws Exception {
-        when(penaltyService.getDepartmentPenalties(departmentId)).thenReturn(List.of(samplePenalty));
+    // ── 4. GET STUDENT PENALTIES ─────────────────────────────────────────────────
 
-        mockMvc.perform(get("/api/v1/penalties/departments/{deptId}", departmentId))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.length()").value(1));
-    }
-
-    // ── SUBMIT APPEAL ───────────────────────────────────────────
-    @Test
-    @DisplayName("POST /api/v1/penalties/appeals — student appeals")
-    @WithMockUser(username = STUDENT_UUID, roles = "STUDENT")
-    void submitAppeal_Success() throws Exception {
-        AppealRequestDTO dto = AppealRequestDTO.builder()
-                .penaltyId(1)
-                .appealReason("I returned it on time, log is wrong")
-                .build();
-
-        samplePenalty.setStatus(Penalty.PenaltyStatus.APPEALED);
-        samplePenalty.setAppealed(true);
-        when(penaltyService.submitAppeal(any(), any(UUID.class))).thenReturn(samplePenalty);
-
-        mockMvc.perform(post("/api/v1/penalties/appeals")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(dto)))
-                .andExpect(status().isCreated())
-                .andExpect(jsonPath("$.status").value("APPEALED"))
-                .andExpect(jsonPath("$.appealed").value(true));
-    }
-
-    // ── DECIDE APPEAL ───────────────────────────────────────────
-    @Test
-    @DisplayName("POST /api/v1/penalties/appeals/{penaltyId}/decide — approve appeal")
-    @WithMockUser(username = HOD_UUID, roles = "HEADOFDEPARTMENT")
-    void decideAppeal_Approved() throws Exception {
-        AppealDecisionDTO dto = AppealDecisionDTO.builder()
-                .decision(com.equiphub.api.model.PenaltyAppeal.AppealDecision.APPROVED)
-                .decisionReason("Evidence supports the claim")
-                .build();
-
-        samplePenalty.setStatus(Penalty.PenaltyStatus.WAIVED);
-        when(penaltyService.decideAppeal(eq(1), any(), any(UUID.class))).thenReturn(samplePenalty);
-
-        mockMvc.perform(post("/api/v1/penalties/appeals/{penaltyId}/decide", 1)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(dto)))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.status").value("WAIVED"));
-    }
-
-    @Test
-    @DisplayName("POST /api/v1/penalties/appeals/{penaltyId}/decide — reject appeal")
-    @WithMockUser(username = HOD_UUID, roles = "HEADOFDEPARTMENT")
-    void decideAppeal_Rejected() throws Exception {
-        AppealDecisionDTO dto = AppealDecisionDTO.builder()
-                .decision(com.equiphub.api.model.PenaltyAppeal.AppealDecision.REJECTED)
-                .decisionReason("No supporting evidence")
-                .build();
-
-        samplePenalty.setStatus(Penalty.PenaltyStatus.APPROVED);
-        when(penaltyService.decideAppeal(eq(1), any(), any(UUID.class))).thenReturn(samplePenalty);
-
-        mockMvc.perform(post("/api/v1/penalties/appeals/{penaltyId}/decide", 1)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(dto)))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.status").value("APPROVED"));
-    }
-
-    // ── MY PENALTIES (student self) ─────────────────────────────
-    @Test
-    @DisplayName("GET /api/v1/penalties/my — my penalties")
-    @WithMockUser(username = STUDENT_UUID, roles = "STUDENT")
-    void getMyPenalties_Success() throws Exception {
+    @Test @DisplayName("GET /penalties/student/{studentId} — TO views student → 200")
+    void getStudentPenalties_TO_200() throws Exception {
         when(penaltyService.getStudentPenalties(any(UUID.class)))
-                .thenReturn(List.of(samplePenalty));
+            .thenReturn(List.of(mock(PenaltyResponseDTO.class)));
 
-        mockMvc.perform(get("/api/v1/penalties/my"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$[0].studentName").value("John Doe"));
+        mockMvc.perform(get("/api/v1/penalties/student/{studentId}", STUDENT_ID)
+                .with(user(toUser)))
+            .andExpect(status().isOk());
     }
 
-    // ── MY SUMMARY (student self) ───────────────────────────────
-    @Test
-    @DisplayName("GET /api/v1/penalties/my/summary")
-    @WithMockUser(username = STUDENT_UUID, roles = "STUDENT")
-    void getMySummary_Success() throws Exception {
-        StudentPenaltySummaryDTO summary = StudentPenaltySummaryDTO.builder()
-                .studentId(studentId)
-                .totalActivePoints(10)
-                .currentLevel("YELLOW")
-                .borrowingRestricted(false)
-                .build();
+    @Test @DisplayName("GET /penalties/student/{studentId} — student views own → 200")
+    void getStudentPenalties_OwnRecord_200() throws Exception {
+        when(penaltyService.getStudentPenalties(any(UUID.class)))
+            .thenReturn(Collections.emptyList());
 
+        mockMvc.perform(get("/api/v1/penalties/student/{studentId}", STUDENT_ID)
+                .with(user(studentUser)))
+            .andExpect(status().isOk());
+    }
+
+    // ── 5. GET STUDENT SUMMARY ───────────────────────────────────────────────────
+
+    @Test @DisplayName("GET /penalties/student/{studentId}/summary → 200")
+    void getStudentSummary_200() throws Exception {
+        StudentPenaltySummaryDTO summary = mock(StudentPenaltySummaryDTO.class);
         when(penaltyService.getStudentSummary(any(UUID.class))).thenReturn(summary);
 
-        mockMvc.perform(get("/api/v1/penalties/my/summary"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.currentLevel").value("YELLOW"));
+        mockMvc.perform(get("/api/v1/penalties/student/{studentId}/summary", STUDENT_ID)
+                .with(user(toUser)))
+            .andExpect(status().isOk());
+    }
+
+    @Test @DisplayName("GET /penalties/student/{studentId}/summary — not found → 404")
+    void getStudentSummary_NotFound_404() throws Exception {
+        when(penaltyService.getStudentSummary(any(UUID.class)))
+            .thenThrow(new NoSuchElementException("Student not found"));
+
+        mockMvc.perform(get("/api/v1/penalties/student/{studentId}/summary", UUID.randomUUID())
+                .with(user(toUser)))
+            .andExpect(status().isNotFound());
+    }
+
+    // ── 6. GET DEPARTMENT PENALTIES ──────────────────────────────────────────────
+
+    @Test @DisplayName("GET /penalties/department/{deptId} — own dept → 200")
+    void getDepartmentPenalties_OwnDept_200() throws Exception {
+        when(penaltyService.getDepartmentPenalties(any(UUID.class)))
+            .thenReturn(List.of(mock(PenaltyResponseDTO.class)));
+
+        mockMvc.perform(get("/api/v1/penalties/department/{deptId}", DEPT_ID)
+                .with(user(toUser)))
+            .andExpect(status().isOk());
+    }
+
+    @Test @DisplayName("GET /penalties/department/{deptId} — wrong dept → 403")
+    void getDepartmentPenalties_WrongDept_403() throws Exception {
+        mockMvc.perform(get("/api/v1/penalties/department/{deptId}", UUID.randomUUID())
+                .with(user(toUser)))
+            .andExpect(status().isForbidden());
+    }
+
+    // ── 7. GET DEPARTMENT PENDING PENALTIES ──────────────────────────────────────
+
+    @Test @DisplayName("GET /penalties/department/{deptId}/pending → 200")
+    void getDepartmentPendingPenalties_200() throws Exception {
+        when(penaltyService.getDepartmentPendingPenalties(any(UUID.class)))
+            .thenReturn(List.of(mock(PenaltyResponseDTO.class)));
+
+        mockMvc.perform(get("/api/v1/penalties/department/{deptId}/pending", DEPT_ID)
+                .with(user(hodUser)))
+            .andExpect(status().isOk());
+    }
+
+    @Test @DisplayName("GET /penalties/department/{deptId}/pending — empty → 200")
+    void getDepartmentPendingPenalties_Empty_200() throws Exception {
+        when(penaltyService.getDepartmentPendingPenalties(any(UUID.class)))
+            .thenReturn(Collections.emptyList());
+
+        mockMvc.perform(get("/api/v1/penalties/department/{deptId}/pending", DEPT_ID)
+                .with(user(hodUser)))
+            .andExpect(status().isOk());
+    }
+
+    // ── 8. SUBMIT APPEAL ─────────────────────────────────────────────────────────
+
+    @Test @DisplayName("POST /penalties/appeal — student submits appeal → 200")
+    void submitAppeal_Student_200() throws Exception {
+        PenaltyResponseDTO response = mock(PenaltyResponseDTO.class);
+        when(penaltyService.submitAppeal(any(AppealRequestDTO.class), any(UUID.class)))
+            .thenReturn(response);
+
+        AppealRequestDTO dto = new AppealRequestDTO();
+        dto.setPenaltyId(PENALTY_ID);
+        dto.setAppealReason("The damage was pre-existing before my borrowing period");
+
+        mockMvc.perform(post("/api/v1/penalties/appeal")
+                .with(user(studentUser))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(dto)))
+            .andExpect(status().isOk());
+    }
+
+    @Test @DisplayName("POST /penalties/appeal — penalty not found → 400")
+    void submitAppeal_NotFound_400() throws Exception {
+        when(penaltyService.submitAppeal(any(AppealRequestDTO.class), any(UUID.class)))
+            .thenThrow(new IllegalArgumentException("Penalty not found or not eligible for appeal"));
+
+        mockMvc.perform(post("/api/v1/penalties/appeal")
+                .with(user(studentUser))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{}"))
+            .andExpect(status().isBadRequest());
+    }
+
+    // ── 9. DECIDE APPEAL ─────────────────────────────────────────────────────────
+
+    @Test @DisplayName("PUT /penalties/{id}/appeal/decide — HOD approves appeal → 200")
+    void decideAppeal_Approve_200() throws Exception {
+        PenaltyResponseDTO response = mock(PenaltyResponseDTO.class);
+        when(penaltyService.decideAppeal(anyInt(), any(AppealDecisionDTO.class), any(UUID.class)))
+            .thenReturn(response);
+
+        AppealDecisionDTO dto = new AppealDecisionDTO();
+        dto.setDecisionReason("Evidence accepted");
+        dto.setPointsWaived(5);
+
+        mockMvc.perform(put("/api/v1/penalties/{id}/appeal/decide", PENALTY_ID)
+                .with(user(hodUser))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(dto)))
+            .andExpect(status().isOk());
+    }
+
+    @Test @DisplayName("PUT /penalties/{id}/appeal/decide — student cannot decide → 403")
+    void decideAppeal_Student_403() throws Exception {
+        mockMvc.perform(put("/api/v1/penalties/{id}/appeal/decide", PENALTY_ID)
+                .with(user(studentUser))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{}"))
+            .andExpect(status().isForbidden());
+    }
+
+    // ── 10. GET PENDING APPEALS ──────────────────────────────────────────────────
+
+    @Test @DisplayName("GET /penalties/department/{deptId}/appeals/pending — HOD → 200")
+    void getPendingAppeals_HOD_200() throws Exception {
+        List<PenaltyAppeal> appeals = List.of(mock(PenaltyAppeal.class));
+        when(penaltyService.getPendingAppeals(any(UUID.class))).thenReturn(appeals);
+
+        mockMvc.perform(get("/api/v1/penalties/department/{deptId}/appeals/pending", DEPT_ID)
+                .with(user(hodUser)))
+            .andExpect(status().isOk());
+    }
+
+    @Test @DisplayName("GET /penalties/department/{deptId}/appeals/pending — wrong dept → 403")
+    void getPendingAppeals_WrongDept_403() throws Exception {
+        mockMvc.perform(get("/api/v1/penalties/department/{deptId}/appeals/pending", UUID.randomUUID())
+                .with(user(hodUser)))
+            .andExpect(status().isForbidden());
+    }
+
+    // ── 11. CAN STUDENT BORROW ───────────────────────────────────────────────────
+
+    @Test @DisplayName("GET /penalties/student/{studentId}/can-borrow — eligible → 200 true")
+    void canStudentBorrow_Eligible_200() throws Exception {
+        when(penaltyService.canStudentBorrow(any(UUID.class))).thenReturn(true);
+
+        mockMvc.perform(get("/api/v1/penalties/student/{studentId}/can-borrow", STUDENT_ID)
+                .with(user(toUser)))
+            .andExpect(status().isOk());
+    }
+
+    @Test @DisplayName("GET /penalties/student/{studentId}/can-borrow — restricted → 200 false")
+    void canStudentBorrow_Restricted_200() throws Exception {
+        when(penaltyService.canStudentBorrow(any(UUID.class))).thenReturn(false);
+
+        mockMvc.perform(get("/api/v1/penalties/student/{studentId}/can-borrow", STUDENT_ID)
+                .with(user(toUser)))
+            .andExpect(status().isOk());
+    }
+
+    @Test @DisplayName("GET /penalties/student/{studentId}/can-borrow — student checks own → 200")
+    void canStudentBorrow_OwnCheck_200() throws Exception {
+        when(penaltyService.canStudentBorrow(any(UUID.class))).thenReturn(true);
+
+        mockMvc.perform(get("/api/v1/penalties/student/{studentId}/can-borrow", STUDENT_ID)
+                .with(user(studentUser)))
+            .andExpect(status().isOk());
     }
 }

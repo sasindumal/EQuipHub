@@ -8,6 +8,8 @@ import com.equiphub.api.dto.department.UpdateDepartmentRequest;
 import com.equiphub.api.repository.DepartmentRepository;
 import com.equiphub.api.repository.UserRepository;
 import com.equiphub.api.security.CustomUserDetails;
+import com.equiphub.api.security.CustomUserDetailsService;
+import com.equiphub.api.security.jwt.JwtUtils;
 import com.equiphub.api.service.DepartmentConfigurationService;
 import com.equiphub.api.service.DepartmentService;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -33,7 +35,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @WebMvcTest(AdminController.class)
 @ExtendWith(MockitoExtension.class)
 @DisplayName("AdminController Tests")
-class AdminControllerTest {
+class AdminControllerTest extends BaseControllerTest {
+    @MockBean JwtUtils jwtUtils;        
 
     @Autowired private MockMvc mockMvc;
     @Autowired private ObjectMapper objectMapper;
@@ -42,6 +45,7 @@ class AdminControllerTest {
     @MockBean private DepartmentConfigurationService configService;
     @MockBean private DepartmentRepository           departmentRepository;
     @MockBean private UserRepository                 userRepository;
+    @MockBean private CustomUserDetailsService customUserDetailsService;
 
     private static final UUID DEPT_ID = UUID.randomUUID();
 
@@ -77,11 +81,13 @@ class AdminControllerTest {
         req.setCode("CSE");
         req.setName("Computer Science");
 
-        DepartmentResponse resp = new DepartmentResponse();
-        resp.setDepartmentId(DEPT_ID);
-        resp.setCode("CSE");
+        DepartmentResponse resp = DepartmentResponse.builder()
+                .departmentId(DEPT_ID)
+                .code("CSE")
+                .build();
 
-        DepartmentConfigurationResponse config = new DepartmentConfigurationResponse();
+        DepartmentConfigurationResponse config = DepartmentConfigurationResponse.builder()
+                .build();
 
         when(departmentService.createDepartment(any(), any(UUID.class))).thenReturn(resp);
         when(configService.initializeConfiguration(any(UUID.class), any(UUID.class))).thenReturn(config);
@@ -118,8 +124,9 @@ class AdminControllerTest {
     @WithMockUser(roles = "SYSTEMADMIN")
     @DisplayName("GET /api/v1/admin/departments/{id} — found")
     void getDepartmentById_Success() throws Exception {
-        DepartmentResponse resp = new DepartmentResponse();
-        resp.setDepartmentId(DEPT_ID);
+        DepartmentResponse resp = DepartmentResponse.builder()
+                .departmentId(DEPT_ID)
+                .build();
         when(departmentService.getDepartmentById(DEPT_ID)).thenReturn(resp);
 
         mockMvc.perform(get("/api/v1/admin/departments/{id}", DEPT_ID))
@@ -133,8 +140,10 @@ class AdminControllerTest {
         UpdateDepartmentRequest req = new UpdateDepartmentRequest();
         req.setName("Updated Name");
 
-        DepartmentResponse resp = new DepartmentResponse();
-        resp.setCode("CSE");
+        DepartmentResponse resp = DepartmentResponse.builder()
+                .departmentId(DEPT_ID)
+                .code("CSE")
+                .build();
         when(departmentService.updateDepartment(any(UUID.class), any(), any(UUID.class))).thenReturn(resp);
 
         mockMvc.perform(put("/api/v1/admin/departments/{id}", DEPT_ID)
@@ -179,7 +188,8 @@ class AdminControllerTest {
     @WithMockUser(roles = "SYSTEMADMIN")
     @DisplayName("POST /api/v1/admin/departments/{id}/config — init config")
     void initializeConfig_Success() throws Exception {
-        DepartmentConfigurationResponse config = new DepartmentConfigurationResponse();
+        DepartmentConfigurationResponse config = DepartmentConfigurationResponse.builder()
+                .build();
         when(configService.initializeConfiguration(any(UUID.class), any(UUID.class))).thenReturn(config);
 
         mockMvc.perform(post("/api/v1/admin/departments/{id}/config", DEPT_ID))
@@ -190,7 +200,8 @@ class AdminControllerTest {
     @WithMockUser(roles = "SYSTEMADMIN")
     @DisplayName("GET /api/v1/admin/departments/{id}/config")
     void getConfig_Success() throws Exception {
-        DepartmentConfigurationResponse config = new DepartmentConfigurationResponse();
+        DepartmentConfigurationResponse config = DepartmentConfigurationResponse.builder()
+                .build();
         when(configService.getByDepartmentId(DEPT_ID)).thenReturn(config);
 
         mockMvc.perform(get("/api/v1/admin/departments/{id}/config", DEPT_ID))
@@ -202,7 +213,8 @@ class AdminControllerTest {
     @DisplayName("PUT /api/v1/admin/departments/{id}/config — update config")
     void updateConfig_Success() throws Exception {
         DepartmentConfigurationRequest req = new DepartmentConfigurationRequest();
-        DepartmentConfigurationResponse config = new DepartmentConfigurationResponse();
+        DepartmentConfigurationResponse config = DepartmentConfigurationResponse.builder()
+                .build();
         when(configService.updateConfiguration(any(UUID.class), any(), any(UUID.class))).thenReturn(config);
 
         mockMvc.perform(put("/api/v1/admin/departments/{id}/config", DEPT_ID)
@@ -215,7 +227,8 @@ class AdminControllerTest {
     @WithMockUser(roles = "SYSTEMADMIN")
     @DisplayName("POST /api/v1/admin/departments/{id}/config/reset — reset config")
     void resetConfig_Success() throws Exception {
-        DepartmentConfigurationResponse config = new DepartmentConfigurationResponse();
+        DepartmentConfigurationResponse config = DepartmentConfigurationResponse.builder()
+                .build();
         when(configService.resetToDefaults(any(UUID.class), any(UUID.class))).thenReturn(config);
 
         mockMvc.perform(post("/api/v1/admin/departments/{id}/config/reset", DEPT_ID))

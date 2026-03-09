@@ -3,6 +3,8 @@ package com.equiphub.api.controller;
 import com.equiphub.api.dto.department.CreateDepartmentRequest;
 import com.equiphub.api.dto.department.DepartmentResponse;
 import com.equiphub.api.dto.department.UpdateDepartmentRequest;
+import com.equiphub.api.security.CustomUserDetailsService;
+import com.equiphub.api.security.jwt.JwtUtils;
 import com.equiphub.api.service.DepartmentService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.*;
@@ -24,22 +26,23 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 @WebMvcTest(DepartmentController.class)
 @DisplayName("DepartmentController Tests")
-class DepartmentControllerTest {
-
+class DepartmentControllerTest extends BaseControllerTest{
+        @MockBean JwtUtils jwtUtils;    
     @Autowired private MockMvc mockMvc;
     @Autowired private ObjectMapper objectMapper;
 
     @MockBean private DepartmentService departmentService;
-
+        @MockBean private CustomUserDetailsService customUserDetailsService;
     private static final UUID DEPT_ID = UUID.randomUUID();
 
     @Test
     @DisplayName("GET /admin/departments — SYSTEMADMIN → 200")
     @WithMockUser(roles = "SYSTEMADMIN")
     void getAllDepartments_Returns200() throws Exception {
-        DepartmentResponse dept = new DepartmentResponse();
-        dept.setDepartmentId(DEPT_ID);
-        dept.setCode("CSE");
+        DepartmentResponse dept = DepartmentResponse.builder()
+                .departmentId(DEPT_ID)
+                .code("CSE")
+                .build();
 
         when(departmentService.getAllDepartments()).thenReturn(List.of(dept));
 
@@ -61,9 +64,10 @@ class DepartmentControllerTest {
     @DisplayName("GET /admin/departments/{id} — found → 200")
     @WithMockUser(roles = "SYSTEMADMIN")
     void getDepartmentById_Found_Returns200() throws Exception {
-        DepartmentResponse dept = new DepartmentResponse();
-        dept.setDepartmentId(DEPT_ID);
-        dept.setCode("CSE");
+        DepartmentResponse dept = DepartmentResponse.builder()
+                .departmentId(DEPT_ID)
+                .code("CSE")
+                .build();
 
         when(departmentService.getDepartmentById(DEPT_ID)).thenReturn(dept);
 
