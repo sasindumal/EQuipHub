@@ -26,14 +26,12 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 @WebMvcTest(ApprovalController.class)
 @DisplayName("ApprovalController Tests")
-class ApprovalControllerTest extends BaseControllerTest{
-    @MockBean JwtUtils jwtUtils;        
+class ApprovalControllerTest extends BaseControllerTest{     
 
     @Autowired private MockMvc mockMvc;
     @Autowired private ObjectMapper objectMapper;
 
     @MockBean private ApprovalService approvalService;
-    @MockBean private CustomUserDetailsService customUserDetailsService;
 
     private static final String REQUEST_ID = "REQ-2026-00001";
     private static final UUID   DEPT_ID    = UUID.randomUUID();

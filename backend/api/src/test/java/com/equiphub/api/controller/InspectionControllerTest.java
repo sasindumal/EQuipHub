@@ -28,11 +28,10 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @WebMvcTest(InspectionController.class)
 @AutoConfigureMockMvc(addFilters = false)
 class InspectionControllerTest extends BaseControllerTest{
-    @MockBean JwtUtils jwtUtils;    
+ 
     @Autowired private MockMvc mockMvc;
     @MockBean  private InspectionService inspectionService;
     @Autowired private ObjectMapper objectMapper;
-    @MockBean private CustomUserDetailsService customUserDetailsService;
 
     private UUID testId;
 

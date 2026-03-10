@@ -31,7 +31,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @ExtendWith(MockitoExtension.class)
 @DisplayName("DepartmentAdminController Tests")
 class DepartmentAdminControllerTest extends BaseControllerTest{
-        @MockBean JwtUtils jwtUtils;    
+   
 
     @Autowired private MockMvc mockMvc;
     @Autowired private ObjectMapper objectMapper;
@@ -39,7 +39,6 @@ class DepartmentAdminControllerTest extends BaseControllerTest{
     @MockBean private UserManagementService userManagementService;
     @MockBean private EquipmentService equipmentService;
     @MockBean private RequestService requestService;
-    @MockBean private CustomUserDetailsService customUserDetailsService;
     @MockBean private DepartmentConfigurationService departmentConfigurationService;
     
     

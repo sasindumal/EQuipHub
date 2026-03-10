@@ -27,12 +27,11 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @WebMvcTest(DepartmentController.class)
 @DisplayName("DepartmentController Tests")
 class DepartmentControllerTest extends BaseControllerTest{
-        @MockBean JwtUtils jwtUtils;    
     @Autowired private MockMvc mockMvc;
     @Autowired private ObjectMapper objectMapper;
 
     @MockBean private DepartmentService departmentService;
-        @MockBean private CustomUserDetailsService customUserDetailsService;
+       
     private static final UUID DEPT_ID = UUID.randomUUID();
 
     @Test

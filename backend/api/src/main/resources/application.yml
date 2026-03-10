@@ -43,7 +43,7 @@ spring:
         temp:
           use_jdbc_metadata_defaults: false
   
-  # ========== REDIS CACHE ==========
+  # ========== REDIS CACHE ==========S
   data:
     redis:
       host: ${REDIS_HOST:localhost}

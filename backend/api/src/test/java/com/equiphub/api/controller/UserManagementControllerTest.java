@@ -24,12 +24,11 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 @WebMvcTest(UserManagementController.class)
-class UserManagementControllerTest extends BaseControllerTest{
-    @MockBean JwtUtils jwtUtils;    
+class UserManagementControllerTest extends BaseControllerTest{   
     @Autowired MockMvc mockMvc;
     @Autowired ObjectMapper objectMapper;
     @MockBean UserManagementService userManagementService;
-    @MockBean CustomUserDetailsService userDetailsService;
+    // @MockBean CustomUserDetailsService userDetailsService;
 
     static final UUID ADMIN_ID = UUID.randomUUID();
     static final UUID DEPT_ID  = UUID.randomUUID();

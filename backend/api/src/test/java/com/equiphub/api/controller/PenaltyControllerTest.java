@@ -27,13 +27,11 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 @WebMvcTest(PenaltyController.class)
-class PenaltyControllerTest extends BaseControllerTest{
-    @MockBean JwtUtils jwtUtils;    
+class PenaltyControllerTest extends BaseControllerTest{ 
 
     @Autowired MockMvc mockMvc;
     @Autowired ObjectMapper objectMapper;
     @MockBean  PenaltyService penaltyService;
-    @MockBean  CustomUserDetailsService userDetailsService;
 
     static final UUID TO_ID      = UUID.randomUUID();
     static final UUID HOD_ID     = UUID.randomUUID();

@@ -26,12 +26,11 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 @WebMvcTest(EquipmentController.class)
 class EquipmentControllerTest extends BaseControllerTest{
-        @MockBean JwtUtils jwtUtils;    
 
     @Autowired MockMvc mockMvc;
     @Autowired ObjectMapper objectMapper;
     @MockBean EquipmentService equipmentService;
-    @MockBean CustomUserDetailsService userDetailsService;
+
     // If your JWT filter requires it, add: @MockBean JwtUtils jwtUtils;
 
     static final UUID USER_ID  = UUID.randomUUID();

@@ -40,7 +40,6 @@ class AuthControllerTest extends BaseControllerTest{
     @MockBean private PasswordEncoder passwordEncoder;
     @MockBean private JwtUtils jwtUtils;
     @MockBean private EmailVerificationService emailVerificationService;
-    @MockBean private CustomUserDetailsService customUserDetailsService;
     private static final String VALID_EMAIL = "2021E001@eng.jfn.ac.lk";
 
     @Test
