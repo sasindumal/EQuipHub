@@ -23,7 +23,7 @@ import java.util.List;
 import java.util.UUID;
 
 @RestController
-@RequestMapping("/api/v1/approvals")
+@RequestMapping("/approvals")
 @RequiredArgsConstructor
 @Slf4j
 @Tag(name = "Approval Workflow", description = "Equipment request approval chain management")
@@ -226,8 +226,6 @@ public class ApprovalController {
     //  UTILITY: extract UUID from Spring Security principal
     // ═══════════════════════════════════════════════════════════
     private UUID extractUserId(UserDetails userDetails) {
-        // Your existing UserDetails implementation stores UUID as the username
-        // (consistent with AuthController / UserService pattern in this project)
         return UUID.fromString(userDetails.getUsername());
     }
 

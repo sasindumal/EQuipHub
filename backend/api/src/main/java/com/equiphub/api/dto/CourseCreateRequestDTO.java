@@ -3,6 +3,8 @@ package com.equiphub.api.dto;
 import jakarta.validation.constraints.*;
 import lombok.*;
 
+import java.util.UUID;
+
 @Getter
 @Setter
 @NoArgsConstructor
@@ -22,8 +24,8 @@ public class CourseCreateRequestDTO {
     @Size(max = 255)
     private String courseName;
 
-    @NotBlank
-    private String departmentId;
+    @NotNull
+    private UUID departmentId;
 
     @NotNull
     @Min(1)

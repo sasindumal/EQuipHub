@@ -18,7 +18,7 @@ import java.util.List;
 import java.util.UUID;
 
 @RestController
-@RequestMapping("/api/v1/penalties")
+@RequestMapping("/penalties")
 @RequiredArgsConstructor
 @Slf4j
 @Tag(name = "Penalty Management", description = "Penalty points, appeals & borrowing restrictions")

@@ -29,7 +29,7 @@ import java.util.Map;
 import java.util.UUID;
 
 @RestController
-@RequestMapping("/api/v1/admin")
+@RequestMapping("/admin")
 @PreAuthorize("hasRole('SYSTEMADMIN')")
 @RequiredArgsConstructor
 @Slf4j
@@ -149,9 +149,6 @@ public class AdminController {
         );
     }
 
-    // Bug fix #5: Wrapped in try/catch to return a proper 404 response when the
-    // department ID is not found, instead of propagating an unhandled RuntimeException
-    // that Spring converts to a 500 Internal Server Error.
     @GetMapping("/departments/{departmentId}")
     @Operation(summary = "Get a department by ID")
     public ResponseEntity<Map<String, Object>> getDepartmentById(@PathVariable UUID departmentId) {

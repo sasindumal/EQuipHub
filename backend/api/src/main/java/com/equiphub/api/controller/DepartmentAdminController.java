@@ -29,7 +29,7 @@ import java.util.Map;
 import java.util.UUID;
 
 @RestController
-@RequestMapping("/api/v1/department-admin")
+@RequestMapping("/department-admin")
 @PreAuthorize("hasAnyRole('SYSTEMADMIN', 'DEPARTMENTADMIN', 'HEADOFDEPARTMENT')")
 @RequiredArgsConstructor
 @Slf4j

@@ -23,7 +23,7 @@ import java.util.Map;
 import java.util.UUID;
 
 @RestController
-@RequestMapping("/api/v1/inspections")
+@RequestMapping("/inspections")
 @RequiredArgsConstructor
 @Slf4j
 @Tag(name = "Inspection & Equipment Issue/Return",
