@@ -37,11 +37,12 @@ export function AuthProvider({ children }) {
         localStorage.setItem('equiphub_token', data.token);
         localStorage.setItem('equiphub_user', JSON.stringify(data));
         setUser({
-            userId: data.userId,
-            email: data.email,
-            firstName: data.firstName,
-            lastName: data.lastName,
-            role: data.role,
+            userId:       data.userId,
+            email:        data.email,
+            firstName:    data.firstName,
+            lastName:     data.lastName,
+            role:         data.role,
+            departmentId: data.departmentId,
         });
         return data;
     };
@@ -58,11 +59,18 @@ export function AuthProvider({ children }) {
             case 'SYSTEMADMIN':
                 return '/admin';
             case 'DEPARTMENTADMIN':
-                return '/department-admin';
             case 'HEADOFDEPARTMENT':
                 return '/department-admin';
+            case 'TECHNICALOFFICER':
+                return '/technical-officer';
+            case 'LECTURER':
+            case 'APPOINTEDLECTURER':
+            case 'INSTRUCTOR':
+                return '/lecturer';
+            case 'STUDENT':
+                return '/student';
             default:
-                return '/dashboard';
+                return '/login';
         }
     };
 
