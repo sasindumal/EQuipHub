@@ -149,11 +149,18 @@ public class AdminController {
         );
     }
 
+    // Bug fix #5: Wrapped in try/catch to return a proper 404 response when the
+    // department ID is not found, instead of propagating an unhandled RuntimeException
+    // that Spring converts to a 500 Internal Server Error.
     @GetMapping("/departments/{departmentId}")
     @Operation(summary = "Get a department by ID")
     public ResponseEntity<Map<String, Object>> getDepartmentById(@PathVariable UUID departmentId) {
-        DepartmentResponse dept = departmentService.getDepartmentById(departmentId);
-        return ok(dept, "Department retrieved successfully");
+        try {
+            DepartmentResponse dept = departmentService.getDepartmentById(departmentId);
+            return ok(dept, "Department retrieved successfully");
+        } catch (RuntimeException e) {
+            return build(HttpStatus.NOT_FOUND, null, e.getMessage(), false);
+        }
     }
 
     @PutMapping("/departments/{departmentId}")

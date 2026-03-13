@@ -25,7 +25,9 @@ import java.time.LocalDateTime;
 import java.util.*;
 
 @RestController
-@RequestMapping("/api/v1/requests")
+// Bug fix #1: Removed /api/v1 prefix — context-path /api/v1 is already set in application.properties,
+// matching the same pattern used by EquipmentController, DepartmentController, and AdminController.
+@RequestMapping("/requests")
 @RequiredArgsConstructor
 @Slf4j
 @Tag(name = "Equipment Request Management",
@@ -34,6 +36,11 @@ import java.util.*;
 public class RequestController {
 
     private final RequestService requestService;
+
+    // Bug fix #2: Whitelist of allowed sort fields to prevent PropertyReferenceException (500)
+    // when an invalid field name is passed as a ?sortBy= query parameter.
+    private static final Set<String> ALLOWED_SORT_FIELDS =
+            Set.of("createdAt", "updatedAt", "status", "requestDate", "requestType");
 
     // ─────────────────────────────────────────────────────────────
     //  RESPONSE HELPERS (matching EquipmentController pattern)
@@ -168,6 +175,11 @@ public class RequestController {
             @RequestParam(defaultValue = "DESC") String direction,
             @AuthenticationPrincipal CustomUserDetails currentUser) {
 
+        // Bug fix #2: Validate sortBy against whitelist to prevent 500 on invalid field names
+        if (!ALLOWED_SORT_FIELDS.contains(sortBy)) {
+            return bad("Invalid sortBy field '" + sortBy + "'. Allowed values: " + ALLOWED_SORT_FIELDS);
+        }
+
         Sort sort = direction.equalsIgnoreCase("ASC")
                 ? Sort.by(sortBy).ascending()
                 : Sort.by(sortBy).descending();
@@ -201,6 +213,11 @@ public class RequestController {
 
         if (!hasRequestAccess(currentUser, departmentId)) {
             return forbidden("You can only view requests in your own department");
+        }
+
+        // Bug fix #2: Validate sortBy against whitelist to prevent 500 on invalid field names
+        if (!ALLOWED_SORT_FIELDS.contains(sortBy)) {
+            return bad("Invalid sortBy field '" + sortBy + "'. Allowed values: " + ALLOWED_SORT_FIELDS);
         }
 
         Sort sort = direction.equalsIgnoreCase("ASC")
@@ -396,24 +413,7 @@ public class RequestController {
             @AuthenticationPrincipal CustomUserDetails currentUser) {
 
         UUID deptId = callerDeptId(currentUser);
-        return ok(requestService.getDepartmentRequestStats(deptId), "Your department request stats retrieved");
-    }
-
-    // ═════════════════════════════════════════════════════════════
-    //  14. MY DEPARTMENT EMERGENCY REQUESTS (shortcut)
-    // ═════════════════════════════════════════════════════════════
-    @GetMapping("/my-department/emergency")
-    @PreAuthorize("hasAnyRole('TECHNICALOFFICER','DEPARTMENTADMIN','HEADOFDEPARTMENT')")
-    @Operation(summary = "Shortcut: emergency requests in my department")
-    public ResponseEntity<Map<String, Object>> getMyDepartmentEmergencies(
-            @AuthenticationPrincipal CustomUserDetails currentUser) {
-
-        UUID deptId = callerDeptId(currentUser);
-        List<RequestResponseDTO> emergencies = requestService.getEmergencyRequests(deptId);
-        return ok(
-            Map.of("requests", emergencies, "count", emergencies.size()),
-            emergencies.isEmpty() ? "No active emergency requests" :
-                    emergencies.size() + " active emergency request(s)"
-        );
+        Map<String, Object> stats = requestService.getDepartmentRequestStats(deptId);
+        return ok(stats, "Your department's request statistics retrieved");
     }
 }

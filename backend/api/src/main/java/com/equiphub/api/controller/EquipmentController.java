@@ -88,10 +88,21 @@ public class EquipmentController {
         return created(created, "Equipment registered successfully");
     }
 
+    // Bug fix #3: Added @PreAuthorize and department-level access guard.
+    // Previously this endpoint had no authentication or authorization check,
+    // allowing any user (or unauthenticated caller) to retrieve equipment details
+    // from any department.
     @GetMapping("/{equipmentId}")
+    @PreAuthorize("isAuthenticated()")
     @Operation(summary = "Get equipment by ID")
-    public ResponseEntity<Map<String, Object>> getById(@PathVariable UUID equipmentId) {
-        return ok(equipmentService.getById(equipmentId), "Equipment retrieved successfully");
+    public ResponseEntity<Map<String, Object>> getById(
+            @PathVariable UUID equipmentId,
+            @AuthenticationPrincipal CustomUserDetails currentUser) {
+        EquipmentResponse eq = equipmentService.getById(equipmentId);
+        if (!hasEquipmentAccess(currentUser, eq.getDepartmentId())) {
+            return forbidden("You can only view equipment in your own department");
+        }
+        return ok(eq, "Equipment retrieved successfully");
     }
 
     @GetMapping("/{equipmentId}/availability")
@@ -117,9 +128,18 @@ public class EquipmentController {
         );
     }
 
+    // Bug fix #4: Added @PreAuthorize and department-level access guard.
+    // Previously this endpoint was completely open — no authentication required —
+    // allowing anyone to enumerate all AVAILABLE equipment across any department.
     @GetMapping("/department/{departmentId}/available")
+    @PreAuthorize("isAuthenticated()")
     @Operation(summary = "Get available equipment in a department", description = "Returns all equipment with status AVAILABLE. Used for request creation.")
-    public ResponseEntity<Map<String, Object>> getAvailable(@PathVariable UUID departmentId) {
+    public ResponseEntity<Map<String, Object>> getAvailable(
+            @PathVariable UUID departmentId,
+            @AuthenticationPrincipal CustomUserDetails currentUser) {
+        if (!hasEquipmentAccess(currentUser, departmentId)) {
+            return forbidden("You can only view equipment in your own department");
+        }
         List<EquipmentResponse> equipment = equipmentService.getAvailableByDepartment(departmentId);
         return ok(Map.of("equipment", equipment, "count", equipment.size()), "Available equipment retrieved");
     }

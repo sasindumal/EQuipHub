@@ -53,8 +53,12 @@ public class DepartmentController {
         return ResponseEntity.ok(departmentService.getAllDepartments());
     }
 
+    // Bug fix #6: Added @PreAuthorize("isAuthenticated()") to prevent unauthenticated
+    // callers from enumerating the full list of active departments (leaks internal
+    // organisational structure — department codes, IDs, names).
     @GetMapping("/active")
-    @Operation(summary = "Get active departments", description = "Public list of active departments")
+    @PreAuthorize("isAuthenticated()")
+    @Operation(summary = "Get active departments", description = "Returns active departments. Requires authentication.")
     public ResponseEntity<List<DepartmentResponse>> getActiveDepartments() {
         return ResponseEntity.ok(departmentService.getActiveDepartments());
     }
