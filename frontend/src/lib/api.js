@@ -131,17 +131,153 @@ export const equipmentAPI = {
   updateEquipmentStatus: (id, data)  => api.patch(`/equipment/${id}/status`, data),
 };
 
-// ─── Borrow Request APIs ─────────────────────────────────────
+// ─── Borrow Request APIs ──────────────────────────────────
+// RequestController base: /requests
 export const requestAPI = {
-  getDepartmentRequests: ()         => api.get('/requests/department'),
-  getAllRequests:         ()         => api.get('/requests'),
-  getMyRequests:         ()         => api.get('/requests/my'),
-  getRequestById:        (id)       => api.get(`/requests/${id}`),
-  createRequest:         (data)     => api.post('/requests', data),
-  approveRequest:        (id)       => api.patch(`/requests/${id}/approve`),
-  rejectRequest:         (id, data) => api.patch(`/requests/${id}/reject`, data),
-  returnEquipment:       (id)       => api.patch(`/requests/${id}/return`),
-  cancelRequest:         (id)       => api.delete(`/requests/${id}`),
+  // existing
+  getDepartmentRequests:   ()                    => api.get('/requests/department'),
+  getAllRequests:           ()                    => api.get('/requests'),
+  getMyRequests:           (page = 0, size = 20) => api.get(`/requests/my?page=${page}&size=${size}`),
+  getRequestById:          (id)                  => api.get(`/requests/${id}`),
+  createRequest:           (data)                => api.post('/requests', data),
+
+  // submit DRAFT → PENDING
+  submitRequest:           (requestId)           => api.post(`/requests/${requestId}/submit`),
+
+  // update DRAFT
+  updateRequest:           (requestId, data)     => api.put(`/requests/${requestId}`, data),
+
+  // cancel
+  cancelRequest:           (requestId)           => api.post(`/requests/${requestId}/cancel`),
+
+  // filter by status (DRAFT | PENDINGAPPROVAL | APPROVED | INUSE | RETURNED | COMPLETED ...)
+  getByStatus:             (status, page = 0)    => api.get(`/requests/status/${status}?page=${page}`),
+
+  // department helpers
+  getDepartmentRequestsById: (departmentId, page = 0) =>
+    api.get(`/requests/department/${departmentId}?page=${page}`),
+  getDepartmentStats:      (departmentId)        => api.get(`/requests/department/${departmentId}/stats`),
+  getDepartmentStatsSelf:  ()                    => api.get('/requests/department/stats'),
+  getPendingCount:         (departmentId)        => api.get(`/requests/department/${departmentId}/pending`),
+  getEmergencyRequests:    (departmentId)        => api.get(`/requests/department/${departmentId}/emergency`),
+  getMyDepartmentRequests: (page = 0)            => api.get(`/requests/my-department?page=${page}`),
+  getMyDepartmentStats:    ()                    => api.get('/requests/my-department/stats'),
+
+  // admin only
+  getSlaBreached:          ()                    => api.get('/requests/sla-breached'),
+
+  // legacy aliases kept for backward-compat with existing pages
+  approveRequest:          (id)                  => api.patch(`/requests/${id}/approve`),
+  rejectRequest:           (id, data)            => api.patch(`/requests/${id}/reject`, data),
+  returnEquipment:         (id)                  => api.patch(`/requests/${id}/return`),
+};
+
+// ─── Approval Workflow APIs ───────────────────────────────
+// ApprovalController base: /approvals
+export const approvalAPI = {
+  // POST /approvals/requests/{requestId}/auto-approve  → TO, DEPTADMIN
+  attemptAutoApproval:  (requestId)             => api.post(`/approvals/requests/${requestId}/auto-approve`),
+
+  // POST /approvals/requests/{requestId}/decide?stage=LECTURERAPPROVAL
+  // Body: { action: 'APPROVE'|'REJECT'|'RECOMMEND'|'MODIFY', comments }
+  processDecision:      (requestId, stage, data) =>
+    api.post(`/approvals/requests/${requestId}/decide?stage=${stage}`, data),
+
+  // GET /approvals/my-queue  → Lecturer, TO, HOD, DEPTADMIN
+  getMyQueue:           ()                      => api.get('/approvals/my-queue'),
+
+  // GET /approvals/departments/{departmentId}/queue  → DEPTADMIN, HOD
+  getDepartmentQueue:   (departmentId)          => api.get(`/approvals/departments/${departmentId}/queue`),
+
+  // GET /approvals/requests/{requestId}/history  → All roles
+  getApprovalHistory:   (requestId)             => api.get(`/approvals/requests/${requestId}/history`),
+
+  // GET /approvals/departments/{departmentId}/stats  → DEPTADMIN, HOD
+  getDepartmentStats:   (departmentId)          => api.get(`/approvals/departments/${departmentId}/stats`),
+
+  // GET /approvals/requests/{requestId}/next-stage  → DEPTADMIN, TO, HOD
+  getNextStage:         (requestId)             => api.get(`/approvals/requests/${requestId}/next-stage`),
+};
+
+// ─── Inspection APIs ──────────────────────────────────────
+// InspectionController base: /inspections
+export const inspectionAPI = {
+  // POST /inspections/issue  → TECHNICALOFFICER
+  // Body: { requestId, items: [{ equipmentId, conditionBefore, notes }] }
+  issueEquipment:       (data)                  => api.post('/inspections/issue', data),
+
+  // POST /inspections/return  → TECHNICALOFFICER
+  // Body: { requestId, items: [{ equipmentId, conditionAfter, damageLevel, notes }] }
+  processReturn:        (data)                  => api.post('/inspections/return', data),
+
+  // POST /inspections/{inspectionId}/acknowledge  → STUDENT
+  acknowledgeInspection: (inspectionId)         => api.post(`/inspections/${inspectionId}/acknowledge`),
+
+  // GET /inspections/request/{requestId}  → All roles
+  getByRequest:         (requestId)             => api.get(`/inspections/request/${requestId}`),
+
+  // GET /inspections/my-inspections  → TECHNICALOFFICER
+  getMyInspections:     ()                      => api.get('/inspections/my-inspections'),
+
+  // GET /inspections/unacknowledged  → TO, DEPTADMIN
+  getUnacknowledged:    ()                      => api.get('/inspections/unacknowledged'),
+
+  // GET /inspections/my-department/damage-report?days=30  → TO, DEPTADMIN, HOD
+  getMyDeptDamageReport: (days = 30)            => api.get(`/inspections/my-department/damage-report?days=${days}`),
+
+  // GET /inspections/my-department/stats  → TO, DEPTADMIN, HOD
+  getMyDeptStats:       ()                      => api.get('/inspections/my-department/stats'),
+
+  // GET /inspections/department/{departmentId}/damage-report?days=30
+  getDamageReport:      (departmentId, days = 30) =>
+    api.get(`/inspections/department/${departmentId}/damage-report?days=${days}`),
+
+  // GET /inspections/department/{departmentId}/stats
+  getDepartmentStats:   (departmentId)          => api.get(`/inspections/department/${departmentId}/stats`),
+};
+
+// ─── Penalty APIs ─────────────────────────────────────────
+// PenaltyController base: /penalties
+export const penaltyAPI = {
+  // POST /penalties  → TO, DEPTADMIN, HOD
+  // Body: { studentId, requestId, penaltyType, points, reason }
+  createPenalty:        (data)                  => api.post('/penalties', data),
+
+  // POST /penalties/{penaltyId}/approve  → HOD, DEPTADMIN
+  approvePenalty:       (penaltyId)             => api.post(`/penalties/${penaltyId}/approve`),
+
+  // POST /penalties/{penaltyId}/waive?reason=...  → HOD only
+  waivePenalty:         (penaltyId, reason)     =>
+    api.post(`/penalties/${penaltyId}/waive?reason=${encodeURIComponent(reason)}`),
+
+  // GET /penalties/my  → STUDENT
+  getMyPenalties:       ()                      => api.get('/penalties/my'),
+
+  // GET /penalties/my/summary  → STUDENT
+  getMySummary:         ()                      => api.get('/penalties/my/summary'),
+
+  // GET /penalties/students/{studentId}
+  getStudentPenalties:  (studentId)             => api.get(`/penalties/students/${studentId}`),
+
+  // GET /penalties/students/{studentId}/summary
+  getStudentSummary:    (studentId)             => api.get(`/penalties/students/${studentId}/summary`),
+
+  // GET /penalties/students/{studentId}/can-borrow  → TO, DEPTADMIN
+  canStudentBorrow:     (studentId)             => api.get(`/penalties/students/${studentId}/can-borrow`),
+
+  // GET /penalties/departments/{departmentId}
+  getDepartmentPenalties: (departmentId)        => api.get(`/penalties/departments/${departmentId}`),
+
+  // GET /penalties/departments/{departmentId}/pending
+  getDepartmentPendingPenalties: (departmentId) => api.get(`/penalties/departments/${departmentId}/pending`),
+
+  // POST /penalties/appeals  → STUDENT
+  // Body: { penaltyId, reason }
+  submitAppeal:         (data)                  => api.post('/penalties/appeals', data),
+
+  // POST /penalties/appeals/{penaltyId}/decide  → HOD, DEPTADMIN
+  // Body: { decision: 'APPROVE'|'REJECT', reason }
+  decideAppeal:         (penaltyId, data)       => api.post(`/penalties/appeals/${penaltyId}/decide`, data),
 };
 
 export default api;
