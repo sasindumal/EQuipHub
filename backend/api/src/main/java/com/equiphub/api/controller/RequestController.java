@@ -86,7 +86,6 @@ public class RequestController {
 
     // ═════════════════════════════════════════════════════════════
     //  1. CREATE REQUEST
-    //     STUDENT, LECTURER, INSTRUCTOR, APPOINTEDLECTURER
     // ═════════════════════════════════════════════════════════════
     @PostMapping
     @PreAuthorize("hasAnyRole('STUDENT','LECTURER','INSTRUCTOR','APPOINTEDLECTURER','TECHNICALOFFICER','DEPARTMENTADMIN','SYSTEMADMIN')")
@@ -99,13 +98,11 @@ public class RequestController {
             @Valid @RequestBody CreateRequestDTO request,
             @AuthenticationPrincipal CustomUserDetails currentUser) {
 
-        // Students can only create requests for themselves
         if (currentUser.getRole() == User.Role.STUDENT
                 && !request.getStudentId().equals(currentUser.getUserId())) {
             return forbidden("Students can only create requests for themselves");
         }
 
-        // Non-SYSTEMADMIN can only create for their own department
         if (currentUser.getRole() != User.Role.SYSTEMADMIN
                 && !hasRequestAccess(currentUser, request.getDepartmentId())) {
             return forbidden("You can only create requests for your own department");
@@ -147,13 +144,11 @@ public class RequestController {
 
         RequestResponseDTO request = requestService.getRequestById(requestId);
 
-        // Students can only view their own requests
         if (currentUser.getRole() == User.Role.STUDENT
                 && !request.getStudentId().equals(currentUser.getUserId())) {
             return forbidden("You can only view your own requests");
         }
 
-        // Non-admin, non-student users can only see requests in their department
         if (!currentUser.isAdmin() && currentUser.getRole() != User.Role.STUDENT
                 && !hasRequestAccess(currentUser, request.getDepartmentId())) {
             return forbidden("You can only view requests in your department");
@@ -163,7 +158,7 @@ public class RequestController {
     }
 
     // ═════════════════════════════════════════════════════════════
-    //  4. GET MY REQUESTS (current user's requests)
+    //  4. GET MY REQUESTS (current user)
     // ═════════════════════════════════════════════════════════════
     @GetMapping("/my")
     @Operation(summary = "Get current user's requests",
@@ -175,7 +170,6 @@ public class RequestController {
             @RequestParam(defaultValue = "DESC") String direction,
             @AuthenticationPrincipal CustomUserDetails currentUser) {
 
-        // Bug fix #2: Validate sortBy against whitelist to prevent 500 on invalid field names
         if (!ALLOWED_SORT_FIELDS.contains(sortBy)) {
             return bad("Invalid sortBy field '" + sortBy + "'. Allowed values: " + ALLOWED_SORT_FIELDS);
         }
@@ -187,11 +181,11 @@ public class RequestController {
 
         Page<RequestResponseDTO> requests = requestService.getMyRequests(currentUser.getUserId(), pageable);
         return ok(
-            Map.of("requests", requests.getContent(),
+            Map.of("requests",      requests.getContent(),
                    "totalElements", requests.getTotalElements(),
-                   "totalPages", requests.getTotalPages(),
-                   "currentPage", requests.getNumber(),
-                   "pageSize", requests.getSize()),
+                   "totalPages",    requests.getTotalPages(),
+                   "currentPage",   requests.getNumber(),
+                   "pageSize",      requests.getSize()),
             "Your requests retrieved successfully"
         );
     }
@@ -215,7 +209,6 @@ public class RequestController {
             return forbidden("You can only view requests in your own department");
         }
 
-        // Bug fix #2: Validate sortBy against whitelist to prevent 500 on invalid field names
         if (!ALLOWED_SORT_FIELDS.contains(sortBy)) {
             return bad("Invalid sortBy field '" + sortBy + "'. Allowed values: " + ALLOWED_SORT_FIELDS);
         }
@@ -227,11 +220,11 @@ public class RequestController {
 
         Page<RequestResponseDTO> requests = requestService.getDepartmentRequests(departmentId, pageable);
         return ok(
-            Map.of("requests", requests.getContent(),
+            Map.of("requests",      requests.getContent(),
                    "totalElements", requests.getTotalElements(),
-                   "totalPages", requests.getTotalPages(),
-                   "currentPage", requests.getNumber(),
-                   "departmentId", departmentId),
+                   "totalPages",    requests.getTotalPages(),
+                   "currentPage",   requests.getNumber(),
+                   "departmentId",  departmentId),
             "Department requests retrieved"
         );
     }
@@ -276,7 +269,7 @@ public class RequestController {
     }
 
     // ═════════════════════════════════════════════════════════════
-    //  5b. GET DEPARTMENT REQUEST STATS  (JWT-resolved — no UUID)
+    //  5b. GET DEPARTMENT STATS  (JWT-resolved — no UUID)
     //      Frontend: GET /requests/department/stats
     // ═════════════════════════════════════════════════════════════
     @GetMapping("/department/stats")
@@ -293,14 +286,17 @@ public class RequestController {
     }
 
     // ═════════════════════════════════════════════════════════════
-    //  5c. GET PENDING COUNT FOR DEPARTMENT  (badge endpoint)
-    //      Frontend: GET /requests/department/{departmentId}/pending
+    //  5c. PENDING COUNT BADGE  (GET /requests/department/{departmentId}/pending)
+    //
+    //  Fix: the previous version called requestService.getRequestsByStatusAndDepartment()
+    //  which does not exist. This version reuses getDepartmentRequestStats() — which
+    //  already returns count_PENDINGAPPROVAL — and extracts that single value.
+    //  Zero new service or repository methods required.
     // ═════════════════════════════════════════════════════════════
     @GetMapping("/department/{departmentId}/pending")
     @PreAuthorize("hasAnyRole('TECHNICALOFFICER','DEPARTMENTADMIN','HEADOFDEPARTMENT','SYSTEMADMIN')")
     @Operation(summary = "Count of pending-approval requests in a department",
-               description = "Lightweight count endpoint used by the Requests page badge. " +
-                             "Returns {count, departmentId}.")
+               description = "Lightweight badge endpoint. Reuses stats query — returns {count, departmentId}.")
     public ResponseEntity<Map<String, Object>> getDepartmentPendingCount(
             @PathVariable UUID departmentId,
             @AuthenticationPrincipal CustomUserDetails currentUser) {
@@ -309,11 +305,14 @@ public class RequestController {
             return forbidden("Access restricted to your own department");
         }
 
-        Pageable pageable = PageRequest.of(0, 1, Sort.by("createdAt").descending());
-        Page<RequestResponseDTO> pending = requestService.getRequestsByStatusAndDepartment(
-                Request.RequestStatus.PENDINGAPPROVAL, departmentId, pageable);
+        // Reuse the existing stats method — it already computes count_PENDINGAPPROVAL
+        // via countByDepartmentDepartmentIdAndStatus(), so no extra query is needed.
+        Map<String, Object> stats = requestService.getDepartmentRequestStats(departmentId);
+        long count = ((Number) stats.getOrDefault(
+                "count_" + Request.RequestStatus.PENDINGAPPROVAL.name(), 0L)).longValue();
+
         return ok(
-            Map.of("count",        pending.getTotalElements(),
+            Map.of("count",        count,
                    "departmentId", departmentId),
             "Pending request count retrieved"
         );
@@ -359,15 +358,13 @@ public class RequestController {
     @PreAuthorize("hasAnyRole('STUDENT','LECTURER','INSTRUCTOR','APPOINTEDLECTURER','TECHNICALOFFICER','DEPARTMENTADMIN','SYSTEMADMIN')")
     @Operation(
         summary = "Update a draft request",
-        description = "Only requests in DRAFT status can be updated. " +
-                      "Pass only the fields you want to change."
+        description = "Only requests in DRAFT status can be updated. Pass only the fields you want to change."
     )
     public ResponseEntity<Map<String, Object>> updateRequest(
             @PathVariable String requestId,
             @Valid @RequestBody UpdateRequestDTO request,
             @AuthenticationPrincipal CustomUserDetails currentUser) {
 
-        // Students can only update their own requests
         RequestResponseDTO existing = requestService.getRequestById(requestId);
         if (currentUser.getRole() == User.Role.STUDENT
                 && !existing.getStudentId().equals(currentUser.getUserId())) {
@@ -385,14 +382,12 @@ public class RequestController {
     @PreAuthorize("hasAnyRole('STUDENT','LECTURER','INSTRUCTOR','APPOINTEDLECTURER','TECHNICALOFFICER','DEPARTMENTADMIN','SYSTEMADMIN')")
     @Operation(
         summary = "Cancel a request",
-        description = "Can cancel DRAFT, PENDINGAPPROVAL, PENDINGRECOMMENDATION, or MODIFICATIONPROPOSED requests. " +
-                      "Cancels all pending items."
+        description = "Can cancel DRAFT, PENDINGAPPROVAL, PENDINGRECOMMENDATION, or MODIFICATIONPROPOSED requests."
     )
     public ResponseEntity<Map<String, Object>> cancelRequest(
             @PathVariable String requestId,
             @AuthenticationPrincipal CustomUserDetails currentUser) {
 
-        // Students can only cancel their own requests
         RequestResponseDTO existing = requestService.getRequestById(requestId);
         if (currentUser.getRole() == User.Role.STUDENT
                 && !existing.getStudentId().equals(currentUser.getUserId())) {
@@ -405,12 +400,11 @@ public class RequestController {
     }
 
     // ═════════════════════════════════════════════════════════════
-    //  9. EMERGENCY REQUESTS (department)
+    //  9. EMERGENCY REQUESTS
     // ═════════════════════════════════════════════════════════════
     @GetMapping("/department/{departmentId}/emergency")
     @PreAuthorize("hasAnyRole('TECHNICALOFFICER','DEPARTMENTADMIN','HEADOFDEPARTMENT','SYSTEMADMIN')")
-    @Operation(summary = "Get active emergency requests in a department",
-               description = "Returns all emergency requests in PENDING, APPROVED, or INUSE status")
+    @Operation(summary = "Get active emergency requests in a department")
     public ResponseEntity<Map<String, Object>> getEmergencyRequests(
             @PathVariable UUID departmentId,
             @AuthenticationPrincipal CustomUserDetails currentUser) {
@@ -432,8 +426,7 @@ public class RequestController {
     // ═════════════════════════════════════════════════════════════
     @GetMapping("/sla-breached")
     @PreAuthorize("hasAnyRole('DEPARTMENTADMIN','HEADOFDEPARTMENT','SYSTEMADMIN')")
-    @Operation(summary = "Get SLA-breached requests",
-               description = "Returns all pending requests that have exceeded their SLA deadline")
+    @Operation(summary = "Get SLA-breached requests")
     public ResponseEntity<Map<String, Object>> getSlaBreachedRequests() {
         List<RequestResponseDTO> breached = requestService.getSlaBreachedRequests();
         return ok(
@@ -448,8 +441,7 @@ public class RequestController {
     // ═════════════════════════════════════════════════════════════
     @GetMapping("/department/{departmentId}/stats")
     @PreAuthorize("hasAnyRole('TECHNICALOFFICER','DEPARTMENTADMIN','HEADOFDEPARTMENT','SYSTEMADMIN')")
-    @Operation(summary = "Request statistics for a department",
-               description = "Returns request counts by status for the department dashboard")
+    @Operation(summary = "Request statistics for a department")
     public ResponseEntity<Map<String, Object>> getDepartmentStats(
             @PathVariable UUID departmentId,
             @AuthenticationPrincipal CustomUserDetails currentUser) {
@@ -467,8 +459,7 @@ public class RequestController {
     // ═════════════════════════════════════════════════════════════
     @GetMapping("/my-department")
     @PreAuthorize("hasAnyRole('TECHNICALOFFICER','DEPARTMENTADMIN','HEADOFDEPARTMENT','LECTURER','INSTRUCTOR','APPOINTEDLECTURER')")
-    @Operation(summary = "Shortcut: get all requests in my department",
-               description = "Returns paginated requests for the current user's department")
+    @Operation(summary = "Shortcut: get all requests in my department")
     public ResponseEntity<Map<String, Object>> getMyDepartmentRequests(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size,
