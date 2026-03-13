@@ -88,22 +88,22 @@ export const adminAPI = {
 // ─── User Management APIs ─────────────────────────────────
 // UserManagementController base: /users
 export const userAPI = {
-  getAllUsers:         ()              => api.get('/users'),
-  getMyProfile:       ()              => api.get('/users/me'),
-  getAllStaff:         ()              => api.get('/users/staff'),
-  getAllStudents:      ()              => api.get('/users/students'),
-  searchUsers:        (keyword)       => api.get(`/users/search?keyword=${encodeURIComponent(keyword)}`),
-  getUsersByDepartment:(deptId)       => api.get(`/users/department/${deptId}`),
-  getUsersByRole:     (role)          => api.get(`/users/role/${role}`),
-  getUserById:        (userId)        => api.get(`/users/${userId}`),
-  createStaff:        (data)          => api.post('/users', data),
-  updateUser:         (userId, data)  => api.put(`/users/${userId}`, data),
-  suspendUser:        (userId)        => api.patch(`/users/${userId}/suspend`),
-  activateUser:       (userId)        => api.patch(`/users/${userId}/activate`),
-  resetPassword:      (userId, data)  => api.post(`/users/${userId}/reset-password`, data),
-  deleteUser:         (userId)        => api.delete(`/users/${userId}`),
-  getDepartmentStats: (deptId)        => api.get(`/users/department/${deptId}/stats`),
-  getSystemAdmins:    ()              => api.get('/users/system-admins'),
+  getAllUsers:          ()              => api.get('/users'),
+  getMyProfile:        ()              => api.get('/users/me'),
+  getAllStaff:          ()              => api.get('/users/staff'),
+  getAllStudents:       ()              => api.get('/users/students'),
+  searchUsers:         (keyword)       => api.get(`/users/search?keyword=${encodeURIComponent(keyword)}`),
+  getUsersByDepartment:(deptId)        => api.get(`/users/department/${deptId}`),
+  getUsersByRole:      (role)          => api.get(`/users/role/${role}`),
+  getUserById:         (userId)        => api.get(`/users/${userId}`),
+  createStaff:         (data)          => api.post('/users', data),
+  updateUser:          (userId, data)  => api.put(`/users/${userId}`, data),
+  suspendUser:         (userId)        => api.patch(`/users/${userId}/suspend`),
+  activateUser:        (userId)        => api.patch(`/users/${userId}/activate`),
+  resetPassword:       (userId, data)  => api.post(`/users/${userId}/reset-password`, data),
+  deleteUser:          (userId)        => api.delete(`/users/${userId}`),
+  getDepartmentStats:  (deptId)        => api.get(`/users/department/${deptId}/stats`),
+  getSystemAdmins:     ()              => api.get('/users/system-admins'),
 };
 
 // ─── Department Admin APIs ────────────────────────────────
@@ -129,6 +129,19 @@ export const equipmentAPI = {
   createEquipment:       (data)      => api.post('/equipment', data),
   updateEquipment:       (id, data)  => api.put(`/equipment/${id}`, data),
   updateEquipmentStatus: (id, data)  => api.patch(`/equipment/${id}/status`, data),
+};
+
+// ─── Borrow Request APIs ─────────────────────────────────────
+export const requestAPI = {
+  getDepartmentRequests: ()         => api.get('/requests/department'),
+  getAllRequests:         ()         => api.get('/requests'),
+  getMyRequests:         ()         => api.get('/requests/my'),
+  getRequestById:        (id)       => api.get(`/requests/${id}`),
+  createRequest:         (data)     => api.post('/requests', data),
+  approveRequest:        (id)       => api.patch(`/requests/${id}/approve`),
+  rejectRequest:         (id, data) => api.patch(`/requests/${id}/reject`, data),
+  returnEquipment:       (id)       => api.patch(`/requests/${id}/return`),
+  cancelRequest:         (id)       => api.delete(`/requests/${id}`),
 };
 
 export default api;
