@@ -30,7 +30,6 @@ api.interceptors.response.use(
   (response) => response,
   async (error) => {
     if (error.response?.status === 401 && typeof window !== 'undefined') {
-      // Try to refresh token
       const token = localStorage.getItem('equiphub_token');
       if (token && !error.config._retry) {
         error.config._retry = true;
@@ -58,79 +57,78 @@ api.interceptors.response.use(
 );
 
 // ─── Auth APIs ────────────────────────────────────────────
-// AuthController: @RequestMapping("/auth") → actual: /api/v1/auth
 export const authAPI = {
-  login: (data) => api.post('/auth/login', data),
-  register: (data) => api.post('/auth/register', data),
-  verifyEmail: (data) => api.post('/auth/verify-email', data),
-  resendCode: (email) => api.post(`/auth/resend-code?email=${encodeURIComponent(email)}`),
-  getCurrentUser: () => api.get('/auth/me'),
-  refreshToken: () => api.post('/auth/refresh'),
+  login:           (data)  => api.post('/auth/login', data),
+  register:        (data)  => api.post('/auth/register', data),
+  verifyEmail:     (data)  => api.post('/auth/verify-email', data),
+  resendCode:      (email) => api.post(`/auth/resend-code?email=${encodeURIComponent(email)}`),
+  getCurrentUser:  ()      => api.get('/auth/me'),
+  refreshToken:    ()      => api.post('/auth/refresh'),
 };
 
 // ─── Admin APIs ───────────────────────────────────────────
-// AdminController: @RequestMapping("/api/v1/admin") → actual: /api/v1/api/v1/admin
+// AdminController base: /admin  (baseURL already includes /api/v1)
 export const adminAPI = {
-  getDashboard: () => api.get('/api/v1/admin/dashboard'),
+  getDashboard:          ()                      => api.get('/admin/dashboard'),
   // Departments
-  getAllDepartments: (activeOnly = false) => api.get(`/api/v1/admin/departments?activeOnly=${activeOnly}`),
-  getDepartmentById: (id) => api.get(`/api/v1/admin/departments/${id}`),
-  createDepartment: (data, initConfig = true) => api.post(`/api/v1/admin/departments?initConfig=${initConfig}`, data),
-  updateDepartment: (id, data) => api.put(`/api/v1/admin/departments/${id}`, data),
-  deactivateDepartment: (id) => api.delete(`/api/v1/admin/departments/${id}`),
+  getAllDepartments:     (activeOnly = false)    => api.get(`/admin/departments?activeOnly=${activeOnly}`),
+  getDepartmentById:    (id)                    => api.get(`/admin/departments/${id}`),
+  createDepartment:     (data, initConfig=true) => api.post(`/admin/departments?initConfig=${initConfig}`, data),
+  updateDepartment:     (id, data)              => api.put(`/admin/departments/${id}`, data),
+  deactivateDepartment: (id)                    => api.delete(`/admin/departments/${id}`),
   // Department Config
-  getAllConfigurations: () => api.get('/api/v1/admin/config'),
-  getConfig: (deptId) => api.get(`/api/v1/admin/config/${deptId}`),
-  initializeConfig: (deptId) => api.post(`/api/v1/admin/config/${deptId}/initialize`),
-  updateConfig: (deptId, data) => api.put(`/api/v1/admin/config/${deptId}`, data),
-  resetConfig: (deptId) => api.post(`/api/v1/admin/config/${deptId}/reset`),
-  getSystemDefaults: () => api.get('/api/v1/admin/config/system-defaults'),
+  getAllConfigurations:  ()           => api.get('/admin/config'),
+  getConfig:            (deptId)     => api.get(`/admin/config/${deptId}`),
+  initializeConfig:     (deptId)     => api.post(`/admin/config/${deptId}/initialize`),
+  updateConfig:         (deptId, d)  => api.put(`/admin/config/${deptId}`, d),
+  resetConfig:          (deptId)     => api.post(`/admin/config/${deptId}/reset`),
+  getSystemDefaults:    ()           => api.get('/admin/config/system-defaults'),
 };
 
 // ─── User Management APIs ─────────────────────────────────
-// UserManagementController: @RequestMapping("/api/v1/users") → actual: /api/v1/api/v1/users
+// UserManagementController base: /users
 export const userAPI = {
-  getAllUsers: () => api.get('/api/v1/users'),
-  getMyProfile: () => api.get('/api/v1/users/me'),
-  getAllStaff: () => api.get('/api/v1/users/staff'),
-  getAllStudents: () => api.get('/api/v1/users/students'),
-  searchUsers: (keyword) => api.get(`/api/v1/users/search?keyword=${encodeURIComponent(keyword)}`),
-  getUsersByDepartment: (deptId) => api.get(`/api/v1/users/department/${deptId}`),
-  getUsersByRole: (role) => api.get(`/api/v1/users/role/${role}`),
-  getUserById: (userId) => api.get(`/api/v1/users/${userId}`),
-  createStaff: (data) => api.post('/api/v1/users', data),
-  updateUser: (userId, data) => api.put(`/api/v1/users/${userId}`, data),
-  suspendUser: (userId) => api.patch(`/api/v1/users/${userId}/suspend`),
-  activateUser: (userId) => api.patch(`/api/v1/users/${userId}/activate`),
-  resetPassword: (userId, data) => api.post(`/api/v1/users/${userId}/reset-password`, data),
-  deleteUser: (userId) => api.delete(`/api/v1/users/${userId}`),
-  getDepartmentStats: (deptId) => api.get(`/api/v1/users/department/${deptId}/stats`),
-  getSystemAdmins: () => api.get('/api/v1/users/system-admins'),
+  getAllUsers:         ()              => api.get('/users'),
+  getMyProfile:       ()              => api.get('/users/me'),
+  getAllStaff:         ()              => api.get('/users/staff'),
+  getAllStudents:      ()              => api.get('/users/students'),
+  searchUsers:        (keyword)       => api.get(`/users/search?keyword=${encodeURIComponent(keyword)}`),
+  getUsersByDepartment:(deptId)       => api.get(`/users/department/${deptId}`),
+  getUsersByRole:     (role)          => api.get(`/users/role/${role}`),
+  getUserById:        (userId)        => api.get(`/users/${userId}`),
+  createStaff:        (data)          => api.post('/users', data),
+  updateUser:         (userId, data)  => api.put(`/users/${userId}`, data),
+  suspendUser:        (userId)        => api.patch(`/users/${userId}/suspend`),
+  activateUser:       (userId)        => api.patch(`/users/${userId}/activate`),
+  resetPassword:      (userId, data)  => api.post(`/users/${userId}/reset-password`, data),
+  deleteUser:         (userId)        => api.delete(`/users/${userId}`),
+  getDepartmentStats: (deptId)        => api.get(`/users/department/${deptId}/stats`),
+  getSystemAdmins:    ()              => api.get('/users/system-admins'),
 };
 
 // ─── Department Admin APIs ────────────────────────────────
-// DepartmentAdminController: @RequestMapping("/api/v1/department-admin") → actual: /api/v1/api/v1/department-admin
+// DepartmentAdminController base: /department-admin
 export const deptAdminAPI = {
-  getMyDepartment: () => api.get('/api/v1/department-admin/my-department'),
-  updateMyDepartment: (data) => api.put('/api/v1/department-admin/my-department', data),
-  getMyDepartmentUsers: () => api.get('/api/v1/department-admin/my-department/users'),
-  getMyDepartmentStaff: () => api.get('/api/v1/department-admin/my-department/staff'),
-  getMyDepartmentStudents: () => api.get('/api/v1/department-admin/my-department/students'),
-  getMyDepartmentStats: () => api.get('/api/v1/department-admin/my-department/stats'),
-  getMyDepartmentConfig: () => api.get('/api/v1/department-admin/my-department/config'),
-  updateMyDepartmentConfig: (data) => api.put('/api/v1/department-admin/my-department/config', data),
-  resetMyDepartmentConfig: () => api.post('/api/v1/department-admin/my-department/config/reset'),
-  getActiveDepartments: () => api.get('/api/v1/department-admin/departments'),
-  getDepartmentById: (id) => api.get(`/api/v1/department-admin/departments/${id}`),
+  getMyDepartment:          ()     => api.get('/department-admin/my-department'),
+  updateMyDepartment:       (data) => api.put('/department-admin/my-department', data),
+  getMyDepartmentUsers:     ()     => api.get('/department-admin/my-department/users'),
+  getMyDepartmentStaff:     ()     => api.get('/department-admin/my-department/staff'),
+  getMyDepartmentStudents:  ()     => api.get('/department-admin/my-department/students'),
+  getMyDepartmentStats:     ()     => api.get('/department-admin/my-department/stats'),
+  getMyDepartmentConfig:    ()     => api.get('/department-admin/my-department/config'),
+  updateMyDepartmentConfig: (data) => api.put('/department-admin/my-department/config', data),
+  resetMyDepartmentConfig:  ()     => api.post('/department-admin/my-department/config/reset'),
+  getActiveDepartments:     ()     => api.get('/department-admin/departments'),
+  getDepartmentById:        (id)   => api.get(`/department-admin/departments/${id}`),
 };
 
 // ─── Equipment APIs ────────────────────────────────────────
 export const equipmentAPI = {
-  getAllEquipment: () => api.get('/equipment'),
-  getEquipmentById: (id) => api.get(`/equipment/${id}`),
-  createEquipment: (data) => api.post('/equipment', data),
-  updateEquipment: (id, data) => api.put(`/equipment/${id}`, data),
-  updateEquipmentStatus: (id, data) => api.patch(`/equipment/${id}/status`, data),
+  getAllEquipment:        ()          => api.get('/equipment'),
+  getEquipmentById:      (id)        => api.get(`/equipment/${id}`),
+  createEquipment:       (data)      => api.post('/equipment', data),
+  updateEquipment:       (id, data)  => api.put(`/equipment/${id}`, data),
+  updateEquipmentStatus: (id, data)  => api.patch(`/equipment/${id}/status`, data),
 };
 
 export default api;
