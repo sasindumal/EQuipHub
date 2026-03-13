@@ -23,7 +23,12 @@ import java.util.UUID;
 
 @Slf4j
 @RestController
-@RequestMapping("/admin/departments")
+// Fix: was /admin/departments which collided with AdminController's
+// POST /admin/departments endpoint, causing an ambiguous-mapping
+// IllegalStateException at startup.  AdminController already owns the
+// full /admin/departments/** surface; this controller is re-scoped to
+// /departments so both beans can coexist without conflict.
+@RequestMapping("/departments")
 @RequiredArgsConstructor
 @SecurityRequirement(name = "bearerAuth")
 @Tag(name = "Department Management", description = "SYSTEMADMIN: Manage departments")
