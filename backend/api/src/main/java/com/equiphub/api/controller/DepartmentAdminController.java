@@ -123,6 +123,23 @@ public class DepartmentAdminController {
         );
     }
 
+    /**
+     * Short alias: GET /my-department/staff
+     * Mirrors /my-department/users/staff for frontend compatibility.
+     */
+    @GetMapping("/my-department/staff")
+    @Operation(summary = "Get staff members in my department (short alias)")
+    public ResponseEntity<Map<String, Object>> getMyDepartmentStaffAlias(
+            @AuthenticationPrincipal CustomUserDetails currentUser) {
+
+        UUID deptId = getCallerDepartmentId(currentUser);
+        List<UserResponse> staff = userManagementService.getStaffByDepartment(deptId);
+        return ok(
+            Map.of("staff", staff, "count", staff.size()),
+            "Department staff retrieved successfully"
+        );
+    }
+
     @GetMapping("/my-department/users/staff")
     @Operation(summary = "Get staff members in my department (non-students)")
     public ResponseEntity<Map<String, Object>> getMyDepartmentStaff(
