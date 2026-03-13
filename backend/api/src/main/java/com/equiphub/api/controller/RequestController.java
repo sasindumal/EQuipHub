@@ -197,7 +197,7 @@ public class RequestController {
     }
 
     // ═════════════════════════════════════════════════════════════
-    //  5. GET DEPARTMENT REQUESTS
+    //  5. GET DEPARTMENT REQUESTS  (explicit UUID path)
     // ═════════════════════════════════════════════════════════════
     @GetMapping("/department/{departmentId}")
     @PreAuthorize("hasAnyRole('TECHNICALOFFICER','DEPARTMENTADMIN','HEADOFDEPARTMENT','LECTURER','INSTRUCTOR','APPOINTEDLECTURER','SYSTEMADMIN')")
@@ -237,6 +237,89 @@ public class RequestController {
     }
 
     // ═════════════════════════════════════════════════════════════
+    //  5a. GET DEPARTMENT REQUESTS  (JWT-resolved — no UUID in path)
+    //      Frontend: GET /requests/department
+    // ═════════════════════════════════════════════════════════════
+    @GetMapping("/department")
+    @PreAuthorize("hasAnyRole('TECHNICALOFFICER','DEPARTMENTADMIN','HEADOFDEPARTMENT','LECTURER','INSTRUCTOR','APPOINTEDLECTURER','SYSTEMADMIN')")
+    @Operation(summary = "Get all requests in the caller's department (JWT-resolved)",
+               description = "Resolves department from the authenticated user's JWT. " +
+                             "Identical response shape to GET /requests/department/{departmentId}.")
+    public ResponseEntity<Map<String, Object>> getDepartmentRequestsForCaller(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size,
+            @RequestParam(defaultValue = "createdAt") String sortBy,
+            @RequestParam(defaultValue = "DESC") String direction,
+            @AuthenticationPrincipal CustomUserDetails currentUser) {
+
+        if (!ALLOWED_SORT_FIELDS.contains(sortBy)) {
+            return bad("Invalid sortBy field '" + sortBy + "'. Allowed values: " + ALLOWED_SORT_FIELDS);
+        }
+
+        UUID deptId = callerDeptId(currentUser);
+        Sort sort = direction.equalsIgnoreCase("ASC")
+                ? Sort.by(sortBy).ascending()
+                : Sort.by(sortBy).descending();
+        Pageable pageable = PageRequest.of(page, Math.min(size, 100), sort);
+
+        Page<RequestResponseDTO> requests = requestService.getDepartmentRequests(deptId, pageable);
+        log.debug("[REQ_DEPT] {} fetched dept {} requests (page {})",
+                currentUser.getEmail(), deptId, page);
+        return ok(
+            Map.of("requests",      requests.getContent(),
+                   "totalElements", requests.getTotalElements(),
+                   "totalPages",    requests.getTotalPages(),
+                   "currentPage",   requests.getNumber(),
+                   "departmentId",  deptId),
+            "Department requests retrieved"
+        );
+    }
+
+    // ═════════════════════════════════════════════════════════════
+    //  5b. GET DEPARTMENT REQUEST STATS  (JWT-resolved — no UUID)
+    //      Frontend: GET /requests/department/stats
+    // ═════════════════════════════════════════════════════════════
+    @GetMapping("/department/stats")
+    @PreAuthorize("hasAnyRole('TECHNICALOFFICER','DEPARTMENTADMIN','HEADOFDEPARTMENT','SYSTEMADMIN')")
+    @Operation(summary = "Request statistics for the caller's department (JWT-resolved)",
+               description = "Returns request counts by status. " +
+                             "Identical response to GET /requests/department/{id}/stats.")
+    public ResponseEntity<Map<String, Object>> getDepartmentStatsForCaller(
+            @AuthenticationPrincipal CustomUserDetails currentUser) {
+
+        UUID deptId = callerDeptId(currentUser);
+        Map<String, Object> stats = requestService.getDepartmentRequestStats(deptId);
+        return ok(stats, "Department request statistics retrieved");
+    }
+
+    // ═════════════════════════════════════════════════════════════
+    //  5c. GET PENDING COUNT FOR DEPARTMENT  (badge endpoint)
+    //      Frontend: GET /requests/department/{departmentId}/pending
+    // ═════════════════════════════════════════════════════════════
+    @GetMapping("/department/{departmentId}/pending")
+    @PreAuthorize("hasAnyRole('TECHNICALOFFICER','DEPARTMENTADMIN','HEADOFDEPARTMENT','SYSTEMADMIN')")
+    @Operation(summary = "Count of pending-approval requests in a department",
+               description = "Lightweight count endpoint used by the Requests page badge. " +
+                             "Returns {count, departmentId}.")
+    public ResponseEntity<Map<String, Object>> getDepartmentPendingCount(
+            @PathVariable UUID departmentId,
+            @AuthenticationPrincipal CustomUserDetails currentUser) {
+
+        if (!hasRequestAccess(currentUser, departmentId)) {
+            return forbidden("Access restricted to your own department");
+        }
+
+        Pageable pageable = PageRequest.of(0, 1, Sort.by("createdAt").descending());
+        Page<RequestResponseDTO> pending = requestService.getRequestsByStatusAndDepartment(
+                Request.RequestStatus.PENDINGAPPROVAL, departmentId, pageable);
+        return ok(
+            Map.of("count",        pending.getTotalElements(),
+                   "departmentId", departmentId),
+            "Pending request count retrieved"
+        );
+    }
+
+    // ═════════════════════════════════════════════════════════════
     //  6. GET REQUESTS BY STATUS
     // ═════════════════════════════════════════════════════════════
     @GetMapping("/status/{status}")
@@ -261,10 +344,10 @@ public class RequestController {
         Pageable pageable = PageRequest.of(page, Math.min(size, 100), Sort.by("createdAt").descending());
         Page<RequestResponseDTO> requests = requestService.getRequestsByStatus(requestStatus, pageable);
         return ok(
-            Map.of("requests", requests.getContent(),
+            Map.of("requests",      requests.getContent(),
                    "totalElements", requests.getTotalElements(),
-                   "totalPages", requests.getTotalPages(),
-                   "status", requestStatus),
+                   "totalPages",    requests.getTotalPages(),
+                   "status",        requestStatus),
             "Requests filtered by status"
         );
     }
@@ -361,7 +444,7 @@ public class RequestController {
     }
 
     // ═════════════════════════════════════════════════════════════
-    //  11. DEPARTMENT REQUEST STATS
+    //  11. DEPARTMENT REQUEST STATS  (explicit UUID path)
     // ═════════════════════════════════════════════════════════════
     @GetMapping("/department/{departmentId}/stats")
     @PreAuthorize("hasAnyRole('TECHNICALOFFICER','DEPARTMENTADMIN','HEADOFDEPARTMENT','SYSTEMADMIN')")
@@ -395,10 +478,10 @@ public class RequestController {
         Pageable pageable = PageRequest.of(page, Math.min(size, 100), Sort.by("createdAt").descending());
         Page<RequestResponseDTO> requests = requestService.getDepartmentRequests(deptId, pageable);
         return ok(
-            Map.of("requests", requests.getContent(),
+            Map.of("requests",      requests.getContent(),
                    "totalElements", requests.getTotalElements(),
-                   "totalPages", requests.getTotalPages(),
-                   "departmentId", deptId),
+                   "totalPages",    requests.getTotalPages(),
+                   "departmentId",  deptId),
             "Your department's requests retrieved"
         );
     }
