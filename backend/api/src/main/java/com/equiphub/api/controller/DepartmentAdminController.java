@@ -108,8 +108,15 @@ public class DepartmentAdminController {
 
     // ═════════════════════════════════════════════════════════════
     //  DEPARTMENT USERS
+    //  Canonical paths:  /my-department/users
+    //                    /my-department/users/staff
+    //                    /my-department/users/students
+    //  Short aliases  :  /my-department/staff
+    //                    /my-department/students
+    //                    /my-department/members  (all users alias)
     // ═════════════════════════════════════════════════════════════
 
+    /** Canonical — all users */
     @GetMapping("/my-department/users")
     @Operation(summary = "Get all users in my department")
     public ResponseEntity<Map<String, Object>> getMyDepartmentUsers(
@@ -117,29 +124,23 @@ public class DepartmentAdminController {
 
         UUID deptId = getCallerDepartmentId(currentUser);
         List<UserResponse> users = userManagementService.getUsersByDepartment(deptId);
-        return ok(
-            Map.of("users", users, "count", users.size()),
-            "Department users retrieved successfully"
-        );
+        return ok(Map.of("users", users, "count", users.size()),
+                  "Department users retrieved successfully");
     }
 
-    /**
-     * Short alias: GET /my-department/staff
-     * Mirrors /my-department/users/staff for frontend compatibility.
-     */
-    @GetMapping("/my-department/staff")
-    @Operation(summary = "Get staff members in my department (short alias)")
-    public ResponseEntity<Map<String, Object>> getMyDepartmentStaffAlias(
+    /** Short alias — all users */
+    @GetMapping("/my-department/members")
+    @Operation(summary = "Get all users in my department (alias for /users)")
+    public ResponseEntity<Map<String, Object>> getMyDepartmentMembers(
             @AuthenticationPrincipal CustomUserDetails currentUser) {
 
         UUID deptId = getCallerDepartmentId(currentUser);
-        List<UserResponse> staff = userManagementService.getStaffByDepartment(deptId);
-        return ok(
-            Map.of("staff", staff, "count", staff.size()),
-            "Department staff retrieved successfully"
-        );
+        List<UserResponse> users = userManagementService.getUsersByDepartment(deptId);
+        return ok(Map.of("users", users, "count", users.size()),
+                  "Department users retrieved successfully");
     }
 
+    /** Canonical — staff only */
     @GetMapping("/my-department/users/staff")
     @Operation(summary = "Get staff members in my department (non-students)")
     public ResponseEntity<Map<String, Object>> getMyDepartmentStaff(
@@ -147,12 +148,23 @@ public class DepartmentAdminController {
 
         UUID deptId = getCallerDepartmentId(currentUser);
         List<UserResponse> staff = userManagementService.getStaffByDepartment(deptId);
-        return ok(
-            Map.of("staff", staff, "count", staff.size()),
-            "Department staff retrieved successfully"
-        );
+        return ok(Map.of("staff", staff, "count", staff.size()),
+                  "Department staff retrieved successfully");
     }
 
+    /** Short alias — staff only */
+    @GetMapping("/my-department/staff")
+    @Operation(summary = "Get staff members in my department (alias for /users/staff)")
+    public ResponseEntity<Map<String, Object>> getMyDepartmentStaffAlias(
+            @AuthenticationPrincipal CustomUserDetails currentUser) {
+
+        UUID deptId = getCallerDepartmentId(currentUser);
+        List<UserResponse> staff = userManagementService.getStaffByDepartment(deptId);
+        return ok(Map.of("staff", staff, "count", staff.size()),
+                  "Department staff retrieved successfully");
+    }
+
+    /** Canonical — students only */
     @GetMapping("/my-department/users/students")
     @Operation(summary = "Get students in my department")
     public ResponseEntity<Map<String, Object>> getMyDepartmentStudents(
@@ -160,10 +172,20 @@ public class DepartmentAdminController {
 
         UUID deptId = getCallerDepartmentId(currentUser);
         List<UserResponse> students = userManagementService.getStudentsByDepartment(deptId);
-        return ok(
-            Map.of("students", students, "count", students.size()),
-            "Department students retrieved successfully"
-        );
+        return ok(Map.of("students", students, "count", students.size()),
+                  "Department students retrieved successfully");
+    }
+
+    /** Short alias — students only */
+    @GetMapping("/my-department/students")
+    @Operation(summary = "Get students in my department (alias for /users/students)")
+    public ResponseEntity<Map<String, Object>> getMyDepartmentStudentsAlias(
+            @AuthenticationPrincipal CustomUserDetails currentUser) {
+
+        UUID deptId = getCallerDepartmentId(currentUser);
+        List<UserResponse> students = userManagementService.getStudentsByDepartment(deptId);
+        return ok(Map.of("students", students, "count", students.size()),
+                  "Department students retrieved successfully");
     }
 
     @GetMapping("/my-department/stats")
