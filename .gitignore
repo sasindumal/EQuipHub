@@ -1,2 +1,9 @@
 .DS_Store
 /apps/web/node_modules
+/node_modules/*
+*.log
+*.env
+*.env.local
+*.env.development
+*.env.test
+*.env.production
