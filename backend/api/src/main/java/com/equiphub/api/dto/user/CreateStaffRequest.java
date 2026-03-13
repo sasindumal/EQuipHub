@@ -22,11 +22,7 @@ public class CreateStaffRequest {
     @Size(max = 20)
     private String phone;
 
-    @NotBlank(message = "Role is required")
-    @Pattern(
-        regexp = "DEPARTMENTADMIN|HEADOFDEPARTMENT|LECTURER|INSTRUCTOR|APPOINTEDLECTURER|TECHNICALOFFICER",
-        message = "Role must be one of: DEPARTMENTADMIN, HEADOFDEPARTMENT, LECTURER, INSTRUCTOR, APPOINTEDLECTURER, TECHNICALOFFICER"
-    )
+    @NotNull(message = "Role is required")
     private User.Role role;
 
     // Required for non-SYSTEMADMIN roles

@@ -1,6 +1,9 @@
 .DS_Store
 /apps/web/node_modules
-logs/equiphub-dev.2026-03-12.0.log
+/node_modules/*
 *.log
-/frontend/.next
-/frontend/node_modules
+*.env
+*.env.local
+*.env.development
+*.env.test
+*.env.production
