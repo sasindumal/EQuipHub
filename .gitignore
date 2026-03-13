@@ -2,3 +2,5 @@
 /apps/web/node_modules
 logs/equiphub-dev.2026-03-12.0.log
 *.log
+/frontend/.next
+/frontend/node_modules
