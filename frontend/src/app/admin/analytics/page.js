@@ -9,9 +9,9 @@ import {
     HiOutlineUserGroup,
     HiOutlineAcademicCap,
     HiOutlineRefresh,
-    HiOutlineChartBar,
     HiOutlineTrendingUp,
     HiOutlineIdentification,
+    HiOutlineExclamationCircle,
 } from 'react-icons/hi';
 
 // ─── tiny pure-CSS bar chart ──────────────────────────────────────────────────
@@ -148,15 +148,14 @@ const STATUS_COLORS = {
 
 // ─── main page ────────────────────────────────────────────────────────────────
 export default function AnalyticsPage() {
-    const [loading, setLoading]               = useState(true);
-    const [refreshing, setRefreshing]         = useState(false);
-    const [lastUpdated, setLastUpdated]       = useState(null);
-
-    const [departments, setDepartments]       = useState([]);
-    const [users, setUsers]                   = useState([]);
-    const [staff, setStaff]                   = useState([]);
-    const [students, setStudents]             = useState([]);
-    const [error, setError]                   = useState(null);
+    const [loading, setLoading]         = useState(true);
+    const [refreshing, setRefreshing]   = useState(false);
+    const [lastUpdated, setLastUpdated] = useState(null);
+    const [departments, setDepartments] = useState([]);
+    const [users, setUsers]             = useState([]);
+    const [staff, setStaff]             = useState([]);
+    const [students, setStudents]       = useState([]);
+    const [error, setError]             = useState(null);
 
     const load = async (isRefresh = false) => {
         isRefresh ? setRefreshing(true) : setLoading(true);
@@ -176,10 +175,10 @@ export default function AnalyticsPage() {
                 return Array.isArray(d) ? d : [];
             };
 
-            setDepartments(safe(deptRes,  'data', 'departments') || safe(deptRes,  'data'));
-            setUsers(       safe(usersRes, 'data', 'users')       || safe(usersRes, 'data'));
-            setStaff(       safe(staffRes, 'data', 'staff')       || safe(staffRes, 'data'));
-            setStudents(    safe(studentsRes, 'data', 'students') || safe(studentsRes, 'data'));
+            setDepartments(safe(deptRes,      'data', 'departments') || safe(deptRes,      'data'));
+            setUsers(       safe(usersRes,     'data', 'users')       || safe(usersRes,     'data'));
+            setStaff(       safe(staffRes,     'data', 'staff')       || safe(staffRes,     'data'));
+            setStudents(    safe(studentsRes,  'data', 'students')    || safe(studentsRes,  'data'));
             setLastUpdated(new Date());
         } catch (e) {
             console.error('Analytics load error:', e);
@@ -240,12 +239,12 @@ export default function AnalyticsPage() {
     const pendingUsers = allUsers.filter((u) => u.status === 'PENDING').length;
 
     const statCards = [
-        { label: 'Total Users',         value: allUsers.length,     icon: HiOutlineUsers,          color: 'purple' },
-        { label: 'Active Users',         value: activeUsers,         icon: HiOutlineTrendingUp,     color: 'green'  },
-        { label: 'Pending Verification', value: pendingUsers,        icon: HiOutlineClock ?? HiOutlineIdentification, color: 'orange' },
-        { label: 'Active Departments',   value: activeDepts,         icon: HiOutlineOfficeBuilding, color: 'blue'   },
-        { label: 'Staff Members',        value: staff.length,        icon: HiOutlineUserGroup,      color: 'blue'   },
-        { label: 'Students',             value: students.length,     icon: HiOutlineAcademicCap,    color: 'purple' },
+        { label: 'Total Users',         value: allUsers.length,  icon: HiOutlineUsers,             color: 'purple' },
+        { label: 'Active Users',         value: activeUsers,      icon: HiOutlineTrendingUp,        color: 'green'  },
+        { label: 'Pending Verification', value: pendingUsers,     icon: HiOutlineExclamationCircle, color: 'orange' },
+        { label: 'Active Departments',   value: activeDepts,      icon: HiOutlineOfficeBuilding,    color: 'blue'   },
+        { label: 'Staff Members',        value: staff.length,     icon: HiOutlineUserGroup,         color: 'blue'   },
+        { label: 'Students',             value: students.length,  icon: HiOutlineAcademicCap,       color: 'purple' },
     ];
 
     return (
