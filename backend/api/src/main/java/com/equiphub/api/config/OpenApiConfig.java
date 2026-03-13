@@ -13,9 +13,9 @@ import io.swagger.v3.oas.models.Components;
 import io.swagger.v3.oas.models.OpenAPI;
 import java.util.List;
 
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+
 @Configuration
 @OpenAPIDefinition(
     info = @Info(
@@ -71,15 +71,15 @@ import org.springframework.context.annotation.Configuration;
 )
 
 public class OpenApiConfig {
-    
-    @Value("${server.servlet.context-path:/api/v1}")
-    private String contextPath;
 
     @Bean
     public OpenAPI customOpenAPI() {
-        // Define the security scheme
+        // NOTE: Do NOT append server.servlet.context-path (/api/v1) to the server URL here.
+        // Spring Boot automatically prepends the context-path to every incoming request.
+        // Adding it here as well causes Swagger to send requests to /api/v1/api/v1/* which
+        // results in NoResourceFoundException (500). Use bare host URLs only.
         final String securitySchemeName = "bearerAuth";
-        
+
         return new OpenAPI()
                 .info(new io.swagger.v3.oas.models.info.Info()
                         .title("EQuipHub API v3.8")
@@ -104,15 +104,15 @@ public class OpenApiConfig {
                         .license(new io.swagger.v3.oas.models.info.License()
                                 .name("Apache 2.0")
                                 .url("https://www.apache.org/licenses/LICENSE-2.0.html")))
+                // Bare host only — context-path (/api/v1) is applied by Spring Boot automatically
                 .servers(List.of(
                         new io.swagger.v3.oas.models.servers.Server()
-                                .url("http://localhost:8080" + contextPath)
+                                .url("http://localhost:8080")
                                 .description("Local Development Server"),
                         new io.swagger.v3.oas.models.servers.Server()
-                                .url("https://api.equiphub.ac.lk" + contextPath)
+                                .url("https://api.equiphub.ac.lk")
                                 .description("Production Server")
                 ))
-                // Add security scheme definition
                 .components(new Components()
                         .addSecuritySchemes(securitySchemeName, new io.swagger.v3.oas.models.security.SecurityScheme()
                                 .name(securitySchemeName)
@@ -120,9 +120,6 @@ public class OpenApiConfig {
                                 .scheme("bearer")
                                 .bearerFormat("JWT")
                                 .description("Enter JWT token obtained from /auth/login")))
-                // Add global security requirement
                 .addSecurityItem(new io.swagger.v3.oas.models.security.SecurityRequirement().addList(securitySchemeName));
     }
-
-    
 }
