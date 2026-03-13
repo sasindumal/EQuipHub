@@ -75,6 +75,7 @@ public class UserManagementService {
     // ─────────────────────────────────────────────────────────────
     //  READ
     // ─────────────────────────────────────────────────────────────
+    @Transactional(readOnly = true)
     public List<UserResponse> getAllUsers() {
         return userRepository.findAll()
                 .stream()
@@ -83,6 +84,7 @@ public class UserManagementService {
                 .collect(Collectors.toList());
     }
 
+    @Transactional(readOnly = true)
     public List<UserResponse> getAllStaff() {
         return userRepository.findAllStaff()        // uses @Query — no full table scan
                 .stream()
@@ -90,6 +92,7 @@ public class UserManagementService {
                 .collect(Collectors.toList());
     }
 
+    @Transactional(readOnly = true)
     public List<UserResponse> getAllStudents() {
         return userRepository.findByRole(User.Role.STUDENT)
                 .stream()
@@ -98,6 +101,7 @@ public class UserManagementService {
                 .collect(Collectors.toList());
     }
 
+    @Transactional(readOnly = true)
     public List<UserResponse> getStaffByDepartment(UUID departmentId) {
         return userRepository.findStaffByDepartmentId(departmentId)
                 .stream()
@@ -105,6 +109,7 @@ public class UserManagementService {
                 .collect(Collectors.toList());
     }
 
+    @Transactional(readOnly = true)
     public List<UserResponse> getStudentsByDepartment(UUID departmentId) {
         return userRepository.findByDepartmentDepartmentIdAndRole(departmentId, User.Role.STUDENT)
                 .stream()
@@ -113,6 +118,7 @@ public class UserManagementService {
                 .collect(Collectors.toList());
     }
 
+    @Transactional(readOnly = true)
     public List<UserResponse> getUsersByDepartment(UUID departmentId) {
         return userRepository.findByDepartmentDepartmentId(departmentId)
                 .stream()
@@ -121,6 +127,7 @@ public class UserManagementService {
                 .collect(Collectors.toList());
     }
 
+    @Transactional(readOnly = true)
     public List<UserResponse> getUsersByRole(String role) {
         User.Role userRole = User.Role.valueOf(role);
         return userRepository.findByRole(userRole)
@@ -130,6 +137,7 @@ public class UserManagementService {
                 .collect(Collectors.toList());
     }
 
+    @Transactional(readOnly = true)
     public List<UserResponse> searchUsers(String keyword) {
         return userRepository.searchUsers(keyword)
                 .stream()
@@ -137,6 +145,7 @@ public class UserManagementService {
                 .collect(Collectors.toList());
     }
 
+    @Transactional(readOnly = true)
     public UserResponse getUserById(UUID userId) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new RuntimeException("User not found: " + userId));
@@ -236,6 +245,7 @@ public class UserManagementService {
     // ─────────────────────────────────────────────────────────────
     //  DEPARTMENT STATISTICS
     // ─────────────────────────────────────────────────────────────
+    @Transactional(readOnly = true)
     public Map<String, Object> getDepartmentStats(UUID departmentId) {
         long totalStaff    = userRepository.countActiveStaffByDepartment(departmentId);
         long totalStudents = userRepository.countActiveStudentsByDepartment(departmentId);
