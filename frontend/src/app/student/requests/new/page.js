@@ -7,30 +7,38 @@ import { requestAPI, equipmentAPI, approvalAPI } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
 import { HiOutlinePlusCircle, HiOutlineTrash } from 'react-icons/hi';
 
+// Convert a date string 'YYYY-MM-DD' to a full ISO LocalDateTime string
+// Backend @NotNull LocalDateTime fromDateTime expects e.g. "2026-03-20T00:00:00"
+const toDateTime = (dateStr, endOfDay = false) => {
+    if (!dateStr) return null;
+    return `${dateStr}T${endOfDay ? '23:59:59' : '00:00:00'}`;
+};
+
 export default function NewRequestPage() {
     const router = useRouter();
     const { user } = useAuth();
     const [equipment, setEquipment] = useState([]);
-    const [loadingEq, setLoadingEq] = useState(true);
+    const [loadingEq, setLoadingEq]   = useState(true);
     const [submitting, setSubmitting] = useState(false);
-    const [error, setError]     = useState(null);
-    const [success, setSuccess] = useState(null);
-    const [step, setStep]       = useState('form'); // 'form' | 'success'
+    const [error, setError]           = useState(null);
+    const [success, setSuccess]       = useState(null);
+    const [step, setStep]             = useState('form'); // 'form' | 'success'
 
     const [form, setForm] = useState({
-        requestType: 'COURSEWORK',
-        purpose:     '',
-        borrowDate:  '',
-        returnDate:  '',
-        notes:       '',
-        items:       [{ equipmentId: '', quantity: 1, notes: '' }],
+        requestType:   'COURSEWORK',
+        purpose:       '',
+        borrowDate:    '',   // UI only  → mapped to fromDateTime
+        returnDate:    '',   // UI only  → mapped to toDateTime
+        notes:         '',
+        priorityLevel: 1,    // 1 = Normal, 2 = High, 3 = Emergency
+        isEmergency:   false,
+        items: [{ equipmentId: '', quantityRequested: 1, notes: '' }],
     });
 
     useEffect(() => {
         equipmentAPI.getAllEquipment()
             .then(res => {
-                const raw = res.data?.data || res.data || [];
-                // handle both array and {content:[]} pagination shapes
+                const raw  = res.data?.data || res.data || [];
                 const list = Array.isArray(raw) ? raw : (raw.content || []);
                 setEquipment(list);
             })
@@ -43,11 +51,11 @@ export default function NewRequestPage() {
         ...f,
         items: f.items.map((it, i) => i === idx ? { ...it, [key]: val } : it),
     }));
-    const addItem    = () => setForm(f => ({ ...f, items: [...f.items, { equipmentId: '', quantity: 1, notes: '' }] }));
+    const addItem    = () => setForm(f => ({ ...f, items: [...f.items, { equipmentId: '', quantityRequested: 1, notes: '' }] }));
     const removeItem = idx => setForm(f => ({ ...f, items: f.items.filter((_, i) => i !== idx) }));
 
     const handleSubmit = async () => {
-        // --- Validation ---
+        // --- Client-side validation ---
         if (!form.purpose.trim()) {
             setError('Purpose is required.'); return;
         }
@@ -60,25 +68,53 @@ export default function NewRequestPage() {
         if (form.items.some(it => !it.equipmentId)) {
             setError('Please select equipment for every item.'); return;
         }
+        if (form.items.some(it => !it.quantityRequested || it.quantityRequested < 1)) {
+            setError('Quantity must be at least 1 for every item.'); return;
+        }
 
         setSubmitting(true); setError(null);
         let createdId = null;
+
         try {
-            // Step 1: Create the request (saved as DRAFT)
+            // ----------------------------------------------------------------
+            // Build payload matching backend CreateRequestDTO exactly:
+            //   studentId          UUID          @NotNull
+            //   departmentId       UUID          @NotNull
+            //   requestType        Enum          @NotNull  (COURSEWORK|RESEARCH|PERSONAL|LABSESSION|EXTRACURRICULAR)
+            //   fromDateTime       LocalDateTime @NotNull  (ISO string)
+            //   toDateTime         LocalDateTime @NotNull  (ISO string)
+            //   priorityLevel      Integer       @NotNull  (1-3)
+            //   slaHours           Integer       @NotNull  (default 48)
+            //   description/notes  String        optional
+            //   isEmergency        Boolean       optional
+            //   items[]
+            //     equipmentId      UUID          @NotNull
+            //     quantityRequested Integer      @NotNull  (NOT "quantity")
+            //     notes            String        optional
+            // ----------------------------------------------------------------
+            const studentId = user?.userId || user?.id;
+            if (!studentId) throw new Error('User session expired. Please log in again.');
+
             const payload = {
-                requestType:  form.requestType,
-                purpose:      form.purpose.trim(),
-                borrowDate:   form.borrowDate,
-                returnDate:   form.returnDate,
-                notes:        form.notes.trim() || null,
+                studentId:    studentId,
                 departmentId: user?.departmentId,
+                requestType:  form.requestType,
+                fromDateTime: toDateTime(form.borrowDate, false),
+                toDateTime:   toDateTime(form.returnDate, true),
+                description:  form.purpose.trim(),
+                notes:        form.notes.trim() || null,
+                priorityLevel: form.isEmergency ? 3 : form.priorityLevel,
+                slaHours:     48,
+                isEmergency:  form.isEmergency,
+                emergencyJustification: form.isEmergency ? form.purpose.trim() : null,
                 items: form.items.map(it => ({
-                    equipmentId: it.equipmentId,
-                    quantity:    Number(it.quantity) || 1,
-                    notes:       it.notes || null,
+                    equipmentId:       it.equipmentId,
+                    quantityRequested: Number(it.quantityRequested) || 1,
+                    notes:             it.notes || null,
                 })),
             };
 
+            // Step 1: Create DRAFT
             const createRes = await requestAPI.createRequest(payload);
             const newReq    = createRes.data?.data || createRes.data;
             createdId       = newReq?.requestId || newReq?.id;
@@ -88,29 +124,32 @@ export default function NewRequestPage() {
             // Step 2: Submit DRAFT → PENDINGAPPROVAL
             await requestAPI.submitRequest(createdId);
 
-            // Step 3: Try auto-approval (low-value / pre-approved equipment)
+            // Step 3: Attempt auto-approval (silent — eligible for COURSEWORK + low qty)
             try {
                 await approvalAPI.attemptAutoApproval(createdId);
             } catch {
-                // auto-approval is optional — silently skip if not eligible
+                // Not eligible — safe to ignore, request stays in PENDINGAPPROVAL
             }
 
-            setSuccess(`Request ${createdId} submitted successfully! Awaiting approval.`);
+            setSuccess(`Request ${createdId} submitted! It is now pending approval.`);
             setStep('success');
             setTimeout(() => router.push('/student/requests'), 2500);
 
         } catch (e) {
-            // If we created the request but submit failed, mention the ID so they can retry
-            const msg = e.response?.data?.message || e.message || 'Submission failed.';
+            const serverMsg = e.response?.data?.message
+                || (e.response?.data?.errors ? Object.values(e.response.data.errors).join(', ') : null)
+                || e.message
+                || 'Submission failed. Please try again.';
             setError(createdId
-                ? `Request ${createdId} was saved as a draft but could not be submitted: ${msg}`
-                : msg
+                ? `Request ${createdId} was saved as a draft but could not be submitted: ${serverMsg}`
+                : serverMsg
             );
         } finally {
             setSubmitting(false);
         }
     };
 
+    // ── Success screen ──────────────────────────────────────────────────────
     if (step === 'success') {
         return (
             <DashboardLayout pageTitle="Request Submitted" pageSubtitle="Your request is now pending approval">
@@ -124,6 +163,7 @@ export default function NewRequestPage() {
         );
     }
 
+    // ── Form ────────────────────────────────────────────────────────────────
     return (
         <DashboardLayout pageTitle="New Borrow Request" pageSubtitle="Fill in the details to borrow equipment">
             {error && <div className="alert alert-danger" style={{ marginBottom: 16 }}>{error}</div>}
@@ -134,7 +174,7 @@ export default function NewRequestPage() {
                 </div>
                 <div style={{ padding: '0 20px 24px', display: 'flex', flexDirection: 'column', gap: 16 }}>
 
-                    {/* Row 1: Type + Dates */}
+                    {/* Type + Dates */}
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 16 }}>
                         <div>
                             <label className="form-label">Request Type</label>
@@ -142,6 +182,7 @@ export default function NewRequestPage() {
                                 <option value="COURSEWORK">Coursework</option>
                                 <option value="RESEARCH">Research</option>
                                 <option value="PERSONAL">Personal Project</option>
+                                <option value="EXTRACURRICULAR">Extracurricular</option>
                             </select>
                         </div>
                         <div>
@@ -158,9 +199,30 @@ export default function NewRequestPage() {
                         </div>
                     </div>
 
+                    {/* Priority + Emergency */}
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 16 }}>
+                        <div>
+                            <label className="form-label">Priority</label>
+                            <select className="form-input" value={form.priorityLevel} onChange={e => setField('priorityLevel', Number(e.target.value))}>
+                                <option value={1}>Normal</option>
+                                <option value={2}>High</option>
+                            </select>
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 10, paddingTop: 22 }}>
+                            <input type="checkbox" id="emergency" checked={form.isEmergency}
+                                onChange={e => setField('isEmergency', e.target.checked)}
+                                style={{ width: 16, height: 16, accentColor: '#dc2626' }} />
+                            <label htmlFor="emergency" style={{ fontSize: 14, color: 'var(--text-main)', cursor: 'pointer' }}>
+                                Mark as Emergency
+                            </label>
+                        </div>
+                    </div>
+
                     {/* Purpose */}
                     <div>
-                        <label className="form-label">Purpose <span style={{ color: '#ef4444' }}>*</span></label>
+                        <label className="form-label">
+                            Purpose / Description <span style={{ color: '#ef4444' }}>*</span>
+                        </label>
                         <textarea className="form-input" rows={3}
                             placeholder="Describe why you need this equipment…"
                             value={form.purpose} onChange={e => setField('purpose', e.target.value)} />
@@ -168,8 +230,10 @@ export default function NewRequestPage() {
 
                     {/* Notes */}
                     <div>
-                        <label className="form-label">Additional Notes <span style={{ color: 'var(--secondary)', fontSize: 12 }}>(optional)</span></label>
-                        <input className="form-input" placeholder="Any special requirements or notes…"
+                        <label className="form-label">
+                            Additional Notes <span style={{ color: 'var(--secondary)', fontSize: 12 }}>(optional)</span>
+                        </label>
+                        <input className="form-input" placeholder="Any special requirements…"
                             value={form.notes} onChange={e => setField('notes', e.target.value)} />
                     </div>
 
@@ -188,7 +252,7 @@ export default function NewRequestPage() {
                         {form.items.map((item, idx) => (
                             <div key={idx} style={{
                                 display: 'grid',
-                                gridTemplateColumns: `1fr 80px 1fr ${form.items.length > 1 ? '36px' : ''}`,
+                                gridTemplateColumns: `1fr 90px 1fr${form.items.length > 1 ? ' 36px' : ''}`,
                                 gap: 10, marginBottom: 10, alignItems: 'end',
                             }}>
                                 <div>
@@ -209,9 +273,10 @@ export default function NewRequestPage() {
                                 </div>
                                 <div>
                                     {idx === 0 && <label className="form-label">Qty</label>}
+                                    {/* Field name is quantityRequested to match backend DTO */}
                                     <input type="number" min={1} className="form-input"
-                                        value={item.quantity}
-                                        onChange={e => setItem(idx, 'quantity', Number(e.target.value))} />
+                                        value={item.quantityRequested}
+                                        onChange={e => setItem(idx, 'quantityRequested', Number(e.target.value))} />
                                 </div>
                                 <div>
                                     {idx === 0 && <label className="form-label">Item Notes</label>}
@@ -235,8 +300,7 @@ export default function NewRequestPage() {
                         <button className="btn btn-outline" onClick={() => router.back()} disabled={submitting}>
                             Cancel
                         </button>
-                        <button className="btn" onClick={handleSubmit} disabled={submitting}
-                            style={{ minWidth: 140 }}>
+                        <button className="btn" onClick={handleSubmit} disabled={submitting} style={{ minWidth: 150 }}>
                             {submitting ? 'Submitting…' : '📤 Submit Request'}
                         </button>
                     </div>
