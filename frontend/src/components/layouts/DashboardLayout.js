@@ -18,54 +18,136 @@ import {
     HiOutlineUserGroup,
     HiOutlineAcademicCap,
     HiOutlineDesktopComputer,
+    HiOutlineExclamationCircle,
+    HiOutlineCheckCircle,
+    HiOutlineSwitchHorizontal,
+    HiOutlineArrowCircleDown,
+    HiOutlineViewGrid,
+    HiOutlineBan,
 } from 'react-icons/hi';
 import './dashboard.css';
 
+// ─── System Admin ─────────────────────────────────────────
 const sysAdminNav = [
     {
         title: 'MAIN',
         items: [
-            { label: 'Dashboard', href: '/admin', icon: HiOutlineHome },
-            { label: 'Departments', href: '/admin/departments', icon: HiOutlineOfficeBuilding },
-            { label: 'Users', href: '/admin/users', icon: HiOutlineUsers },
+            { label: 'Dashboard',    href: '/admin',                  icon: HiOutlineHome             },
+            { label: 'Departments',  href: '/admin/departments',       icon: HiOutlineOfficeBuilding   },
+            { label: 'Users',        href: '/admin/users',             icon: HiOutlineUsers            },
         ],
     },
     {
         title: 'SYSTEM',
         items: [
-            { label: 'Configuration', href: '/admin/configuration', icon: HiOutlineCog },
-            { label: 'Analytics', href: '/admin/analytics', icon: HiOutlineChartBar },
+            { label: 'Configuration', href: '/admin/configuration',   icon: HiOutlineCog              },
+            { label: 'Analytics',     href: '/admin/analytics',        icon: HiOutlineChartBar         },
         ],
     },
 ];
 
+// ─── Department Admin ─────────────────────────────────────
 const deptAdminNav = [
     {
         title: 'DEPARTMENT',
         items: [
-            { label: 'Dashboard', href: '/department-admin', icon: HiOutlineHome },
-            { label: 'Staff', href: '/department-admin/staff', icon: HiOutlineUserGroup },
-            { label: 'Students', href: '/department-admin/students', icon: HiOutlineAcademicCap },
+            { label: 'Dashboard', href: '/department-admin',           icon: HiOutlineHome             },
+            { label: 'Staff',     href: '/department-admin/staff',     icon: HiOutlineUserGroup        },
+            { label: 'Students',  href: '/department-admin/students',  icon: HiOutlineAcademicCap      },
         ],
     },
     {
         title: 'MANAGEMENT',
         items: [
-            { label: 'Equipment', href: '/department-admin/equipment', icon: HiOutlineDesktopComputer },
-            { label: 'Requests', href: '/department-admin/requests', icon: HiOutlineClipboardList },
-            { label: 'Settings', href: '/department-admin/settings', icon: HiOutlineCog },
+            { label: 'Equipment', href: '/department-admin/equipment', icon: HiOutlineDesktopComputer  },
+            { label: 'Requests',  href: '/department-admin/requests',  icon: HiOutlineClipboardList    },
+            { label: 'Penalties', href: '/department-admin/penalties', icon: HiOutlineExclamationCircle},
+            { label: 'Settings',  href: '/department-admin/settings',  icon: HiOutlineCog              },
         ],
     },
 ];
+
+// ─── Technical Officer ────────────────────────────────────
+const technicalOfficerNav = [
+    {
+        title: 'OVERVIEW',
+        items: [
+            { label: 'Dashboard',      href: '/technical-officer',          icon: HiOutlineHome            },
+        ],
+    },
+    {
+        title: 'EQUIPMENT OPS',
+        items: [
+            { label: 'Issue Equipment', href: '/technical-officer/issue',   icon: HiOutlineSwitchHorizontal },
+            { label: 'Process Return',  href: '/technical-officer/returns', icon: HiOutlineArrowCircleDown  },
+        ],
+    },
+];
+
+// ─── Lecturer / HOD ───────────────────────────────────────
+const lecturerNav = [
+    {
+        title: 'APPROVALS',
+        items: [
+            { label: 'Approval Queue', href: '/lecturer', icon: HiOutlineCheckCircle },
+        ],
+    },
+];
+
+// ─── Student ──────────────────────────────────────────────
+const studentNav = [
+    {
+        title: 'MY PORTAL',
+        items: [
+            { label: 'Dashboard',   href: '/student',           icon: HiOutlineHome             },
+            { label: 'My Requests', href: '/student/requests',  icon: HiOutlineClipboardList    },
+            { label: 'Penalties',   href: '/student/penalties', icon: HiOutlineBan              },
+        ],
+    },
+];
+
+// ─── Role → nav config map ────────────────────────────────
+const ROLE_CONFIG = {
+    SYSTEMADMIN:       { nav: sysAdminNav,          label: 'System Admin',        rootHref: '/admin'            },
+    DEPARTMENTADMIN:   { nav: deptAdminNav,          label: 'Dept Admin',          rootHref: '/department-admin' },
+    HEADOFDEPARTMENT:  { nav: deptAdminNav,          label: 'Head of Department',  rootHref: '/department-admin' },
+    TECHNICALOFFICER:  { nav: technicalOfficerNav,   label: 'Technical Officer',   rootHref: '/technical-officer'},
+    LECTURER:          { nav: lecturerNav,           label: 'Lecturer',            rootHref: '/lecturer'         },
+    APPOINTEDLECTURER: { nav: lecturerNav,           label: 'Appointed Lecturer',  rootHref: '/lecturer'         },
+    INSTRUCTOR:        { nav: lecturerNav,           label: 'Instructor',          rootHref: '/lecturer'         },
+    STUDENT:           { nav: studentNav,            label: 'Student',             rootHref: '/student'          },
+};
+
+// ─── Non-root hrefs that should use exact match for active ─
+const EXACT_MATCH_HREFS = new Set([
+    '/admin',
+    '/department-admin',
+    '/technical-officer',
+    '/lecturer',
+    '/student',
+]);
 
 export default function DashboardLayout({ children, pageTitle, pageSubtitle }) {
     const pathname = usePathname();
     const { user, logout } = useAuth();
     const [sidebarOpen, setSidebarOpen] = useState(false);
 
-    const isAdmin = pathname.startsWith('/admin');
-    const navSections = isAdmin ? sysAdminNav : deptAdminNav;
-    const roleLabel = isAdmin ? 'System Admin' : 'Dept Admin';
+    // Resolve nav + label by user role; fall back to path-based detection
+    const roleKey = user?.role?.toUpperCase();
+    const roleConfig = ROLE_CONFIG[roleKey] || (
+        pathname.startsWith('/admin')
+            ? ROLE_CONFIG.SYSTEMADMIN
+            : pathname.startsWith('/technical-officer')
+            ? ROLE_CONFIG.TECHNICALOFFICER
+            : pathname.startsWith('/lecturer')
+            ? ROLE_CONFIG.LECTURER
+            : pathname.startsWith('/student')
+            ? ROLE_CONFIG.STUDENT
+            : ROLE_CONFIG.DEPARTMENTADMIN
+    );
+
+    const navSections = roleConfig.nav;
+    const roleLabel   = roleConfig.label;
 
     const getInitials = () => {
         if (!user) return '?';
@@ -102,8 +184,9 @@ export default function DashboardLayout({ children, pageTitle, pageSubtitle }) {
                         <div key={section.title} className="sidebar-section">
                             <div className="sidebar-section-title">{section.title}</div>
                             {section.items.map((item) => {
-                                const isActive = pathname === item.href ||
-                                    (item.href !== '/admin' && item.href !== '/department-admin' && pathname.startsWith(item.href));
+                                const isActive = EXACT_MATCH_HREFS.has(item.href)
+                                    ? pathname === item.href
+                                    : pathname === item.href || pathname.startsWith(item.href + '/');
                                 return (
                                     <Link
                                         key={item.href}
@@ -145,7 +228,7 @@ export default function DashboardLayout({ children, pageTitle, pageSubtitle }) {
                     </button>
                     <div>
                         <h1 className="topbar-title">{pageTitle || 'Dashboard'}</h1>
-                        {pageSubtitle && <p className="topbar-subtitle">{pageSubtitle}</p>}
+                        {pageSubtitle && <p className="topbar-subtitle">{pageSubtitle}</p>}</p>}
                     </div>
                 </div>
                 <div className="topbar-right">
