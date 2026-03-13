@@ -5,8 +5,25 @@ import { authAPI } from './api';
 
 const AuthContext = createContext(null);
 
+// Safely extract the user payload regardless of whether the backend
+// wraps it as { success, data: {...} } or returns the object directly.
+const extractUser = (payload) => {
+    const raw = payload?.data ?? payload;
+    if (!raw?.userId && !raw?.role) return null;
+    return {
+        userId:       raw.userId,
+        email:        raw.email,
+        firstName:    raw.firstName,
+        lastName:     raw.lastName,
+        role:         raw.role,
+        departmentId: raw.departmentId,
+        indexNumber:  raw.indexNumber,
+        status:       raw.status,
+    };
+};
+
 export function AuthProvider({ children }) {
-    const [user, setUser] = useState(null);
+    const [user, setUser]       = useState(null);
     const [loading, setLoading] = useState(true);
 
     const fetchUser = useCallback(async () => {
@@ -16,8 +33,12 @@ export function AuthProvider({ children }) {
                 setLoading(false);
                 return;
             }
-            const res = await authAPI.getCurrentUser();
-            setUser(res.data);
+            const res  = await authAPI.getCurrentUser();
+            // Backend wraps: { success, message, data: { userId, role, ... } }
+            // Unwrap with extractUser so user.role is never undefined.
+            const parsed = extractUser(res.data);
+            if (!parsed) throw new Error('Invalid user payload from /auth/me');
+            setUser(parsed);
         } catch {
             localStorage.removeItem('equiphub_token');
             localStorage.removeItem('equiphub_user');
@@ -32,18 +53,13 @@ export function AuthProvider({ children }) {
     }, [fetchUser]);
 
     const login = async (email, password) => {
-        const res = await authAPI.login({ email, password });
+        const res  = await authAPI.login({ email, password });
         const data = res.data;
+        // Login endpoint returns token + user fields at top level
         localStorage.setItem('equiphub_token', data.token);
         localStorage.setItem('equiphub_user', JSON.stringify(data));
-        setUser({
-            userId:       data.userId,
-            email:        data.email,
-            firstName:    data.firstName,
-            lastName:     data.lastName,
-            role:         data.role,
-            departmentId: data.departmentId,
-        });
+        const parsed = extractUser(data);
+        setUser(parsed);
         return data;
     };
 
@@ -56,21 +72,15 @@ export function AuthProvider({ children }) {
 
     const getRedirectPath = (role) => {
         switch (role) {
-            case 'SYSTEMADMIN':
-                return '/admin';
+            case 'SYSTEMADMIN':      return '/admin';
             case 'DEPARTMENTADMIN':
-            case 'HEADOFDEPARTMENT':
-                return '/department-admin';
-            case 'TECHNICALOFFICER':
-                return '/technical-officer';
+            case 'HEADOFDEPARTMENT': return '/department-admin';
+            case 'TECHNICALOFFICER': return '/technical-officer';
             case 'LECTURER':
             case 'APPOINTEDLECTURER':
-            case 'INSTRUCTOR':
-                return '/lecturer';
-            case 'STUDENT':
-                return '/student';
-            default:
-                return '/login';
+            case 'INSTRUCTOR':       return '/lecturer';
+            case 'STUDENT':          return '/student';
+            default:                 return '/login';
         }
     };
 
