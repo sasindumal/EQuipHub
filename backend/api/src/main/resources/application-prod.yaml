@@ -1,0 +1,87 @@
+# ========================================
+# PRODUCTION PROFILE
+# For production deployment
+# ========================================
+
+spring:
+  datasource:
+    # Use environment variables for security
+    url: ${DATABASE_URL}
+    username: ${DATABASE_USERNAME}
+    password: ${DATABASE_PASSWORD}
+    hikari:
+      maximum-pool-size: 30
+      minimum-idle: 15
+      connection-timeout: 20000
+      leak-detection-threshold: 60000
+  
+  jpa:
+    hibernate:
+      ddl-auto: validate  # Never auto-update schema in production
+    show-sql: false
+    properties:
+      hibernate:
+        format_sql: false
+        generate_statistics: false
+  
+  data:
+    redis:
+      host: ${REDIS_HOST}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD}
+      ssl:
+        enabled: ${REDIS_SSL_ENABLED:false}
+  
+  # Production mail configuration
+  mail:
+    username: ${MAIL_USERNAME}
+    password: ${MAIL_PASSWORD}
+  
+  devtools:
+    restart:
+      enabled: false
+
+# CORS - Strict production origins only
+cors:
+  allowed-origins: ${CORS_ALLOWED_ORIGINS:https://equiphub.yourdomain.com}
+  allow-credentials: true
+
+# Production logging - Less verbose
+logging:
+  level:
+    root: WARN
+    com.equiphub.api: INFO
+    org.springframework.web: WARN
+    org.springframework.security: INFO
+    org.hibernate.SQL: WARN
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{50} - %msg%n"
+  file:
+    name: /var/log/equiphub/api.log
+    max-size: 50MB
+    max-history: 30
+    total-size-cap: 1GB
+
+# Disable Swagger in production
+springdoc:
+  api-docs:
+    enabled: false
+  swagger-ui:
+    enabled: false
+
+# Limited actuator endpoints for production
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+  endpoint:
+    health:
+      show-details: when-authorized
+      
+# Production app settings
+app:
+  base-url: ${APP_BASE_URL:https://api.equiphub.yourdomain.com}
+  frontend-url: ${FRONTEND_URL:https://equiphub.yourdomain.com}
+  sis:
+    enabled: true
