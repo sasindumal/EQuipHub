@@ -11,8 +11,6 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -76,9 +74,8 @@ public class EquipmentController {
 
     // ═══════════════════════════════════════════════════════════
     //  GET /api/v1/equipment
-    //  Resolves department from JWT — returns active equipment for the
-    //  caller's department (SYSTEMADMIN sees all).
-    //  Fix: added to resolve 405 Method Not Supported on GET /equipment.
+    //  Bug fix: SYSTEMADMIN has no departmentId — callerDeptId() would throw.
+    //  SYSTEMADMIN now retrieves all equipment across all departments.
     // ═══════════════════════════════════════════════════════════
     @GetMapping
     @PreAuthorize("hasAnyRole('TECHNICALOFFICER','DEPARTMENTADMIN','HEADOFDEPARTMENT','LECTURER','INSTRUCTOR','APPOINTEDLECTURER','SYSTEMADMIN')")
@@ -96,23 +93,23 @@ public class EquipmentController {
             @RequestParam(defaultValue = "ASC")   String direction,
             @AuthenticationPrincipal CustomUserDetails currentUser) {
 
-        UUID deptId = callerDeptId(currentUser);
+        List<EquipmentResponse> equipment;
 
-        Sort sort = direction.equalsIgnoreCase("DESC")
-                ? Sort.by(sortBy).descending()
-                : Sort.by(sortBy).ascending();
-
-        List<EquipmentResponse> equipment = equipmentService.getByDepartment(deptId, activeOnly);
-
-        log.debug("[EQUIP_LIST] {} fetched {} equipment items for dept {}",
-                currentUser.getEmail(), equipment.size(), deptId);
+        if (currentUser.getRole() == User.Role.SYSTEMADMIN) {
+            // SYSTEMADMIN has no departmentId — return all equipment
+            equipment = equipmentService.getAll(activeOnly);
+        } else {
+            UUID deptId = callerDeptId(currentUser);
+            equipment = equipmentService.getByDepartment(deptId, activeOnly);
+            log.debug("[EQUIP_LIST] {} fetched {} equipment items for dept {}",
+                    currentUser.getEmail(), equipment.size(), deptId);
+        }
 
         return ok(
             Map.of(
-                "equipment",     equipment,
-                "count",         equipment.size(),
-                "departmentId",  deptId,
-                "activeOnly",    activeOnly
+                "equipment",  equipment,
+                "count",      equipment.size(),
+                "activeOnly", activeOnly
             ),
             "Equipment retrieved successfully"
         );

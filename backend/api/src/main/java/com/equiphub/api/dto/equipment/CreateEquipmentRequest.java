@@ -1,6 +1,8 @@
 package com.equiphub.api.dto.equipment;
 
 import com.equiphub.api.model.Equipment;
+import com.fasterxml.jackson.annotation.JsonAlias;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.validation.constraints.*;
 import lombok.Data;
 
@@ -9,19 +11,20 @@ import java.time.LocalDate;
 import java.util.UUID;
 
 @Data
+@JsonIgnoreProperties(ignoreUnknown = true)  // prevents 500 on unexpected fields from frontend
 public class CreateEquipmentRequest {
 
-    @NotBlank(message = "Equipment ID is required (e.g. MULTI-001)")
-    @Pattern(regexp = "^[A-Z0-9\\-]{3,20}$",
-             message = "Equipment ID must be 3-20 chars: uppercase letters, digits, hyphens only")
+    @NotNull(message = "Equipment ID is required (e.g. MULTI-001)")
     private UUID equipmentId;
 
     @NotBlank(message = "Equipment name is required")
     @Size(max = 255, message = "Name cannot exceed 255 characters")
     private String name;
 
-    @NotBlank(message = "Category ID is required")
-    private Integer categoryId;    // maps to EquipmentCategory
+    // Bug fix: frontend sends "category" — @JsonAlias maps both "category" and "categoryId" to this field
+    @NotNull(message = "Category ID is required")
+    @JsonAlias("category")
+    private Integer categoryId;
 
     @NotNull(message = "Equipment type is required")
     private Equipment.EquipmentType type; // LABDEDICATED or BORROWABLE
@@ -41,7 +44,7 @@ public class CreateEquipmentRequest {
     @Size(max = 100, message = "Serial number cannot exceed 100 characters")
     private String serialNumber;
 
-    @Min(value = 1,   message = "Total quantity must be at least 1")
+    @Min(value = 1,    message = "Total quantity must be at least 1")
     @Max(value = 1000, message = "Total quantity cannot exceed 1000")
     private Integer totalQuantity = 1;
 
@@ -51,7 +54,7 @@ public class CreateEquipmentRequest {
 
     private String assignedLabs;  // comma-separated lab IDs
 
-    @Min(value = 1,   message = "Maintenance interval must be at least 1 day")
+    @Min(value = 1,    message = "Maintenance interval must be at least 1 day")
     @Max(value = 3650, message = "Maintenance interval cannot exceed 10 years")
     private Integer maintenanceIntervalDays;
 
