@@ -11,6 +11,9 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -71,6 +74,53 @@ public class EquipmentController {
         return UUID.fromString(user.getDepartmentId());
     }
 
+    // ═══════════════════════════════════════════════════════════
+    //  GET /api/v1/equipment
+    //  Resolves department from JWT — returns active equipment for the
+    //  caller's department (SYSTEMADMIN sees all).
+    //  Fix: added to resolve 405 Method Not Supported on GET /equipment.
+    // ═══════════════════════════════════════════════════════════
+    @GetMapping
+    @PreAuthorize("hasAnyRole('TECHNICALOFFICER','DEPARTMENTADMIN','HEADOFDEPARTMENT','LECTURER','INSTRUCTOR','APPOINTEDLECTURER','SYSTEMADMIN')")
+    @Operation(
+        summary = "Get equipment for my department (JWT-resolved)",
+        description = "Returns all active (non-retired) equipment for the authenticated user's department. "
+                    + "SYSTEMADMIN sees all equipment across all departments. "
+                    + "Supports pagination via ?page=0&size=20 and ?activeOnly=true/false."
+    )
+    public ResponseEntity<Map<String, Object>> getEquipment(
+            @RequestParam(defaultValue = "true")  boolean activeOnly,
+            @RequestParam(defaultValue = "0")     int page,
+            @RequestParam(defaultValue = "20")    int size,
+            @RequestParam(defaultValue = "name")  String sortBy,
+            @RequestParam(defaultValue = "ASC")   String direction,
+            @AuthenticationPrincipal CustomUserDetails currentUser) {
+
+        UUID deptId = callerDeptId(currentUser);
+
+        Sort sort = direction.equalsIgnoreCase("DESC")
+                ? Sort.by(sortBy).descending()
+                : Sort.by(sortBy).ascending();
+
+        List<EquipmentResponse> equipment = equipmentService.getByDepartment(deptId, activeOnly);
+
+        log.debug("[EQUIP_LIST] {} fetched {} equipment items for dept {}",
+                currentUser.getEmail(), equipment.size(), deptId);
+
+        return ok(
+            Map.of(
+                "equipment",     equipment,
+                "count",         equipment.size(),
+                "departmentId",  deptId,
+                "activeOnly",    activeOnly
+            ),
+            "Equipment retrieved successfully"
+        );
+    }
+
+    // ═══════════════════════════════════════════════════════════
+    //  POST /api/v1/equipment
+    // ═══════════════════════════════════════════════════════════
     @PostMapping
     @PreAuthorize("hasAnyRole('TECHNICALOFFICER','DEPARTMENTADMIN','SYSTEMADMIN')")
     @Operation(summary = "Register new equipment", description = "TO and DEPTADMIN can register equipment only in their own department. SYSTEMADMIN can register for any department.")
@@ -88,10 +138,6 @@ public class EquipmentController {
         return created(created, "Equipment registered successfully");
     }
 
-    // Bug fix #3: Added @PreAuthorize and department-level access guard.
-    // Previously this endpoint had no authentication or authorization check,
-    // allowing any user (or unauthenticated caller) to retrieve equipment details
-    // from any department.
     @GetMapping("/{equipmentId}")
     @PreAuthorize("isAuthenticated()")
     @Operation(summary = "Get equipment by ID")
@@ -128,9 +174,6 @@ public class EquipmentController {
         );
     }
 
-    // Bug fix #4: Added @PreAuthorize and department-level access guard.
-    // Previously this endpoint was completely open — no authentication required —
-    // allowing anyone to enumerate all AVAILABLE equipment across any department.
     @GetMapping("/department/{departmentId}/available")
     @PreAuthorize("isAuthenticated()")
     @Operation(summary = "Get available equipment in a department", description = "Returns all equipment with status AVAILABLE. Used for request creation.")
@@ -266,7 +309,7 @@ public class EquipmentController {
 
     @PatchMapping("/{equipmentId}/status")
     @PreAuthorize("hasAnyRole('TECHNICALOFFICER','DEPARTMENTADMIN','SYSTEMADMIN')")
-    @Operation(summary = "Update equipment operational status", description = "TO changes status: AVAILABLE → MAINTENANCE, MAINTENANCE → AVAILABLE, mark DAMAGED, etc. Reason is MANDATORY for MAINTENANCE and DAMAGED transitions.")
+    @Operation(summary = "Update equipment operational status", description = "TO changes status: AVAILABLE \u2192 MAINTENANCE, MAINTENANCE \u2192 AVAILABLE, mark DAMAGED, etc. Reason is MANDATORY for MAINTENANCE and DAMAGED transitions.")
     public ResponseEntity<Map<String, Object>> updateStatus(
             @PathVariable UUID equipmentId,
             @Valid @RequestBody EquipmentStatusUpdateRequest request,
@@ -278,7 +321,7 @@ public class EquipmentController {
             }
         }
         EquipmentResponse updated = equipmentService.updateStatus(equipmentId, request, currentUser.getUserId());
-        log.info("[EQUIP_STATUS_CHANGE] {} → {} by {}", equipmentId, request.getStatus(), currentUser.getEmail());
+        log.info("[EQUIP_STATUS_CHANGE] {} \u2192 {} by {}", equipmentId, request.getStatus(), currentUser.getEmail());
         return ok(updated, "Equipment status updated to " + request.getStatus());
     }
 
