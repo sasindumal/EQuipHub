@@ -43,9 +43,9 @@ export default function TODashboardPage() {
     };
 
     const stats = [
-        { label: 'Ready to Issue',       value: queue.length,  color: '#10b981', href: '/technical-officer/issue'   },
-        { label: 'Unacknowledged Damage',value: unack.length,  color: '#ef4444', href: '/technical-officer/returns'  },
-        { label: 'My Inspections Today', value: myInsp.length, color: 'var(--primary)', href: '/technical-officer/inspections' },
+        { label: 'Ready to Issue',       value: queue.length,  color: 'var(--primary-light)', href: '/technical-officer/issue'   },
+        { label: 'Unacknowledged Damage',value: unack.length,  color: 'var(--primary)', href: '/technical-officer/returns'  },
+        { label: 'My Inspections Today', value: myInsp.length, color: 'var(--secondary)', href: '/technical-officer/inspections' },
     ];
 
     return (
@@ -111,7 +111,7 @@ export default function TODashboardPage() {
             {unack.length > 0 && (
                 <div className="content-card">
                     <div className="content-card-header">
-                        <h2 className="content-card-title" style={{ color: '#ef4444' }}>⚠ Unacknowledged Damage Inspections</h2>
+                        <h2 className="content-card-title" style={{ color: 'var(--primary)' }}>⚠ Unacknowledged Damage Inspections</h2>
                     </div>
                     <div className="table-container">
                         <table className="table">

@@ -14,16 +14,16 @@ import {
 } from 'react-icons/hi';
 
 const STATUS_COLOR = {
-    DRAFT:                  { bg: '#f1f5f9', text: '#475569' },
-    PENDINGAPPROVAL:        { bg: '#fef9c3', text: '#854d0e' },
-    PENDINGRECOMMENDATION:  { bg: '#fef9c3', text: '#854d0e' },
-    APPROVED:               { bg: '#dcfce7', text: '#166534' },
-    INUSE:                  { bg: '#dbeafe', text: '#1e40af' },
-    RETURNED:               { bg: '#f1f5f9', text: '#6b7280' },
-    COMPLETED:              { bg: '#d1fae5', text: '#065f46' },
-    REJECTED:               { bg: '#fee2e2', text: '#991b1b' },
-    CANCELLED:              { bg: '#f3f4f6', text: '#9ca3af' },
-    OVERDUE:                { bg: '#fee2e2', text: '#991b1b' },
+    DRAFT:                  { bg: 'rgba(173, 187, 218, 0.2)',  text: '#8697C4' },
+    PENDINGAPPROVAL:        { bg: 'rgba(134, 151, 196, 0.15)', text: '#3D52A0' },
+    PENDINGRECOMMENDATION:  { bg: 'rgba(134, 151, 196, 0.15)', text: '#3D52A0' },
+    APPROVED:               { bg: 'rgba(112, 145, 230, 0.12)', text: '#3D52A0' },
+    INUSE:                  { bg: 'rgba(61, 82, 160, 0.1)',    text: '#3D52A0' },
+    RETURNED:               { bg: 'rgba(173, 187, 218, 0.15)', text: '#8697C4' },
+    COMPLETED:              { bg: 'rgba(112, 145, 230, 0.1)',  text: '#3D52A0' },
+    REJECTED:               { bg: 'rgba(61, 82, 160, 0.08)',   text: '#3D52A0' },
+    CANCELLED:              { bg: 'rgba(173, 187, 218, 0.12)', text: '#ADBBDA' },
+    OVERDUE:                { bg: 'rgba(61, 82, 160, 0.1)',    text: '#3D52A0' },
 };
 
 export default function StudentRequestsPage() {
@@ -112,7 +112,7 @@ export default function StudentRequestsPage() {
                             ) : filtered.length > 0 ? (
                                 filtered.map(r => {
                                     const id  = r.requestId || r.id;
-                                    const sc  = STATUS_COLOR[r.status] || { bg: '#f1f5f9', text: '#475569' };
+                                    const sc  = STATUS_COLOR[r.status] || { bg: 'rgba(173, 187, 218, 0.2)', text: '#8697C4' };
                                     return (
                                         <tr key={id}>
                                             <td style={{ fontWeight: 600, fontSize: 13 }}>{id}</td>
@@ -135,8 +135,7 @@ export default function StudentRequestsPage() {
                                                     </button>
                                                     {canCancel(r.status) && (
                                                         <button
-                                                            className="btn btn-sm"
-                                                            style={{ background: '#fee2e2', color: '#dc2626', border: '1px solid #fca5a5' }}
+                                                            className="btn btn-reject btn-sm"
                                                             onClick={() => setCancelId(id)}
                                                             title="Cancel"
                                                         >
@@ -161,8 +160,8 @@ export default function StudentRequestsPage() {
 
             {/* View Modal */}
             {viewReq && (
-                <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 16 }}>
-                    <div style={{ background: 'var(--bg-card)', borderRadius: 'var(--radius)', padding: 28, width: '100%', maxWidth: 480, boxShadow: 'var(--shadow-lg)' }}>
+                <div className="modal-overlay">
+                    <div className="modal-content" style={{ padding: 28, maxWidth: 480 }}>
                         <h3 style={{ margin: '0 0 18px', fontWeight: 700 }}>Request Details</h3>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                             {[
@@ -189,13 +188,13 @@ export default function StudentRequestsPage() {
 
             {/* Cancel Confirm Modal */}
             {cancelId && (
-                <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 16 }}>
-                    <div style={{ background: 'var(--bg-card)', borderRadius: 'var(--radius)', padding: 28, width: '100%', maxWidth: 380, boxShadow: 'var(--shadow-lg)' }}>
+                <div className="modal-overlay">
+                    <div className="modal-content" style={{ padding: 28, maxWidth: 380 }}>
                         <h3 style={{ margin: '0 0 12px', fontWeight: 700 }}>Cancel Request?</h3>
                         <p style={{ color: 'var(--secondary)', fontSize: 14, marginBottom: 20 }}>This will cancel request <strong>{cancelId}</strong>. This action cannot be undone.</p>
                         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10 }}>
                             <button className="btn btn-outline" onClick={() => setCancelId(null)}>Back</button>
-                            <button className="btn" style={{ background: '#dc2626', color: '#fff', border: 'none' }}
+                            <button className="btn btn-primary"
                                 onClick={() => handleCancel(cancelId)} disabled={!!actionId}>
                                 {actionId ? 'Cancelling…' : 'Yes, Cancel'}
                             </button>

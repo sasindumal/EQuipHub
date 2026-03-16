@@ -140,10 +140,10 @@ export default function DeptRequestsPage() {
             {/* Summary pills */}
             <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginBottom: 20 }}>
                 {[
-                    { label: 'Needs Action', value: pending,          color: '#f59e0b' },
-                    { label: 'Approved',     value: approved,         color: '#10b981' },
-                    { label: 'In Use',       value: inUse,            color: '#3b82f6' },
-                    { label: 'Overdue',      value: overdue,          color: '#ef4444' },
+                    { label: 'Needs Action', value: pending,          color: 'var(--secondary)' },
+                    { label: 'Approved',     value: approved,         color: 'var(--primary-light)' },
+                    { label: 'In Use',       value: inUse,            color: 'var(--primary)' },
+                    { label: 'Overdue',      value: overdue,          color: 'var(--primary)' },
                     { label: 'Total',        value: requests.length,  color: 'var(--primary)' },
                 ].map((s) => (
                     <div key={s.label} style={{
@@ -249,8 +249,7 @@ export default function DeptRequestsPage() {
                                                     {isActionable && (
                                                         <>
                                                             <button
-                                                                className="btn btn-sm"
-                                                                style={{ background: '#dcfce7', color: '#16a34a', border: '1px solid #86efac' }}
+                                                                className="btn btn-approve btn-sm"
                                                                 onClick={() => handleApprove(req)}
                                                                 disabled={isActing}
                                                                 title="Approve"
@@ -258,8 +257,7 @@ export default function DeptRequestsPage() {
                                                                 {isActing ? '…' : <HiOutlineCheckCircle />}
                                                             </button>
                                                             <button
-                                                                className="btn btn-sm"
-                                                                style={{ background: '#fee2e2', color: '#dc2626', border: '1px solid #fca5a5' }}
+                                                                className="btn btn-reject btn-sm"
                                                                 onClick={() => { setShowReject({ id, stage }); setRejectNote(''); }}
                                                                 disabled={isActing}
                                                                 title="Reject"
@@ -290,8 +288,8 @@ export default function DeptRequestsPage() {
 
             {/* ── View Detail Modal ── */}
             {viewRequest && (
-                <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 16 }}>
-                    <div style={{ background: 'var(--bg-card)', borderRadius: 'var(--radius)', padding: 28, width: '100%', maxWidth: 500, boxShadow: 'var(--shadow-lg)', maxHeight: '90vh', overflowY: 'auto' }}>
+                <div className="modal-overlay">
+                    <div className="modal-content" style={{ padding: 28, maxWidth: 500, maxHeight: '90vh', overflowY: 'auto' }}>
                         <h3 style={{ margin: '0 0 18px', fontWeight: 700 }}>Request Details</h3>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                             {[
@@ -316,15 +314,13 @@ export default function DeptRequestsPage() {
                             {ACTIONABLE.includes(viewRequest.status) && (
                                 <>
                                     <button
-                                        className="btn btn-sm"
-                                        style={{ background: '#dcfce7', color: '#16a34a', border: '1px solid #86efac' }}
+                                        className="btn btn-approve btn-sm"
                                         onClick={() => { handleApprove(viewRequest); setViewRequest(null); }}
                                     >
                                         Approve
                                     </button>
                                     <button
-                                        className="btn btn-sm"
-                                        style={{ background: '#fee2e2', color: '#dc2626', border: '1px solid #fca5a5' }}
+                                        className="btn btn-reject btn-sm"
                                         onClick={() => {
                                             setShowReject({ id: viewRequest.requestId || viewRequest.id, stage: resolveStage(viewRequest.status) });
                                             setViewRequest(null);
@@ -342,8 +338,8 @@ export default function DeptRequestsPage() {
 
             {/* ── Reject Modal ── */}
             {showReject && (
-                <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 16 }}>
-                    <div style={{ background: 'var(--bg-card)', borderRadius: 'var(--radius)', padding: 28, width: '100%', maxWidth: 420, boxShadow: 'var(--shadow-lg)' }}>
+                <div className="modal-overlay">
+                    <div className="modal-content" style={{ padding: 28, maxWidth: 420 }}>
                         <h3 style={{ margin: '0 0 8px', fontWeight: 700 }}>Reject Request</h3>
                         <p style={{ color: 'var(--secondary)', fontSize: 14, marginBottom: 16 }}>
                             Provide a reason that will be shown to the requester.
@@ -354,8 +350,7 @@ export default function DeptRequestsPage() {
                         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 16 }}>
                             <button className="btn btn-outline" onClick={() => setShowReject(null)}>Cancel</button>
                             <button
-                                className="btn"
-                                style={{ background: '#dc2626', color: '#fff', border: 'none' }}
+                                className="btn btn-primary"
                                 onClick={handleReject}
                                 disabled={!!actionId}
                             >

@@ -251,8 +251,7 @@ export default function DeptEquipmentPage() {
                                                     </button>
                                                     {item.status !== 'INACTIVE' && (
                                                         <button
-                                                            className="btn btn-sm"
-                                                            style={{ background: '#fee2e2', color: '#dc2626', border: '1px solid #fca5a5' }}
+                                                            className="btn btn-reject btn-sm"
                                                             onClick={() => setConfirmId(id)}
                                                             title="Deactivate"
                                                         >
@@ -281,16 +280,8 @@ export default function DeptEquipmentPage() {
 
             {/* ── Add / Edit Modal ── */}
             {showModal && (
-                <div style={{
-                    position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    zIndex: 1000, padding: 16,
-                }}>
-                    <div style={{
-                        background: 'var(--bg-card)', borderRadius: 'var(--radius)',
-                        padding: 28, width: '100%', maxWidth: 520,
-                        boxShadow: 'var(--shadow-lg)',
-                    }}>
+                <div className="modal-overlay">
+                    <div className="modal-content" style={{ padding: 28, maxWidth: 520 }}>
                         <h3 style={{ margin: '0 0 20px', fontSize: 18, fontWeight: 700 }}>
                             {editTarget ? 'Edit Equipment' : 'Add New Equipment'}
                         </h3>
@@ -379,26 +370,16 @@ export default function DeptEquipmentPage() {
 
             {/* ── Confirm Deactivate Modal ── */}
             {confirmId && (
-                <div style={{
-                    position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    zIndex: 1000, padding: 16,
-                }}>
-                    <div style={{
-                        background: 'var(--bg-card)', borderRadius: 'var(--radius)',
-                        padding: 28, width: '100%', maxWidth: 400,
-                        boxShadow: 'var(--shadow-lg)', textAlign: 'center',
-                    }}>
-                        <HiOutlineXCircle style={{ fontSize: 40, color: '#dc2626', marginBottom: 12 }} />
+                <div className="modal-overlay">
+                    <div className="modal-content" style={{ padding: 28, maxWidth: 400, textAlign: 'center' }}>
+                        <HiOutlineXCircle style={{ fontSize: 40, color: 'var(--primary)', marginBottom: 12 }} />
                         <h3 style={{ margin: '0 0 8px', fontWeight: 700 }}>Deactivate Equipment?</h3>
                         <p style={{ color: 'var(--secondary)', fontSize: 14, marginBottom: 20 }}>
                             This will mark the item as Inactive. You can re-activate it by editing its status.
                         </p>
                         <div style={{ display: 'flex', gap: 10, justifyContent: 'center' }}>
                             <button className="btn btn-outline" onClick={() => setConfirmId(null)}>Cancel</button>
-                            <button
-                                className="btn"
-                                style={{ background: '#dc2626', color: '#fff', border: 'none' }}
+                            <button className="btn btn-primary"
                                 onClick={() => handleDeactivate(confirmId)}
                             >
                                 Deactivate

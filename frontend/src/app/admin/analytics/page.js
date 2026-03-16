@@ -117,16 +117,7 @@ function StatCard({ label, value, icon: Icon, color, loading }) {
 }
 
 // ─── colour palette ───────────────────────────────────────────────────────────
-const ROLE_COLORS = {
-    SYSTEMADMIN:      '#6366f1',
-    DEPARTMENTADMIN:  '#3b82f6',
-    HEADOFDEPARTMENT: '#10b981',
-    LECTURER:         '#f59e0b',
-    INSTRUCTOR:       '#8b5cf6',
-    APPOINTEDLECTURER:'#ec4899',
-    TECHNICALOFFICER: '#14b8a6',
-    STUDENT:          '#64748b',
-};
+const ROLE_COLORS = { ADMIN:'#3D52A0', DEPARTMENT_ADMIN:'#7091E6', LECTURER:'#8697C4', STUDENT:'#ADBBDA', TECHNICAL_OFFICER:'#3D52A0' };
 
 const ROLE_LABELS = {
     SYSTEMADMIN:       'System Admin',
@@ -139,12 +130,7 @@ const ROLE_LABELS = {
     STUDENT:           'Student',
 };
 
-const STATUS_COLORS = {
-    ACTIVE:    '#10b981',
-    PENDING:   '#f59e0b',
-    SUSPENDED: '#ef4444',
-    INACTIVE:  '#94a3b8',
-};
+const STATUS_COLORS = { ACTIVE:'#7091E6', INACTIVE:'#ADBBDA', SUSPENDED:'#3D52A0', PENDING:'#8697C4' };
 
 // ─── main page ────────────────────────────────────────────────────────────────
 export default function AnalyticsPage() {
@@ -204,7 +190,7 @@ export default function AnalyticsPage() {
             .map(([role, value]) => ({
                 label: ROLE_LABELS[role] || role,
                 value,
-                color: ROLE_COLORS[role] || '#94a3b8',
+                color: ROLE_COLORS[role] || '#ADBBDA', // Use a default from the new palette
             }));
     }, [allUsers]);
 
@@ -214,7 +200,7 @@ export default function AnalyticsPage() {
         return Object.entries(counts).map(([status, value]) => ({
             label: status,
             value,
-            color: STATUS_COLORS[status] || '#94a3b8',
+            color: STATUS_COLORS[status] || '#ADBBDA', // Use a default from the new palette
         }));
     }, [allUsers]);
 
@@ -365,9 +351,9 @@ export default function AnalyticsPage() {
                                             <td style={{ color: 'var(--secondary)', fontSize: 13 }}>{u.email}</td>
                                             <td>
                                                 <span className="badge badge-info" style={{
-                                                    background: ROLE_COLORS[u.role] + '22',
-                                                    color: ROLE_COLORS[u.role],
-                                                    border: `1px solid ${ROLE_COLORS[u.role]}44`,
+                                                    background: (ROLE_COLORS[u.role] || '#ADBBDA') + '22',
+                                                    color: ROLE_COLORS[u.role] || '#ADBBDA',
+                                                    border: `1px solid ${(ROLE_COLORS[u.role] || '#ADBBDA')}44`,
                                                 }}>
                                                     {ROLE_LABELS[u.role] || u.role}
                                                 </span>
@@ -376,11 +362,11 @@ export default function AnalyticsPage() {
                                                 {dept ? (dept.code || dept.name) : '—'}
                                             </td>
                                             <td>
-                                                <span className={`badge ${
-                                                    u.status === 'ACTIVE'    ? 'badge-success' :
-                                                    u.status === 'PENDING'   ? 'badge-warning' :
-                                                    u.status === 'SUSPENDED' ? 'badge-danger'  : 'badge-muted'
-                                                }`}>{u.status}</span>
+                                                <span className="badge" style={{
+                                                    background: (STATUS_COLORS[u.status] || '#ADBBDA') + '22',
+                                                    color: STATUS_COLORS[u.status] || '#ADBBDA',
+                                                    border: `1px solid ${(STATUS_COLORS[u.status] || '#ADBBDA')}44`,
+                                                }}>{u.status}</span>
                                             </td>
                                             <td style={{ fontSize: 12, color: 'var(--secondary)' }}>
                                                 {u.createdAt
