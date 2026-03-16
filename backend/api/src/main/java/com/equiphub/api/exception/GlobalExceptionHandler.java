@@ -276,4 +276,22 @@ public class GlobalExceptionHandler {
         log.error("Unhandled exception: ", ex);
         return new ResponseEntity<>(error, HttpStatus.INTERNAL_SERVER_ERROR);
     }
+
+    @ExceptionHandler(DuplicateEmailException.class)
+    public ResponseEntity<ErrorResponse> handleDuplicateEmailException(
+            DuplicateEmailException ex, WebRequest request) {
+        ErrorResponse error = ErrorResponse.builder()
+            .timestamp(LocalDateTime.now())
+            .status(HttpStatus.BAD_REQUEST.value())
+            .error("Duplicate Email")
+            .message(ex.getMessage())
+            .path(request.getDescription(false).replace("uri=", ""))
+            .build();   
+        log.error("DuplicateEmailException: {}", ex.getMessage());
+            return new ResponseEntity<>(error, HttpStatus.BAD_REQUEST);
+
+            }
+
+
+    
 }

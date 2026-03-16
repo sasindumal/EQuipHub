@@ -3,6 +3,7 @@ package com.equiphub.api.service;
 import com.equiphub.api.dto.user.CreateStaffRequest;
 import com.equiphub.api.dto.user.UpdateUserRequest;
 import com.equiphub.api.dto.user.UserResponse;
+import com.equiphub.api.exception.DuplicateEmailException;
 import com.equiphub.api.model.Department;
 import com.equiphub.api.model.User;
 import com.equiphub.api.repository.DepartmentRepository;
@@ -35,7 +36,7 @@ public class UserManagementService {
     @Transactional
     public UserResponse createStaff(CreateStaffRequest req, UUID createdBy) {
         if (userRepository.existsByEmail(req.getEmail())) {
-            throw new RuntimeException("Email already registered: " + req.getEmail());
+             throw new DuplicateEmailException(req.getEmail());
         }
 
         User.Role role = req.getRole();

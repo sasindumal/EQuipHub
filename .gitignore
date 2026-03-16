@@ -7,3 +7,5 @@
 *.env.development
 *.env.test
 *.env.production
+logs/equiphub-dev.log
+logs/equiphub-dev.log
