@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { useAuth } from '../../context/AuthContext';
-import { userAPI, getBaseURL } from '../../lib/api';
-import { Screen, Card, InfoRow, Button } from '../../components/UI';
-import { COLORS, FONT, RADIUS, ROLE_LABELS } from '../../lib/theme';
+import { useAuth } from '../context/AuthContext';
+import { userAPI, getBaseURL } from '../lib/api';
+import { Screen, Card, InfoRow, Button } from '../components/UI';
+import { COLORS, FONT, RADIUS, ROLE_LABELS } from '../lib/theme';
 
 export default function ProfileScreen() {
   const { user, logout } = useAuth();
