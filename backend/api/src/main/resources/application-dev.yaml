@@ -1,0 +1,78 @@
+# ========================================
+# DEVELOPMENT PROFILE
+# For local development with Docker
+# ========================================
+
+spring:
+  datasource:
+    url: jdbc:postgresql://localhost:5432/equiphub_dev
+    username: postgres
+    password: 12345678  # Replace with your actual password
+    hikari:
+      maximum-pool-size: 10
+  
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+        use_sql_comments: true
+  
+  data:
+    redis:
+      host: localhost
+      port: 6379
+  
+  devtools:
+    restart:
+      enabled: true
+      additional-paths: src/main/java
+      exclude: static/**,public/**
+    livereload:
+      enabled: true
+
+  thymeleaf:
+    check-template-location: false
+  jackson:
+    serialization:
+      write-enums-using-to-string: true
+
+# CORS - Allow local development origins
+cors:
+  allowed-origins: http://localhost:3000,http://localhost:5173,http://127.0.0.1:3000,http://127.0.0.1:5173
+
+# Logging - Verbose for debugging
+logging:
+  level:
+    root: INFO
+    com.equiphub.api: DEBUG
+    org.springframework.web: DEBUG
+    org.springframework.security: DEBUG
+    org.hibernate.SQL: DEBUG
+    org.hibernate.type.descriptor.sql.BasicBinder: TRACE
+    org.springframework.data.redis: DEBUG
+    org.hibernate.resource.transaction: WARN
+  
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n"
+  file:
+    name: logs/equiphub-dev.log
+    max-size: 10MB
+
+# Swagger - Enabled in development
+springdoc:
+  swagger-ui:
+    enabled: true
+    try-it-out-enabled: true
+
+# Actuator - Full access in development
+management:
+  endpoints:
+    web:
+      exposure:
+        include: "*"
+  endpoint:
+    health:
+      show-details: always

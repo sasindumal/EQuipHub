@@ -1,0 +1,196 @@
+# ========================================
+# EQUIPHUB API - BASE CONFIGURATION
+# All shared settings across environments
+# ========================================
+
+spring:
+  application:
+    name: equiphub-api
+  
+  # ========== PROFILES ==========
+  profiles:
+    active: ${SPRING_PROFILES_ACTIVE:dev}
+  
+  # ========== DATABASE CONFIGURATION ==========
+  datasource:
+    url: ${DATABASE_URL:jdbc:postgresql://localhost:5432/equiphub_dev}
+    username: ${DATABASE_USERNAME:postgres}
+    password: ${DATABASE_PASSWORD:12345678}
+    driver-class-name: org.postgresql.Driver
+    
+    # Connection Pool (HikariCP)
+    hikari:
+      maximum-pool-size: 20
+      minimum-idle: 5
+      connection-timeout: 30000
+      idle-timeout: 600000
+      max-lifetime: 1800000
+      pool-name: EQuipHubHikariCP
+      auto-commit: true
+      connection-test-query: SELECT 1
+  
+  # ========== JPA / HIBERNATE ==========
+  jpa:
+    open-in-view: false
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        format_sql: true
+        jdbc:
+          batch_size: 20
+          order_inserts: true
+          order_updates: true
+        temp:
+          use_jdbc_metadata_defaults: false
+  
+  # ========== REDIS CACHE ==========
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:12345678}
+      timeout: 2000
+      lettuce:
+        pool:
+          max-active: 8
+          max-idle: 8
+          min-idle: 2
+          max-wait: -1ms
+  
+  cache:
+    type: redis
+    redis:
+      time-to-live: 600000 # 10 minutes
+  
+  # ========== SESSION MANAGEMENT ==========
+  session:
+    store-type: redis
+    redis:
+      namespace: equiphub:session
+      flush-mode: on_save
+  
+  # ========== EMAIL CONFIGURATION (GMAIL SMTP) ==========
+  mail:
+      host: smtp.gmail.com
+      port: 587
+      username: ${MAIL_USERNAME:eqiphub@gmail.com}
+      password: ${MAIL_PASSWORD:lclezjwwnkyqpgml}
+      properties:
+        mail:
+          smtp:
+            auth: true
+            starttls:
+              enable: true
+              required: true
+            connectiontimeout: 10000
+            timeout: 10000
+            writetimeout: 10000
+            ssl:
+              trust: smtp.gmail.com
+              protocols: TLSv1.2
+      default-encoding: UTF-8
+      test-connection: true
+  
+  # ========== FILE UPLOAD ==========
+  servlet:
+    multipart:
+      enabled: true
+      max-file-size: 10MB
+      max-request-size: 10MB
+      file-size-threshold: 2KB
+  
+  # ========== JACKSON JSON ==========
+  jackson:
+    serialization:
+      write-dates-as-timestamps: false
+      indent-output: false
+    time-zone: Asia/Colombo
+    default-property-inclusion: non_null
+
+# ========== SERVER CONFIGURATION ==========
+server:
+  port: ${SERVER_PORT:8080}
+  servlet:
+    context-path: /api/v1
+  error:
+    include-message: always
+    include-binding-errors: always
+    include-stacktrace: on_param
+    whitelabel:
+      enabled: true
+  compression:
+    enabled: true
+    mime-types: text/html,text/xml,text/plain,text/css,text/javascript,application/javascript,application/json
+    min-response-size: 1024
+
+# ========== JWT CONFIGURATION ==========
+jwt:
+  secret: ${JWT_SECRET:YourSuperSecretJWTKeyMinimum256BitsForHS256AlgorithmProductionReadyEquipHubSecurityToken2026}
+  access-token-expiration: ${JWT_ACCESS_EXPIRATION:86400000} # 24 hours
+  refresh-token-expiration: ${JWT_REFRESH_EXPIRATION:604800000} # 7 days
+  issuer: equiphub-api
+
+# ========== CORS CONFIGURATION ==========
+cors:
+  allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:3000,http://localhost:5173}
+  allowed-methods: GET,POST,PUT,PATCH,DELETE,OPTIONS
+  allowed-headers: "*"
+  allow-credentials: true
+  exposed-headers: Authorization,Content-Type,X-Total-Count,X-Request-Id
+  max-age: 3600
+
+# ========== ACTUATOR (HEALTH CHECKS) ==========
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+      base-path: /actuator
+  endpoint:
+    health:
+      show-details: when-authorized
+      probes:
+        enabled: true
+  health:
+    redis:
+      enabled: true
+    db:
+      enabled: true
+  prometheus:
+    metrics:
+      export:
+        enabled: false
+
+# ========== SPRINGDOC / SWAGGER ==========
+springdoc:
+  api-docs:
+    path: /api-docs
+    enabled: true
+  swagger-ui:
+    path: /swagger-ui.html
+    enabled: true
+    operations-sorter: method
+    tags-sorter: alpha
+    try-it-out-enabled: true
+    display-request-duration: true
+    filter: false
+
+# ========== APPLICATION-SPECIFIC ==========
+app:
+  name: EQuipHub
+  version: 3.8.0
+  description: Equipment Request Management System for Computer Engineering & EEE Departments
+  base-url: ${APP_BASE_URL:http://localhost:8080}
+  frontend-url: ${FRONTEND_URL:http://localhost:3000}
+  
+  # # Email Templates
+  # email:
+  #   from-address: ${EMAIL_FROM:noreply@equiphub.university.edu}
+  #   from-name: EQuipHub System
+  
+  # # SIS API Configuration
+  # sis:
+  #   api-url: ${SIS_API_URL:https://sis.university.edu/api}
+  #   api-key: ${SIS_API_KEY:your-sis-api-key}
+  #   timeout: 30000
+  #   enabled: ${SIS_INTEGRATION_ENABLED:false}
