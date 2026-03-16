@@ -1,6 +1,6 @@
 # 📱 EQuipHub Mobile App
 
-A fully-featured React Native mobile application for the **EQuipHub** equipment management system, built with **Expo SDK 52**. Supports all user roles — Students, Department Admins, Technical Officers, Lecturers, and System Admins.
+A fully-featured React Native mobile application for the **EQuipHub** equipment management system, built with **Expo SDK 54**. Supports all user roles — Students, Department Admins, Technical Officers, Lecturers, and System Admins.
 
 ---
 
@@ -58,8 +58,9 @@ A fully-featured React Native mobile application for the **EQuipHub** equipment 
 
 | Technology | Purpose |
 |---|---|
-| **React Native** | Cross-platform mobile framework |
-| **Expo SDK 52** | Development toolchain & build system |
+| **React Native 0.81** | Cross-platform mobile framework |
+| **Expo SDK 54** | Development toolchain & build system |
+| **React 19.1** | UI component library |
 | **React Navigation 6** | Tab + Stack navigation |
 | **Axios** | HTTP client with interceptors |
 | **Expo SecureStore** | Encrypted token storage |
