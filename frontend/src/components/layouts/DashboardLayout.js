@@ -77,8 +77,9 @@ const technicalOfficerNav = [
     {
         title: 'EQUIPMENT OPS',
         items: [
-            { label: 'Issue Equipment', href: '/technical-officer/issue',   icon: HiOutlineSwitchHorizontal },
-            { label: 'Process Return',  href: '/technical-officer/returns', icon: HiOutlineArrowCircleDown  },
+            { label: 'Issue Equipment', href: '/technical-officer/issue',        icon: HiOutlineSwitchHorizontal },
+            { label: 'Process Return',  href: '/technical-officer/returns',      icon: HiOutlineArrowCircleDown  },
+            { label: 'Inspections',     href: '/technical-officer/inspections',  icon: HiOutlineClipboardList    },
         ],
     },
 ];
@@ -98,9 +99,11 @@ const studentNav = [
     {
         title: 'MY PORTAL',
         items: [
-            { label: 'Dashboard',   href: '/student',           icon: HiOutlineHome          },
-            { label: 'My Requests', href: '/student/requests',  icon: HiOutlineClipboardList },
-            { label: 'Penalties',   href: '/student/penalties', icon: HiOutlineBan           },
+            { label: 'Dashboard',         href: '/student',           icon: HiOutlineHome             },
+            { label: 'Equipment Catalog', href: '/student/equipment', icon: HiOutlineDesktopComputer  },
+            { label: 'My Requests',       href: '/student/requests',  icon: HiOutlineClipboardList    },
+            { label: 'Request History',   href: '/student/history',   icon: HiOutlineChartBar         },
+            { label: 'Penalties',         href: '/student/penalties',  icon: HiOutlineBan             },
         ],
     },
 ];
