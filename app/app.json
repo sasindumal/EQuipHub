@@ -1,0 +1,35 @@
+{
+  "expo": {
+    "name": "EQuipHub",
+    "slug": "equiphub-mobile",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "newArchEnabled": true,
+    "splash": {
+      "image": "./assets/splash-icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#EDE8F5"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.equiphub.mobile"
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/android-icon-foreground.png",
+        "backgroundColor": "#EDE8F5"
+      },
+      "package": "com.equiphub.mobile"
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "plugins": [
+      "expo-asset",
+      "expo-font",
+      "expo-secure-store"
+    ]
+  }
+}

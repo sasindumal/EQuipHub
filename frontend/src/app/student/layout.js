@@ -6,17 +6,18 @@ import { useAuth } from '@/lib/auth';
 
 export default function StudentLayout({ children }) {
     const router = useRouter();
-    const { user, loading } = useAuth();
+    const { user, loading, getRedirectPath } = useAuth();
 
     useEffect(() => {
         if (!loading) {
             if (!user) {
                 router.replace('/login');
             } else if (!['STUDENT', 'SYSTEMADMIN'].includes(user.role)) {
-                router.replace('/login');
+                // User is logged in but wrong role — redirect to their dashboard
+                router.replace(getRedirectPath(user.role));
             }
         }
-    }, [user, loading, router]);
+    }, [user, loading, router, getRedirectPath]);
 
     if (loading) return <div className="page-loader"><div className="page-loader-spinner" /></div>;
     if (!user || !['STUDENT', 'SYSTEMADMIN'].includes(user.role)) return null;

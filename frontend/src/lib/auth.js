@@ -39,10 +39,25 @@ export function AuthProvider({ children }) {
             const parsed = extractUser(res.data);
             if (!parsed) throw new Error('Invalid user payload from /auth/me');
             setUser(parsed);
-        } catch {
-            localStorage.removeItem('equiphub_token');
-            localStorage.removeItem('equiphub_user');
-            setUser(null);
+        } catch (err) {
+            const status = err?.response?.status;
+            if (status === 401 || status === 403) {
+                // Token is truly invalid — clear it
+                localStorage.removeItem('equiphub_token');
+                localStorage.removeItem('equiphub_user');
+                setUser(null);
+            } else {
+                // Network/server error — try to restore from localStorage cache
+                const cached = localStorage.getItem('equiphub_user');
+                if (cached) {
+                    try {
+                        const parsed = extractUser(JSON.parse(cached));
+                        if (parsed) { setUser(parsed); return; }
+                    } catch { /* ignore parse errors */ }
+                }
+                // No cache either — clear
+                setUser(null);
+            }
         } finally {
             setLoading(false);
         }
