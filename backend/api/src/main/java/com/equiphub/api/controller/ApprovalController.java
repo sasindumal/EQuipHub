@@ -6,6 +6,7 @@ import com.equiphub.api.dto.approval.ApprovalResponseDTO;
 import com.equiphub.api.dto.approval.ApprovalStatsDTO;
 import com.equiphub.api.dto.approval.AutoApprovalResultDTO;
 import com.equiphub.api.model.RequestApproval;
+import com.equiphub.api.security.CustomUserDetails;
 import com.equiphub.api.service.ApprovalService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -16,7 +17,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -46,10 +46,10 @@ public class ApprovalController {
     public ResponseEntity<AutoApprovalResultDTO> attemptAutoApproval(
             @Parameter(description = "Request ID e.g. REQ-2026-00001")
             @PathVariable String requestId,
-            @AuthenticationPrincipal UserDetails userDetails) {
+            @AuthenticationPrincipal CustomUserDetails currentUser) {
 
         log.info("[AUTO_APPROVE] Attempting auto-approval for request {} by {}",
-                requestId, userDetails.getUsername());
+                requestId, currentUser.getUsername());
 
         AutoApprovalResultDTO result = approvalService.attemptAutoApproval(requestId);
         return ResponseEntity.ok(result);
@@ -81,11 +81,11 @@ public class ApprovalController {
 
             @Valid @RequestBody ApprovalDecisionDTO dto,
 
-            @AuthenticationPrincipal UserDetails userDetails) {
+            @AuthenticationPrincipal CustomUserDetails currentUser) {
 
-        UUID actorId = extractUserId(userDetails);
+        UUID actorId = currentUser.getUserId();
         log.info("[DECISION] {} processing {} on request {} at stage {}",
-                userDetails.getUsername(), dto.getAction(), requestId, stage);
+                currentUser.getUsername(), dto.getAction(), requestId, stage);
 
         ApprovalResponseDTO response =
                 approvalService.processDecision(requestId, stage, dto, actorId);
@@ -108,10 +108,10 @@ public class ApprovalController {
         description = "Returns all requests pending the current user's action."
     )
     public ResponseEntity<List<ApprovalQueueItemDTO>> getMyApprovalQueue(
-            @AuthenticationPrincipal UserDetails userDetails) {
+            @AuthenticationPrincipal CustomUserDetails currentUser) {
 
-        UUID actorId = extractUserId(userDetails);
-        log.info("[QUEUE] Fetching approval queue for {}", userDetails.getUsername());
+        UUID actorId = currentUser.getUserId();
+        log.info("[QUEUE] Fetching approval queue for {}", currentUser.getUsername());
 
         List<ApprovalQueueItemDTO> queue = approvalService.getMyApprovalQueue(actorId);
         return ResponseEntity.ok(queue);
@@ -133,10 +133,10 @@ public class ApprovalController {
     public ResponseEntity<List<ApprovalQueueItemDTO>> getDepartmentApprovalQueue(
             @Parameter(description = "Department UUID")
             @PathVariable UUID departmentId,
-            @AuthenticationPrincipal UserDetails userDetails) {
+            @AuthenticationPrincipal CustomUserDetails currentUser) {
 
         log.info("[QUEUE] Fetching dept queue for department {} by {}",
-                departmentId, userDetails.getUsername());
+                departmentId, currentUser.getUsername());
 
         List<ApprovalQueueItemDTO> queue =
                 approvalService.getDepartmentApprovalQueue(departmentId);
@@ -160,10 +160,10 @@ public class ApprovalController {
     public ResponseEntity<List<ApprovalResponseDTO>> getApprovalHistory(
             @Parameter(description = "Request ID e.g. REQ-2026-00001")
             @PathVariable String requestId,
-            @AuthenticationPrincipal UserDetails userDetails) {
+            @AuthenticationPrincipal CustomUserDetails currentUser) {
 
         log.info("[HISTORY] Fetching approval history for request {} by {}",
-                requestId, userDetails.getUsername());
+                requestId, currentUser.getUsername());
 
         List<ApprovalResponseDTO> history = approvalService.getApprovalHistory(requestId);
         return ResponseEntity.ok(history);
@@ -184,10 +184,10 @@ public class ApprovalController {
     public ResponseEntity<ApprovalStatsDTO> getDepartmentApprovalStats(
             @Parameter(description = "Department UUID")
             @PathVariable UUID departmentId,
-            @AuthenticationPrincipal UserDetails userDetails) {
+            @AuthenticationPrincipal CustomUserDetails currentUser) {
 
         log.info("[STATS] Fetching approval stats for department {} by {}",
-                departmentId, userDetails.getUsername());
+                departmentId, currentUser.getUsername());
 
         ApprovalStatsDTO stats = approvalService.getDepartmentApprovalStats(departmentId);
         return ResponseEntity.ok(stats);
@@ -209,10 +209,10 @@ public class ApprovalController {
     public ResponseEntity<NextStageResponseDTO> getNextApprovalStage(
             @Parameter(description = "Request ID e.g. REQ-2026-00001")
             @PathVariable String requestId,
-            @AuthenticationPrincipal UserDetails userDetails) {
+            @AuthenticationPrincipal CustomUserDetails currentUser) {
 
         log.info("[NEXT_STAGE] Querying next stage for request {} by {}",
-                requestId, userDetails.getUsername());
+                requestId, currentUser.getUsername());
 
         com.equiphub.api.model.Request request =
                 approvalService.findRequestPublic(requestId);
@@ -220,13 +220,6 @@ public class ApprovalController {
                 approvalService.determineNextStage(request);
 
         return ResponseEntity.ok(new NextStageResponseDTO(requestId, nextStage));
-    }
-
-    // ═══════════════════════════════════════════════════════════
-    //  UTILITY: extract UUID from Spring Security principal
-    // ═══════════════════════════════════════════════════════════
-    private UUID extractUserId(UserDetails userDetails) {
-        return UUID.fromString(userDetails.getUsername());
     }
 
     // ═══════════════════════════════════════════════════════════
