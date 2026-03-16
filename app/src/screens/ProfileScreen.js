@@ -1,10 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Alert } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Alert, Dimensions } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../context/AuthContext';
 import { userAPI, getBaseURL } from '../lib/api';
 import { Screen, Card, InfoRow, Button } from '../components/UI';
-import { COLORS, FONT, RADIUS, ROLE_LABELS } from '../lib/theme';
+import { COLORS, FONT, RADIUS, ROLE_LABELS, SPACING, SHADOWS } from '../lib/theme';
+
+const { width } = Dimensions.get('window');
+const isSmallScreen = width < 375;
 
 export default function ProfileScreen() {
   const { user, logout } = useAuth();
@@ -31,55 +35,94 @@ export default function ProfileScreen() {
   };
 
   return (
-    <Screen>
-      {/* Avatar Header */}
-      <View style={styles.header}>
-        <View style={styles.avatar}>
-          <Text style={styles.avatarText}>{(p.firstName || '?')[0]}{(p.lastName || '?')[0]}</Text>
+    <View style={styles.container}>
+      <LinearGradient
+        colors={[COLORS.primary, COLORS.primaryLight]}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={styles.headerGradient}
+      >
+        <View style={styles.headerContent}>
+          <View style={styles.avatar}>
+            <Text style={styles.avatarText}>{(p.firstName || '?')[0]}{(p.lastName || '?')[0]}</Text>
+          </View>
+          <Text style={styles.name}>{p.firstName} {p.lastName}</Text>
+          <Text style={styles.email}>{p.email}</Text>
+          <View style={styles.roleBadge}>
+            <Text style={styles.roleText}>{ROLE_LABELS[p.role] || p.role}</Text>
+          </View>
         </View>
-        <Text style={styles.name}>{p.firstName} {p.lastName}</Text>
-        <Text style={styles.email}>{p.email}</Text>
-        <View style={styles.roleBadge}>
-          <Text style={styles.roleText}>{ROLE_LABELS[p.role] || p.role}</Text>
-        </View>
-      </View>
+      </LinearGradient>
 
-      {/* Profile Info */}
-      <Card title="Account Details" style={{ marginBottom: 16 }}>
-        <InfoRow label="User ID" value={p.userId} />
-        <InfoRow label="Email" value={p.email} />
-        <InfoRow label="Role" value={ROLE_LABELS[p.role] || p.role} />
-        <InfoRow label="Status" value={p.status} />
-        {p.indexNumber && <InfoRow label="Index Number" value={p.indexNumber} />}
-        {p.semesterYear && <InfoRow label="Semester" value={p.semesterYear} />}
-        {p.departmentId && <InfoRow label="Department ID" value={p.departmentId} />}
-      </Card>
+      <Screen style={styles.content}>
+        <Card title="Account Details" style={{ marginBottom: SPACING.lg }}>
+          <InfoRow label="User ID" value={p.userId} />
+          <InfoRow label="Email" value={p.email} />
+          <InfoRow label="Role" value={ROLE_LABELS[p.role] || p.role} />
+          <InfoRow label="Status" value={p.status} />
+          {p.indexNumber && <InfoRow label="Index Number" value={p.indexNumber} />}
+          {p.semesterYear && <InfoRow label="Semester" value={p.semesterYear} />}
+          {p.departmentId && <InfoRow label="Department ID" value={p.departmentId} />}
+        </Card>
 
-      {/* Server Info */}
-      <Card title="Connection" style={{ marginBottom: 16 }}>
-        <InfoRow label="API URL" value={getBaseURL()} />
-      </Card>
+        <Card title="Connection" style={{ marginBottom: SPACING.lg }}>
+          <InfoRow label="API URL" value={getBaseURL()} />
+        </Card>
 
-      {/* Logout */}
-      <Button title="Sign Out" variant="danger" icon="log-out-outline" onPress={handleLogout} />
-    </Screen>
+        <Button title="Sign Out" variant="danger" icon="log-out-outline" onPress={handleLogout} />
+      </Screen>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  header: { alignItems: 'center', marginBottom: 24 },
+  container: { flex: 1, backgroundColor: COLORS.background },
+  headerGradient: {
+    paddingTop: SPACING.xxl + 20,
+    paddingBottom: SPACING.xxl + 10,
+    borderBottomLeftRadius: 30,
+    borderBottomRightRadius: 30,
+  },
+  headerContent: { alignItems: 'center', paddingHorizontal: SPACING.lg },
   avatar: {
-    width: 80, height: 80, borderRadius: 40,
-    backgroundColor: COLORS.primary,
-    justifyContent: 'center', alignItems: 'center', marginBottom: 12,
+    width: isSmallScreen ? 72 : 88,
+    height: isSmallScreen ? 72 : 88,
+    borderRadius: isSmallScreen ? 36 : 44,
+    backgroundColor: 'rgba(255,255,255,0.25)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: SPACING.md,
+    borderWidth: 3,
+    borderColor: 'rgba(255,255,255,0.4)',
   },
-  avatarText: { fontSize: FONT.xxl, fontWeight: '800', color: '#fff' },
-  name: { fontSize: FONT.xl, fontWeight: '700', color: COLORS.text },
-  email: { fontSize: FONT.sm, color: COLORS.textSecondary, marginTop: 2 },
+  avatarText: { 
+    fontSize: isSmallScreen ? FONT.xxl : 32, 
+    fontWeight: '800', 
+    color: COLORS.white 
+  },
+  name: { 
+    fontSize: isSmallScreen ? FONT.xl : FONT.xxl, 
+    fontWeight: '700', 
+    color: COLORS.white 
+  },
+  email: { 
+    fontSize: FONT.sm, 
+    color: 'rgba(255,255,255,0.8)', 
+    marginTop: 2 
+  },
   roleBadge: {
-    backgroundColor: COLORS.primary + '15',
-    paddingHorizontal: 14, paddingVertical: 4, borderRadius: RADIUS.full,
-    marginTop: 8,
+    backgroundColor: 'rgba(255,255,255,0.25)',
+    paddingHorizontal: 16,
+    paddingVertical: 6,
+    borderRadius: RADIUS.full,
+    marginTop: SPACING.sm,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.3)',
   },
-  roleText: { color: COLORS.primary, fontSize: FONT.xs, fontWeight: '600' },
+  roleText: { 
+    color: COLORS.white, 
+    fontSize: FONT.xs, 
+    fontWeight: '700' 
+  },
+  content: { marginTop: -SPACING.sm },
 });

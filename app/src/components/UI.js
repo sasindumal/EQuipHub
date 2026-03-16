@@ -1,13 +1,16 @@
 import React from 'react';
-import { View, Text, TouchableOpacity, TextInput, ActivityIndicator, StyleSheet, ScrollView, RefreshControl, Modal, Pressable } from 'react-native';
+import { View, Text, TouchableOpacity, TextInput, ActivityIndicator, StyleSheet, ScrollView, RefreshControl, Modal, Pressable, Dimensions } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { COLORS, SHADOWS, RADIUS, FONT, STATUS_COLORS } from '../lib/theme';
+import { COLORS, SHADOWS, RADIUS, FONT, SPACING } from '../lib/theme';
+
+const { width } = Dimensions.get('window');
+const isSmallScreen = width < 375;
 
 // ─── Status Badge ─────────────────────────────────────────
 export function Badge({ status, label, style }) {
   const sc = STATUS_COLORS[status] || { bg: '#F1F5F9', text: '#94A3B8', label: status || '—' };
   return (
-    <View style={[{ backgroundColor: sc.bg, paddingHorizontal: 10, paddingVertical: 3, borderRadius: RADIUS.full }, style]}>
+    <View style={[{ backgroundColor: sc.bg, paddingHorizontal: 10, paddingVertical: 4, borderRadius: RADIUS.full }, style]}>
       <Text style={{ color: sc.text, fontSize: FONT.xs, fontWeight: '600' }}>{label || sc.label}</Text>
     </View>
   );
@@ -17,14 +20,14 @@ export function Badge({ status, label, style }) {
 export function StatCard({ label, value, icon, color, onPress }) {
   const Wrapper = onPress ? TouchableOpacity : View;
   return (
-    <Wrapper onPress={onPress} activeOpacity={0.7} style={[styles.statCard, SHADOWS.sm]}>
+    <Wrapper onPress={onPress} activeOpacity={0.7} style={[styles.statCard, SHADOWS.md]}>
       <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
         <View>
           <Text style={styles.statValue}>{value ?? '—'}</Text>
           <Text style={styles.statLabel}>{label}</Text>
         </View>
         {icon && (
-          <View style={[styles.statIcon, { backgroundColor: (color || COLORS.primary) + '15' }]}>
+          <View style={[styles.statIcon, { backgroundColor: (color || COLORS.primary) + '20' }]}>
             <Ionicons name={icon} size={22} color={color || COLORS.primary} />
           </View>
         )}
@@ -36,7 +39,7 @@ export function StatCard({ label, value, icon, color, onPress }) {
 // ─── Content Card ─────────────────────────────────────────
 export function Card({ title, subtitle, children, style, headerRight }) {
   return (
-    <View style={[styles.card, SHADOWS.sm, style]}>
+    <View style={[styles.card, SHADOWS.glass, style]}>
       {title && (
         <View style={styles.cardHeader}>
           <View>
@@ -86,7 +89,7 @@ export function Button({ title, onPress, loading, disabled, variant = 'primary',
         styles.btn,
         isPrimary && { backgroundColor: COLORS.primary },
         isDanger  && { backgroundColor: COLORS.danger },
-        isOutline && { backgroundColor: 'transparent', borderWidth: 1, borderColor: COLORS.primary },
+        isOutline && { backgroundColor: 'transparent', borderWidth: 1.5, borderColor: COLORS.primary },
         (loading || disabled) && { opacity: 0.5 },
         style,
       ]}
@@ -107,7 +110,9 @@ export function Button({ title, onPress, loading, disabled, variant = 'primary',
 export function EmptyState({ icon, title, message }) {
   return (
     <View style={styles.empty}>
-      <Ionicons name={icon || 'file-tray-outline'} size={48} color={COLORS.muted} />
+      <View style={styles.emptyIconWrap}>
+        <Ionicons name={icon || 'file-tray-outline'} size={40} color={COLORS.secondary} />
+      </View>
       <Text style={styles.emptyTitle}>{title || 'Nothing here'}</Text>
       {message && <Text style={styles.emptyMsg}>{message}</Text>}
     </View>
@@ -119,7 +124,7 @@ export function Screen({ children, refreshing, onRefresh, style }) {
   return (
     <ScrollView
       style={[{ flex: 1, backgroundColor: COLORS.background }, style]}
-      contentContainerStyle={{ padding: 16, paddingBottom: 40 }}
+      contentContainerStyle={{ padding: SPACING.lg, paddingBottom: 40 }}
       refreshControl={onRefresh ? <RefreshControl refreshing={refreshing || false} onRefresh={onRefresh} tintColor={COLORS.primary} /> : undefined}
       showsVerticalScrollIndicator={false}
     >
@@ -172,79 +177,89 @@ export function BottomModal({ visible, onClose, title, children }) {
 // ─── Styles ───────────────────────────────────────────────
 const styles = StyleSheet.create({
   statCard: {
-    backgroundColor: COLORS.white,
-    borderRadius: RADIUS.lg,
-    padding: 18,
+    backgroundColor: COLORS.glass.heavy,
+    borderRadius: RADIUS.xl,
+    padding: SPACING.lg,
     borderWidth: 1,
-    borderColor: COLORS.cardBorder,
+    borderColor: COLORS.borderLight,
   },
-  statValue: { fontSize: FONT.xxl, fontWeight: '800', color: COLORS.primary },
+  statValue: { fontSize: isSmallScreen ? FONT.xxl : 32, fontWeight: '800', color: COLORS.primary },
   statLabel: { fontSize: FONT.sm, color: COLORS.textSecondary, marginTop: 2 },
   statIcon: {
-    width: 44, height: 44, borderRadius: RADIUS.md,
+    width: 48, height: 48, borderRadius: RADIUS.lg,
     justifyContent: 'center', alignItems: 'center',
   },
   card: {
-    backgroundColor: COLORS.white,
-    borderRadius: RADIUS.lg,
+    backgroundColor: COLORS.glass.heavy,
+    borderRadius: RADIUS.xl,
     borderWidth: 1,
-    borderColor: COLORS.cardBorder,
+    borderColor: COLORS.borderLight,
     overflow: 'hidden',
   },
   cardHeader: {
     flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
-    paddingHorizontal: 18, paddingVertical: 14,
+    paddingHorizontal: SPACING.lg, paddingVertical: SPACING.md,
     borderBottomWidth: 1, borderBottomColor: COLORS.border,
   },
   cardTitle: { fontSize: FONT.lg, fontWeight: '700', color: COLORS.text },
   cardSubtitle: { fontSize: FONT.xs, color: COLORS.textSecondary, marginTop: 2 },
-  cardBody: { padding: 18 },
+  cardBody: { padding: SPACING.lg },
   searchBar: {
     flexDirection: 'row', alignItems: 'center',
-    backgroundColor: COLORS.white,
-    borderRadius: RADIUS.md,
-    paddingHorizontal: 14, paddingVertical: 10,
-    borderWidth: 1, borderColor: COLORS.border,
-    gap: 8,
+    backgroundColor: COLORS.inputBg,
+    borderRadius: RADIUS.lg,
+    paddingHorizontal: SPACING.md, paddingVertical: SPACING.sm,
+    borderWidth: 1.5, borderColor: COLORS.border,
+    gap: SPACING.sm,
   },
   searchInput: { flex: 1, fontSize: FONT.base, color: COLORS.text, padding: 0 },
   btn: {
-    paddingVertical: 12, paddingHorizontal: 20,
-    borderRadius: RADIUS.md,
+    paddingVertical: SPACING.md, paddingHorizontal: SPACING.xl,
+    borderRadius: RADIUS.lg,
     alignItems: 'center', justifyContent: 'center',
-    minHeight: 46,
+    minHeight: 50,
+    ...SHADOWS.sm,
   },
-  btnText: { color: '#fff', fontWeight: '600', fontSize: FONT.base },
-  empty: { alignItems: 'center', justifyContent: 'center', paddingVertical: 48 },
-  emptyTitle: { fontSize: FONT.lg, fontWeight: '600', color: COLORS.textSecondary, marginTop: 12 },
-  emptyMsg: { fontSize: FONT.sm, color: COLORS.muted, marginTop: 4, textAlign: 'center' },
+  btnText: { color: '#fff', fontWeight: '700', fontSize: FONT.base },
+  empty: { alignItems: 'center', justifyContent: 'center', paddingVertical: 40 },
+  emptyIconWrap: {
+    width: 80, height: 80,
+    borderRadius: 40,
+    backgroundColor: COLORS.glass.medium,
+    justifyContent: 'center', alignItems: 'center',
+    marginBottom: SPACING.md,
+  },
+  emptyTitle: { fontSize: FONT.lg, fontWeight: '600', color: COLORS.textSecondary, marginTop: SPACING.sm },
+  emptyMsg: { fontSize: FONT.sm, color: COLORS.muted, marginTop: SPACING.xs, textAlign: 'center' },
   infoRow: {
     flexDirection: 'row', justifyContent: 'space-between',
-    paddingVertical: 10, paddingHorizontal: 14,
+    paddingVertical: SPACING.md, paddingHorizontal: SPACING.md,
     backgroundColor: COLORS.inputBg,
-    borderRadius: RADIUS.sm,
-    marginBottom: 6,
+    borderRadius: RADIUS.md,
+    marginBottom: SPACING.sm,
   },
   infoLabel: { fontSize: FONT.sm, color: COLORS.textSecondary },
   infoValue: { fontSize: FONT.sm, fontWeight: '600', color: COLORS.text, flexShrink: 1, textAlign: 'right', maxWidth: '55%' },
   modalOverlay: {
     flex: 1, justifyContent: 'flex-end',
-    backgroundColor: 'rgba(61,82,160,0.3)',
+    backgroundColor: 'rgba(61,82,160,0.4)',
   },
   modalContent: {
-    backgroundColor: COLORS.white,
-    borderTopLeftRadius: RADIUS.xl, borderTopRightRadius: RADIUS.xl,
-    paddingHorizontal: 20, paddingBottom: 30,
+    backgroundColor: COLORS.glass.heavy,
+    borderTopLeftRadius: RADIUS.xxl, borderTopRightRadius: RADIUS.xxl,
+    paddingHorizontal: SPACING.xl, paddingBottom: 30,
     maxHeight: '85%',
+    borderWidth: 1,
+    borderColor: COLORS.borderLight,
   },
   modalHandle: {
     width: 40, height: 4, borderRadius: 2,
     backgroundColor: COLORS.muted,
-    alignSelf: 'center', marginTop: 10, marginBottom: 8,
+    alignSelf: 'center', marginTop: SPACING.sm, marginBottom: SPACING.sm,
   },
   modalHeader: {
     flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
-    paddingVertical: 12,
+    paddingVertical: SPACING.md,
   },
   modalTitle: { fontSize: FONT.xl, fontWeight: '700', color: COLORS.text },
 });
