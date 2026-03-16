@@ -27,7 +27,7 @@ public class EquipmentService {
     private final DepartmentRepository        departmentRepository;
     private final EquipmentCategoryRepository categoryRepository;
 
-    // ── Condition label thresholds ────────────────────────────────
+    // ── Condition label thresholds ───────────────────────────────
     private static final int CONDITION_EXCELLENT = 85;
     private static final int CONDITION_GOOD      = 65;
     private static final int CONDITION_FAIR       = 40;
@@ -38,11 +38,9 @@ public class EquipmentService {
     // ─────────────────────────────────────────────────────────────
     @Transactional
     public EquipmentResponse createEquipment(CreateEquipmentRequest req, UUID createdBy) {
-        // Validate unique equipmentId
         if (equipmentRepository.existsById(req.getEquipmentId())) {
             throw new RuntimeException("Equipment ID '" + req.getEquipmentId() + "' already exists");
         }
-        // Validate unique serial number
         if (req.getSerialNumber() != null && !req.getSerialNumber().isBlank()
                 && equipmentRepository.existsBySerialNumber(req.getSerialNumber())) {
             throw new RuntimeException("Serial number '" + req.getSerialNumber() + "' already registered");
@@ -65,7 +63,7 @@ public class EquipmentService {
                 .purchaseDate(req.getPurchaseDate())
                 .purchaseValue(req.getPurchaseValue())
                 .serialNumber(req.getSerialNumber())
-                .currentCondition(100) // new equipment starts at 100
+                .currentCondition(100)
                 .status(Equipment.EquipmentStatus.AVAILABLE)
                 .totalQuantity(req.getTotalQuantity() != null ? req.getTotalQuantity() : 1)
                 .currentLocation(req.getCurrentLocation())
@@ -74,7 +72,6 @@ public class EquipmentService {
                 .replacementCost(req.getReplacementCost())
                 .depreciationRate(req.getDepreciationRate())
                 .retired(false)
-                // auto-set first maintenance date if interval given
                 .nextMaintenanceDate(
                     req.getMaintenanceIntervalDays() != null
                         ? LocalDate.now().plusDays(req.getMaintenanceIntervalDays())
@@ -92,8 +89,17 @@ public class EquipmentService {
     //  READ — single
     // ─────────────────────────────────────────────────────────────
     public EquipmentResponse getById(UUID equipmentId) {
-        Equipment e = findEquipment(equipmentId);
-        return mapToResponse(e);
+        return mapToResponse(findEquipment(equipmentId));
+    }
+
+    // ─────────────────────────────────────────────────────────────
+    //  READ — all (SYSTEMADMIN)
+    // ─────────────────────────────────────────────────────────────
+    public List<EquipmentResponse> getAll(boolean activeOnly) {
+        List<Equipment> list = activeOnly
+                ? equipmentRepository.findAllActive()
+                : equipmentRepository.findAll();
+        return list.stream().map(this::mapToResponse).collect(Collectors.toList());
     }
 
     // ─────────────────────────────────────────────────────────────
@@ -182,8 +188,6 @@ public class EquipmentService {
             }
             e.setSerialNumber(req.getSerialNumber());
         }
-
-        // Resolve category change
         if (req.getCategoryId() != null) {
             EquipmentCategory cat = categoryRepository.findById(req.getCategoryId())
                     .orElseThrow(() -> new RuntimeException("Category not found: " + req.getCategoryId()));
@@ -197,20 +201,17 @@ public class EquipmentService {
     }
 
     // ─────────────────────────────────────────────────────────────
-    //  UPDATE — status (AVAILABLE, MAINTENANCE, DAMAGED, ARCHIVED)
+    //  UPDATE — status
     // ─────────────────────────────────────────────────────────────
     @Transactional
     public EquipmentResponse updateStatus(UUID equipmentId, EquipmentStatusUpdateRequest req, UUID updatedBy) {
         Equipment e = findEquipment(equipmentId);
 
-        // Business rules for status transitions
         validateStatusTransition(e.getStatus(), req.getStatus(), e.getEquipmentId());
 
-        // For MAINTENANCE — reason is mandatory
         if (req.getStatus() == Equipment.EquipmentStatus.MAINTENANCE && (req.getReason() == null || req.getReason().isBlank())) {
             throw new RuntimeException("A reason is required when sending equipment to MAINTENANCE");
         }
-        // For DAMAGED — reason is mandatory
         if (req.getStatus() == Equipment.EquipmentStatus.DAMAGED && (req.getReason() == null || req.getReason().isBlank())) {
             throw new RuntimeException("A reason is required when marking equipment as DAMAGED");
         }
@@ -218,15 +219,13 @@ public class EquipmentService {
         Equipment.EquipmentStatus oldStatus = e.getStatus();
         e.setStatus(req.getStatus());
 
-        if (req.getConditionScore() != null)     e.setCurrentCondition(req.getConditionScore());
-        if (req.getReason() != null)             e.setConditionNotes(req.getReason());
+        if (req.getConditionScore() != null)      e.setCurrentCondition(req.getConditionScore());
+        if (req.getReason() != null)              e.setConditionNotes(req.getReason());
         if (req.getNextMaintenanceDate() != null) e.setNextMaintenanceDate(req.getNextMaintenanceDate());
 
-        // Auto-update lastMaintenanceDate when returning from MAINTENANCE
         if (oldStatus == Equipment.EquipmentStatus.MAINTENANCE
                 && req.getStatus() == Equipment.EquipmentStatus.AVAILABLE) {
             e.setLastMaintenanceDate(LocalDate.now());
-            // recalculate next maintenance date if interval is set
             if (e.getMaintenanceIntervalDays() != null) {
                 e.setNextMaintenanceDate(LocalDate.now().plusDays(e.getMaintenanceIntervalDays()));
             }
@@ -268,16 +267,16 @@ public class EquipmentService {
     public Map<String, Object> checkAvailability(UUID equipmentId) {
         Equipment e = findEquipment(equipmentId);
         Map<String, Object> result = new HashMap<>();
-        result.put("equipmentId",    e.getEquipmentId());
-        result.put("name",           e.getName());
-        result.put("status",         e.getStatus());
-        result.put("isAvailable",    e.getStatus() == Equipment.EquipmentStatus.AVAILABLE && !e.getRetired());
-        result.put("totalQuantity",  e.getTotalQuantity());
+        result.put("equipmentId",     e.getEquipmentId());
+        result.put("name",            e.getName());
+        result.put("status",          e.getStatus());
+        result.put("isAvailable",     e.getStatus() == Equipment.EquipmentStatus.AVAILABLE && !e.getRetired());
+        result.put("totalQuantity",   e.getTotalQuantity());
         result.put("currentLocation", e.getCurrentLocation());
-        result.put("conditionScore", e.getCurrentCondition());
-        result.put("conditionLabel", getConditionLabel(e.getCurrentCondition()));
-        result.put("maintenanceDue", isMaintenanceDue(e));
-        result.put("retired",        e.getRetired());
+        result.put("conditionScore",  e.getCurrentCondition());
+        result.put("conditionLabel",  getConditionLabel(e.getCurrentCondition()));
+        result.put("maintenanceDue",  isMaintenanceDue(e));
+        result.put("retired",         e.getRetired());
         return result;
     }
 
@@ -286,14 +285,13 @@ public class EquipmentService {
     // ─────────────────────────────────────────────────────────────
     public Map<String, Object> getDepartmentStats(UUID departmentId) {
         Map<String, Object> stats = new HashMap<>();
-        stats.put("departmentId",       departmentId);
-        stats.put("totalActive",        equipmentRepository.countActiveByDepartment(departmentId));
-        stats.put("available",          equipmentRepository.countAvailableByDepartment(departmentId));
-        stats.put("inMaintenance",      equipmentRepository.countMaintenanceByDepartment(departmentId));
-        stats.put("maintenanceDueCount",equipmentRepository.findMaintenanceDueByDepartment(departmentId, LocalDate.now()).size());
-        stats.put("lowConditionCount",  equipmentRepository.findLowConditionByDepartment(departmentId, CONDITION_POOR).size());
+        stats.put("departmentId",        departmentId);
+        stats.put("totalActive",         equipmentRepository.countActiveByDepartment(departmentId));
+        stats.put("available",           equipmentRepository.countAvailableByDepartment(departmentId));
+        stats.put("inMaintenance",       equipmentRepository.countMaintenanceByDepartment(departmentId));
+        stats.put("maintenanceDueCount", equipmentRepository.findMaintenanceDueByDepartment(departmentId, LocalDate.now()).size());
+        stats.put("lowConditionCount",   equipmentRepository.findLowConditionByDepartment(departmentId, CONDITION_POOR).size());
 
-        // Status breakdown
         Map<String, Long> byStatus = new LinkedHashMap<>();
         for (Equipment.EquipmentStatus s : Equipment.EquipmentStatus.values()) {
             long count = equipmentRepository.findByDepartmentIdAndStatus(departmentId, s).size();
@@ -301,14 +299,13 @@ public class EquipmentService {
         }
         stats.put("byStatus", byStatus);
 
-        // Type breakdown
         long labDedicated = equipmentRepository
                 .findByDepartmentDepartmentIdAndTypeAndRetiredFalse(departmentId, Equipment.EquipmentType.LABDEDICATED).size();
         long borrowable = equipmentRepository
                 .findByDepartmentDepartmentIdAndTypeAndRetiredFalse(departmentId, Equipment.EquipmentType.BORROWABLE).size();
-        stats.put("labDedicated", labDedicated);
-        stats.put("borrowable",   borrowable);
-        stats.put("generatedAt",  LocalDateTime.now());
+        stats.put("labDedicated",  labDedicated);
+        stats.put("borrowable",    borrowable);
+        stats.put("generatedAt",   LocalDateTime.now());
 
         return stats;
     }
@@ -324,11 +321,9 @@ public class EquipmentService {
     private void validateStatusTransition(Equipment.EquipmentStatus from,
                                           Equipment.EquipmentStatus to,
                                           UUID id) {
-        // ARCHIVED / RETIRED items cannot be changed
         if (from == Equipment.EquipmentStatus.ARCHIVED) {
             throw new RuntimeException("Equipment " + id + " is ARCHIVED and cannot be updated");
         }
-        // IN_USE items can only be moved back by the request system
         if (from == Equipment.EquipmentStatus.INUSE && to != Equipment.EquipmentStatus.AVAILABLE
                 && to != Equipment.EquipmentStatus.DAMAGED && to != Equipment.EquipmentStatus.MAINTENANCE) {
             throw new RuntimeException("IN_USE equipment can only transition to AVAILABLE, DAMAGED, or MAINTENANCE");
