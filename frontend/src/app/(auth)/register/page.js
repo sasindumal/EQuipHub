@@ -162,22 +162,18 @@ export default function RegisterPage() {
                             </div>
                             <div className="form-group">
                                 <label className="form-label">Semester Year</label>
-                                <div className="auth-input-group">
-                                    <HiOutlineAcademicCap className="auth-input-icon" />
-                                    <select
-                                        name="semesterYear"
-                                        className="form-input"
-                                        value={form.semesterYear}
-                                        onChange={handleChange}
-                                        required
-                                        style={{ paddingLeft: 42 }}
-                                    >
-                                        <option value="">Select</option>
-                                        {[1, 2, 3, 4, 5, 6, 7, 8].map((y) => (
-                                            <option key={y} value={y}>Semester {y}</option>
-                                        ))}
-                                    </select>
-                                </div>
+                                <select
+                                    name="semesterYear"
+                                    className="form-input"
+                                    value={form.semesterYear}
+                                    onChange={handleChange}
+                                    required
+                                >
+                                    <option value="">Select Semester</option>
+                                    {[1, 2, 3, 4, 5, 6, 7, 8].map((y) => (
+                                        <option key={y} value={y}>Semester {y}</option>
+                                    ))}
+                                </select>
                             </div>
                         </div>
 
