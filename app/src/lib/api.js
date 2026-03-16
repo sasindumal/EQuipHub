@@ -5,7 +5,7 @@ import { Platform } from 'react-native';
 // ─── Config ───────────────────────────────────────────────
 // On Android emulator, localhost maps to 10.0.2.2
 // On iOS simulator / physical device over LAN, use your machine's IP
-const API_BASE_URL = Platform.select({
+const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL || Platform.select({
   android: 'http://10.0.2.2:8080/api/v1',
   ios:     'http://localhost:8080/api/v1',
   default: 'http://localhost:8080/api/v1',

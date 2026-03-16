@@ -86,17 +86,17 @@ npm install
 
 ### Step 2: Configure Backend URL
 
-The app connects to the backend API. By default:
+The app connects to the backend API. By default, it falls back to:
 - **iOS Simulator**: `http://localhost:8080/api/v1`
 - **Android Emulator**: `http://10.0.2.2:8080/api/v1`
 
 #### For Physical Device (over WiFi)
 
-Edit `src/lib/api.js` and change the `API_BASE_URL`:
+Create a `.env` file in the `app` root directory and set `EXPO_PUBLIC_API_URL` to your machine's local IP address:
 
-```js
-// Find your machine's local IP (e.g., 192.168.1.100)
-const API_BASE_URL = 'http://192.168.1.100:8080/api/v1';
+```env
+# Find your machine's local IP (e.g., 192.168.1.100)
+EXPO_PUBLIC_API_URL=http://192.168.1.100:8080/api/v1
 ```
 
 <details>
@@ -245,7 +245,7 @@ The app automatically routes you to the correct portal based on your role:
 
 ### "Network Error" on physical device
 - Ensure your phone and computer are on the **same WiFi network**
-- Update `API_BASE_URL` in `src/lib/api.js` to your machine's local IP
+- Create/Update `.env` in the `app/` folder with `EXPO_PUBLIC_API_URL=http://<YOUR_IP>:8080/api/v1`
 - Check firewall isn't blocking port 8080
 
 ### "Request failed with status 401"
