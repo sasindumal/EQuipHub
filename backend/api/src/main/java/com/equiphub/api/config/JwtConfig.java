@@ -10,10 +10,26 @@ import org.springframework.context.annotation.Configuration;
 public class JwtConfig {
     
     private String secret;
-    private Long expiration = 86400000L; // 24 hours in milliseconds
-    private Long refreshExpiration = 604800000L; // 7 days in milliseconds
+    private Long accessTokenExpiration = 86400000L; // 24 hours default
+    private Long refreshTokenExpiration = 604800000L; // 7 days default
     private String issuer;
     private String audience;
+
+    /**
+     * Alias so existing code calling getExpiration() still works.
+     * Maps to jwt.access-token-expiration in YAML.
+     */
+    public Long getExpiration() {
+        return accessTokenExpiration;
+    }
+
+    /**
+     * Alias so existing code calling getRefreshExpiration() still works.
+     * Maps to jwt.refresh-token-expiration in YAML.
+     */
+    public Long getRefreshExpiration() {
+        return refreshTokenExpiration;
+    }
     
     // Header names
     private String headerName = "Authorization";

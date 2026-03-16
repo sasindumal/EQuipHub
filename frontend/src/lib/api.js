@@ -29,29 +29,43 @@ api.interceptors.request.use(
 api.interceptors.response.use(
   (response) => response,
   async (error) => {
-    if (error.response?.status === 401 && typeof window !== 'undefined') {
+    const originalRequest = error.config;
+
+    // Skip interception for auth endpoints — prevents refresh loops
+    const url = originalRequest?.url || '';
+    const isAuthEndpoint = url.includes('/auth/');
+
+    if (
+      error.response?.status === 401 &&
+      typeof window !== 'undefined' &&
+      !isAuthEndpoint &&
+      !originalRequest._retry
+    ) {
+      originalRequest._retry = true;
+
       const token = localStorage.getItem('equiphub_token');
-      if (token && !error.config._retry) {
-        error.config._retry = true;
+      if (token) {
         try {
           const res = await axios.post(`${API_BASE_URL}/auth/refresh`, null, {
             headers: { Authorization: `Bearer ${token}` },
           });
           const newToken = res.data.token;
-          localStorage.setItem('equiphub_token', newToken);
-          error.config.headers.Authorization = `Bearer ${newToken}`;
-          return api(error.config);
+          if (newToken) {
+            localStorage.setItem('equiphub_token', newToken);
+            originalRequest.headers.Authorization = `Bearer ${newToken}`;
+            return api(originalRequest);
+          }
         } catch {
+          // Refresh failed — token is truly expired, clear and redirect
           localStorage.removeItem('equiphub_token');
           localStorage.removeItem('equiphub_user');
           window.location.href = '/login';
+          return Promise.reject(error);
         }
-      } else {
-        localStorage.removeItem('equiphub_token');
-        localStorage.removeItem('equiphub_user');
-        window.location.href = '/login';
       }
+      // No token at all — don't force redirect here, let AuthProvider handle it
     }
+
     return Promise.reject(error);
   }
 );
@@ -126,6 +140,8 @@ export const deptAdminAPI = {
 export const equipmentAPI = {
   getAllEquipment:        ()          => api.get('/equipment'),
   getEquipmentById:      (id)        => api.get(`/equipment/${id}`),
+  getByDepartment:       (deptId, activeOnly = true) => api.get(`/equipment/department/${deptId}?activeOnly=${activeOnly}`),
+  getAvailableByDept:    (deptId)    => api.get(`/equipment/department/${deptId}/available`),
   createEquipment:       (data)      => api.post('/equipment', data),
   updateEquipment:       (id, data)  => api.put(`/equipment/${id}`, data),
   updateEquipmentStatus: (id, data)  => api.patch(`/equipment/${id}/status`, data),

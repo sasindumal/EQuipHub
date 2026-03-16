@@ -126,7 +126,7 @@ server:
 # ========== JWT CONFIGURATION ==========
 jwt:
   secret: ${JWT_SECRET:YourSuperSecretJWTKeyMinimum256BitsForHS256AlgorithmProductionReadyEquipHubSecurityToken2026}
-  access-token-expiration: ${JWT_ACCESS_EXPIRATION:900000} # 15 minutes
+  access-token-expiration: ${JWT_ACCESS_EXPIRATION:86400000} # 24 hours
   refresh-token-expiration: ${JWT_REFRESH_EXPIRATION:604800000} # 7 days
   issuer: equiphub-api
 

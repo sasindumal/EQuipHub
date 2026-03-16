@@ -6,17 +6,17 @@ import { useAuth } from '@/lib/auth';
 
 export default function AdminLayout({ children }) {
     const router = useRouter();
-    const { user, loading } = useAuth();
+    const { user, loading, getRedirectPath } = useAuth();
 
     useEffect(() => {
         if (!loading) {
             if (!user) {
                 router.replace('/login');
             } else if (user.role !== 'SYSTEMADMIN') {
-                router.replace('/login');
+                router.replace(getRedirectPath(user.role));
             }
         }
-    }, [user, loading, router]);
+    }, [user, loading, router, getRedirectPath]);
 
     if (loading) {
         return (

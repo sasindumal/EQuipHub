@@ -40,89 +40,67 @@ public class SecurityConfig {
         http
             .csrf(AbstractHttpConfigurer::disable)
             .cors(cors -> cors.configurationSource(corsConfigurationSource()))
-            .exceptionHandling(exception -> exception
-            .authenticationEntryPoint(jwtAuthenticationEntryPoint))
             .sessionManagement(session -> session
-            .sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-            // Authorization rules (paths WITHOUT /api/v1 prefix)
+                .sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+            .exceptionHandling(exception -> exception
+                .authenticationEntryPoint(jwtAuthenticationEntryPoint))
             .authorizeHttpRequests(auth -> auth
-                // Public endpoints - NO AUTHENTICATION REQUIRED
+                // ── Authenticated auth endpoints FIRST (before /auth/** wildcard) ──
+                .requestMatchers("/auth/me", "/auth/refresh", "/auth/logout")
+                    .authenticated()
+
+                // ── Public endpoints - NO AUTHENTICATION REQUIRED ──
                 .requestMatchers(
-                    "/auth/**",           // Auth endpoints
-                    "/public/**",         // Public endpoints
-                    "/swagger-ui/**",     // Swagger UI
-                    "/swagger-ui.html",   // Swagger UI HTML
-                    "/v1/api-docs/**",    // OpenAPI docs
-                    "/api-docs/**",       // OpenAPI docs
+                    "/auth/**",
+                    "/public/**",
+                    "/swagger-ui/**",
+                    "/swagger-ui.html",
+                    "/v1/api-docs/**",
+                    "/api-docs/**",
                     "/swagger-resources/**",
                     "/webjars/**",
-                    "/actuator/health",   // Health check
-                    "/actuator/info"      // Info endpoint
+                    "/actuator/health",
+                    "/actuator/info"
                 ).permitAll()
 
-                .requestMatchers(
-                "/auth/me",           // User profile endpoint
-                "/auth/refresh",      // Token refresh
-                "/auth/logout"
-                ).authenticated()
-                
-                // OAuth2 endpoints (if used later)
+                // OAuth2 endpoints
                 .requestMatchers("/oauth2/**", "/login/oauth2/**").permitAll()
-                
-                // Admin endpoints - SYSTEM_ADMIN only
+
+                // ── Admin endpoints ──
                 .requestMatchers("/admin/**").hasRole("SYSTEMADMIN")
-                
-                // Department Admin endpoints
+
+                // ── Department Admin endpoints ──
                 .requestMatchers("/department-admin/**")
                     .hasAnyRole("DEPARTMENTADMIN", "HEADOFDEPARTMENT", "SYSTEMADMIN")
-                
-                // Technical Officer endpoints
+
+                // ── Equipment write endpoints (manage) ──
                 .requestMatchers("/equipment/manage/**")
                     .hasAnyRole("TECHNICALOFFICER", "DEPARTMENTADMIN", "SYSTEMADMIN")
-                
-                // Approval endpoints - Lecturers and above
-                .requestMatchers("/approvals/**")
-                    .hasAnyRole("LECTURER", "HEADOFDEPARTMENT", "DEPARTMENTADMIN", "SYSTEMADMIN")
-                
-                // Student endpoints
-                .requestMatchers("/requests/student/**")
-                    .hasAnyRole("STUDENT", "INSTRUCTOR", "LECTURER")
 
-                    // ── Phase 1: Admin & User Management ──────────────────────────────────
-                .requestMatchers("/admin/departments/**")
-                    .hasAnyRole("SYSTEMADMIN", "DEPARTMENTADMIN", "HEADOFDEPARTMENT")
+                // ── Equipment read endpoints — all authenticated users (students need catalog access) ──
+                .requestMatchers("/equipment/**").authenticated()
 
-                .requestMatchers("/admin/users/**")
-                    .hasAnyRole("SYSTEMADMIN", "DEPARTMENTADMIN", "HEADOFDEPARTMENT")
-
-                // ── Phase 2: Equipment (add in next phase) ────────────────────────────
-                .requestMatchers("/equipment/**")
-                    .hasAnyRole("TECHNICALOFFICER", "DEPARTMENTADMIN", "SYSTEMADMIN")
-
-                // ── Phase 3-4: Requests & Approvals (add in future phases) ───────────
+                // ── Requests — all authenticated users (controller @PreAuthorize handles fine-grained) ──
                 .requestMatchers("/requests/**").authenticated()
+
+                // ── Approvals — all authenticated (controller @PreAuthorize handles per-endpoint) ──
                 .requestMatchers("/approvals/**").authenticated()
-                
+
+                // ── User management ──
+                .requestMatchers("/users/**").authenticated()
+
+                // ── Penalties ──
+                .requestMatchers("/penalties/**").authenticated()
+
+                // ── Inspections ──
+                .requestMatchers("/inspections/**").authenticated()
+
                 // All other requests require authentication
                 .anyRequest().authenticated()
             )
-            
-            // Session management - stateless (JWT)
-            .sessionManagement(session ->
-                session.sessionCreationPolicy(SessionCreationPolicy.STATELESS)
-            )
-            
-            // Exception handling
-            .exceptionHandling(exception ->
-                exception.authenticationEntryPoint(jwtAuthenticationEntryPoint)
-            )
-            
-            // Authentication provider
             .authenticationProvider(authenticationProvider())
-            
-            // JWT filter
             .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
-        
+
         return http.build();
     }
 

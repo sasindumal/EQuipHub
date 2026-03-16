@@ -36,15 +36,27 @@ export default function NewRequestPage() {
     });
 
     useEffect(() => {
-        equipmentAPI.getAllEquipment()
-            .then(res => {
+        if (!user?.departmentId) return;
+        const loadEquipment = async () => {
+            try {
+                let res;
+                if (user?.departmentId) {
+                    res = await equipmentAPI.getByDepartment(user.departmentId);
+                } else {
+                    res = await equipmentAPI.getAllEquipment();
+                }
                 const raw  = res.data?.data || res.data || [];
-                const list = Array.isArray(raw) ? raw : (raw.content || []);
+                const data = raw.equipment || raw;
+                const list = Array.isArray(data) ? data : (data.content || []);
                 setEquipment(list);
-            })
-            .catch(() => setEquipment([]))
-            .finally(() => setLoadingEq(false));
-    }, []);
+            } catch {
+                setEquipment([]);
+            } finally {
+                setLoadingEq(false);
+            }
+        };
+        loadEquipment();
+    }, [user?.departmentId]);
 
     const setField = (key, val) => setForm(f => ({ ...f, [key]: val }));
     const setItem  = (idx, key, val) => setForm(f => ({

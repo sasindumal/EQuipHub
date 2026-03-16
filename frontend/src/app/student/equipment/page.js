@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import DashboardLayout from '@/components/layouts/DashboardLayout';
 import { equipmentAPI } from '@/lib/api';
+import { useAuth } from '@/lib/auth';
 import {
     HiOutlineDesktopComputer,
     HiOutlineSearch,
@@ -38,6 +39,7 @@ const formatCategory = (c) => {
 };
 
 export default function StudentEquipmentCatalog() {
+    const { user } = useAuth();
     const [equipment, setEquipment]   = useState([]);
     const [loading, setLoading]       = useState(true);
     const [error, setError]           = useState(null);
@@ -46,13 +48,21 @@ export default function StudentEquipmentCatalog() {
     const [filterCat, setFilterCat]   = useState('ALL');
     const [viewItem, setViewItem]     = useState(null);
 
-    useEffect(() => { load(); }, []);
+    useEffect(() => { if (user?.departmentId) load(); }, [user?.departmentId]);
 
     const load = async () => {
         setLoading(true); setError(null);
         try {
-            const res = await equipmentAPI.getAllEquipment();
-            const data = res.data?.data || res.data || [];
+            let res;
+            if (user?.departmentId) {
+                // Use department-specific endpoint (students can access this)
+                res = await equipmentAPI.getByDepartment(user.departmentId);
+            } else {
+                res = await equipmentAPI.getAllEquipment();
+            }
+            const raw = res.data?.data || res.data || [];
+            // Handle both { equipment: [...] } and direct array
+            const data = raw.equipment || raw;
             const list = Array.isArray(data) ? data : (data.content || []);
             setEquipment(list);
         } catch (e) {
