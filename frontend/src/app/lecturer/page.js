@@ -59,7 +59,7 @@ export default function LecturerDashboardPage() {
             {/* Summary */}
             <div style={{ display: 'flex', gap: 12, marginBottom: 20 }}>
                 <div style={{ padding: '8px 16px', borderRadius: 'var(--radius-sm)', background: 'var(--bg-light)', border: '1px solid var(--border)', fontSize: 13 }}>
-                    <span style={{ color: '#f59e0b', fontWeight: 700, marginRight: 6 }}>{loading ? '—' : queue.length}</span>
+                    <span style={{ color: 'var(--secondary)', fontWeight: 700, marginRight: 6 }}>{loading ? '—' : queue.length}</span>
                     Pending Action
                 </div>
             </div>
@@ -101,8 +101,7 @@ export default function LecturerDashboardPage() {
                                             <td>
                                                 <div style={{ display: 'flex', gap: 6 }}>
                                                     <button
-                                                        className="btn btn-sm"
-                                                        style={{ background: '#dcfce7', color: '#16a34a', border: '1px solid #86efac' }}
+                                                        className="btn btn-approve btn-sm"
                                                         onClick={() => handleDecision(reqId, stage, 'APPROVE')}
                                                         disabled={!!actionId}
                                                         title="Approve"
@@ -110,8 +109,7 @@ export default function LecturerDashboardPage() {
                                                         {actionId === reqId ? '…' : <HiOutlineCheckCircle />}
                                                     </button>
                                                     <button
-                                                        className="btn btn-sm"
-                                                        style={{ background: '#fee2e2', color: '#dc2626', border: '1px solid #fca5a5' }}
+                                                        className="btn btn-reject btn-sm"
                                                         onClick={() => { setRejectModal({ reqId, stage }); setRejectNote(''); }}
                                                         disabled={!!actionId}
                                                         title="Reject"
@@ -136,15 +134,15 @@ export default function LecturerDashboardPage() {
 
             {/* Reject Modal */}
             {rejectModal && (
-                <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 16 }}>
-                    <div style={{ background: 'var(--bg-card)', borderRadius: 'var(--radius)', padding: 28, width: '100%', maxWidth: 420, boxShadow: 'var(--shadow-lg)' }}>
+                <div className="modal-overlay">
+                    <div className="modal-content" style={{ padding: 28, maxWidth: 420 }}>
                         <h3 style={{ margin: '0 0 8px', fontWeight: 700 }}>Reject Request</h3>
                         <p style={{ color: 'var(--secondary)', fontSize: 14, marginBottom: 16 }}>Provide a reason for rejection.</p>
                         <textarea className="form-input" rows={4} placeholder="Rejection reason…"
                             value={rejectNote} onChange={e => setRejectNote(e.target.value)} />
                         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 16 }}>
                             <button className="btn btn-outline" onClick={() => setRejectModal(null)}>Cancel</button>
-                            <button className="btn" style={{ background: '#dc2626', color: '#fff', border: 'none' }}
+                            <button className="btn btn-primary"
                                 onClick={() => handleDecision(rejectModal.reqId, rejectModal.stage, 'REJECT', rejectNote)}
                                 disabled={!!actionId}>
                                 {actionId ? 'Rejecting…' : 'Confirm Reject'}

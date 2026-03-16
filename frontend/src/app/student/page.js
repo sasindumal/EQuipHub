@@ -41,7 +41,7 @@ export default function StudentDashboardPage() {
     const pending   = requests.filter(r => ['PENDINGAPPROVAL','PENDINGRECOMMENDATION','PENDING'].includes(r.status)).length;
     const penActive = penalties.filter(p => p.status === 'APPROVED').length;
 
-    const STATUS_COLOR = { DRAFT:'#94a3b8', PENDINGAPPROVAL:'#f59e0b', PENDINGRECOMMENDATION:'#f59e0b', APPROVED:'#10b981', INUSE:'#3b82f6', RETURNED:'#6b7280', REJECTED:'#ef4444', CANCELLED:'#9ca3af' };
+    const STATUS_COLOR = { DRAFT:'#8697C4', PENDINGAPPROVAL:'#8697C4', PENDINGRECOMMENDATION:'#8697C4', APPROVED:'#7091E6', INUSE:'#3D52A0', RETURNED:'#ADBBDA', REJECTED:'#3D52A0', CANCELLED:'#ADBBDA' };
 
     return (
         <DashboardLayout pageTitle="My Dashboard" pageSubtitle={`Welcome back, ${user?.firstName || 'Student'}!`}>
@@ -50,10 +50,10 @@ export default function StudentDashboardPage() {
             {/* Stat cards */}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 16, marginBottom: 24 }}>
                 {[
-                    { label: 'Active Borrows',   value: active,            color: '#3b82f6', href: '/student/requests' },
-                    { label: 'Pending Approval', value: pending,           color: '#f59e0b', href: '/student/requests' },
-                    { label: 'Active Penalties', value: penActive,         color: '#ef4444', href: '/student/penalties' },
-                    { label: 'Total Requests',   value: requests.length,   color: 'var(--primary)', href: '/student/requests' },
+                    { label: 'Active Borrows',   value: active,            color: 'var(--primary)', href: '/student/requests' },
+                    { label: 'Pending Approval', value: pending,           color: 'var(--secondary)', href: '/student/requests' },
+                    { label: 'Active Penalties', value: penActive,         color: 'var(--primary)', href: '/student/penalties' },
+                    { label: 'Total Requests',   value: requests.length,   color: 'var(--primary-light)', href: '/student/requests' },
                 ].map(s => (
                     <Link key={s.label} href={s.href} style={{ textDecoration: 'none' }}>
                         <div className="content-card" style={{ padding: 20, cursor: 'pointer' }}>
@@ -66,7 +66,7 @@ export default function StudentDashboardPage() {
 
             {/* Quick actions */}
             <div style={{ display: 'flex', gap: 10, marginBottom: 24 }}>
-                <Link href="/student/requests/new" className="btn" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <Link href="/student/requests/new" className="btn btn-primary" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                     <HiOutlinePlusCircle /> New Borrow Request
                 </Link>
                 <Link href="/student/requests" className="btn btn-outline" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -114,13 +114,13 @@ export default function StudentDashboardPage() {
 
             {/* Active penalties warning */}
             {penActive > 0 && (
-                <div style={{ padding: 16, background: '#fef2f2', border: '1px solid #fca5a5', borderRadius: 'var(--radius)', display: 'flex', alignItems: 'center', gap: 12 }}>
-                    <HiOutlineExclamationCircle style={{ color: '#ef4444', fontSize: 24, flexShrink: 0 }} />
+                <div style={{ padding: 16, background: 'rgba(61, 82, 160, 0.06)', border: '1px solid rgba(61, 82, 160, 0.15)', borderRadius: 'var(--radius-sm)', display: 'flex', alignItems: 'center', gap: 12 }}>
+                    <HiOutlineExclamationCircle style={{ color: 'var(--primary)', fontSize: 24, flexShrink: 0 }} />
                     <div>
-                        <div style={{ fontWeight: 600, color: '#dc2626' }}>You have {penActive} active penalty point(s)</div>
-                        <div style={{ fontSize: 13, color: '#7f1d1d', marginTop: 2 }}>Active penalties may restrict your borrowing eligibility.</div>
+                        <div style={{ fontWeight: 600, color: 'var(--primary)' }}>You have {penActive} active penalty point(s)</div>
+                        <div style={{ fontSize: 13, color: 'var(--secondary)', marginTop: 2 }}>Active penalties may restrict your borrowing eligibility.</div>
                     </div>
-                    <Link href="/student/penalties" className="btn btn-sm" style={{ marginLeft: 'auto', background: '#ef4444', color: '#fff', border: 'none' }}>View</Link>
+                    <Link href="/student/penalties" className="btn btn-primary btn-sm" style={{ marginLeft: 'auto' }}>View</Link>
                 </div>
             )}
         </DashboardLayout>

@@ -76,9 +76,9 @@ export default function StudentPenaltiesPage() {
             {summary && (
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 16, marginBottom: 24 }}>
                     {[
-                        { label: 'Total Active Points', value: totalPoints,                    color: totalPoints > 0 ? '#ef4444' : '#10b981' },
-                        { label: 'Penalty Level',       value: summary.penaltyLevel || 'NONE', color: '#f59e0b'         },
-                        { label: 'Can Borrow',          value: summary.canBorrow ? 'Yes' : 'No', color: summary.canBorrow ? '#10b981' : '#ef4444' },
+                        { label: 'Total Active Points', value: totalPoints,                    color: totalPoints > 0 ? 'var(--primary)' : 'var(--primary-light)' },
+                        { label: 'Penalty Level',       value: summary.penaltyLevel || 'NONE', color: 'var(--secondary)'         },
+                        { label: 'Can Borrow',          value: summary.canBorrow ? 'Yes' : 'No', color: summary.canBorrow ? 'var(--primary-light)' : 'var(--primary)' },
                     ].map(s => (
                         <div key={s.label} className="content-card" style={{ padding: 20 }}>
                             <div style={{ fontSize: 28, fontWeight: 800, color: s.color }}>{s.value}</div>
@@ -115,7 +115,7 @@ export default function StudentPenaltiesPage() {
                                     return (
                                         <tr key={p.penaltyId || p.id}>
                                             <td><span className={`badge ${tc.badge}`}>{tc.label}</span></td>
-                                            <td style={{ fontWeight: 700, color: '#ef4444' }}>{p.points}</td>
+                                            <td style={{ fontWeight: 700, color: 'var(--primary)' }}>{p.points}</td>
                                             <td style={{ fontSize: 13, maxWidth: 220 }}>{p.reason || '—'}</td>
                                             <td style={{ fontSize: 12, color: 'var(--secondary)' }}>
                                                 {p.createdAt ? new Date(p.createdAt).toLocaleDateString() : '—'}
@@ -128,8 +128,8 @@ export default function StudentPenaltiesPage() {
                                                     </button>
                                                     {canAppeal && (
                                                         <button
-                                                            className="btn btn-sm"
-                                                            style={{ background: '#dbeafe', color: '#1e40af', border: '1px solid #93c5fd', fontSize: 12 }}
+                                                            className="btn btn-approve btn-sm"
+                                                            style={{ fontSize: 12 }}
                                                             onClick={() => { setAppeal(p.penaltyId || p.id); setAppealText(''); }}
                                                         >
                                                             Appeal
@@ -142,7 +142,7 @@ export default function StudentPenaltiesPage() {
                                 })
                             ) : (
                                 <tr><td colSpan={6} style={{ textAlign: 'center', padding: 48, color: 'var(--secondary)' }}>
-                                    <HiOutlineExclamationCircle style={{ fontSize: 32, display: 'block', margin: '0 auto 8px', color: '#10b981' }} />
+                                    <HiOutlineExclamationCircle style={{ fontSize: 32, display: 'block', margin: '0 auto 8px', color: 'var(--primary-light)' }} />
                                     No penalties on your record!
                                 </td></tr>
                             )}
@@ -153,8 +153,8 @@ export default function StudentPenaltiesPage() {
 
             {/* View Modal */}
             {viewPenalty && (
-                <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 16 }}>
-                    <div style={{ background: 'var(--bg-card)', borderRadius: 'var(--radius)', padding: 28, width: '100%', maxWidth: 440, boxShadow: 'var(--shadow-lg)' }}>
+                <div className="modal-overlay">
+                    <div className="modal-content" style={{ padding: 28, maxWidth: 440 }}>
                         <h3 style={{ margin: '0 0 18px', fontWeight: 700 }}>Penalty Details</h3>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                             {[
@@ -181,8 +181,8 @@ export default function StudentPenaltiesPage() {
 
             {/* Appeal Modal */}
             {appealModal && (
-                <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 16 }}>
-                    <div style={{ background: 'var(--bg-card)', borderRadius: 'var(--radius)', padding: 28, width: '100%', maxWidth: 420, boxShadow: 'var(--shadow-lg)' }}>
+                <div className="modal-overlay">
+                    <div className="modal-content" style={{ padding: 28, maxWidth: 420 }}>
                         <h3 style={{ margin: '0 0 8px', fontWeight: 700 }}>Submit Appeal</h3>
                         <p style={{ color: 'var(--secondary)', fontSize: 14, marginBottom: 16 }}>Explain why you believe this penalty should be waived.</p>
                         <textarea className="form-input" rows={4} placeholder="Your appeal reason…"

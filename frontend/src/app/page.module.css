@@ -1,19 +1,19 @@
 .page {
-  --background: #fafafa;
-  --foreground: #fff;
+  --background: #EDE8F5;
+  --foreground: #FFFFFF;
 
-  --text-primary: #000;
-  --text-secondary: #666;
+  --text-primary: #000000;
+  --text-secondary: #8697C4;
 
-  --button-primary-hover: #383838;
-  --button-secondary-hover: #f2f2f2;
-  --button-secondary-border: #ebebeb;
+  --button-primary-hover: #3D52A0;
+  --button-secondary-hover: #EDE8F5;
+  --button-secondary-border: #ADBBDA;
 
   display: flex;
   min-height: 100vh;
   align-items: center;
   justify-content: center;
-  font-family: var(--font-geist-sans);
+  font-family: var(--font-family);
   background-color: var(--background);
 }
 
@@ -25,7 +25,10 @@
   flex-direction: column;
   align-items: flex-start;
   justify-content: space-between;
-  background-color: var(--foreground);
+  background: rgba(255, 255, 255, 0.7);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(173, 187, 218, 0.18);
   padding: 120px 60px;
 }
 
@@ -84,19 +87,20 @@
 }
 
 a.primary {
-  background: var(--text-primary);
-  color: var(--background);
+  background: linear-gradient(135deg, #3D52A0 0%, #7091E6 100%);
+  color: #FFFFFF;
   gap: 8px;
 }
 
 a.secondary {
   border-color: var(--button-secondary-border);
+  color: #3D52A0;
 }
 
 /* Enable hover only on non-touch devices */
 @media (hover: hover) and (pointer: fine) {
   a.primary:hover {
-    background: var(--button-primary-hover);
+    background: #3D52A0;
     border-color: transparent;
   }
 
@@ -119,23 +123,5 @@ a.secondary {
     font-size: 32px;
     line-height: 40px;
     letter-spacing: -1.92px;
-  }
-}
-
-@media (prefers-color-scheme: dark) {
-  .logo {
-    filter: invert();
-  }
-
-  .page {
-    --background: #000;
-    --foreground: #000;
-
-    --text-primary: #ededed;
-    --text-secondary: #999;
-
-    --button-primary-hover: #ccc;
-    --button-secondary-hover: #1a1a1a;
-    --button-secondary-border: #1a1a1a;
   }
 }

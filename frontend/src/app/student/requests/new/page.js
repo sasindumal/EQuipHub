@@ -186,13 +186,13 @@ export default function NewRequestPage() {
                             </select>
                         </div>
                         <div>
-                            <label className="form-label">Borrow Date <span style={{ color: '#ef4444' }}>*</span></label>
+                            <label className="form-label">Borrow Date                         <span style={{ color: 'var(--primary)' }}>*</span></label>
                             <input type="date" className="form-input"
                                 min={new Date().toISOString().split('T')[0]}
                                 value={form.borrowDate} onChange={e => setField('borrowDate', e.target.value)} />
                         </div>
                         <div>
-                            <label className="form-label">Return Date <span style={{ color: '#ef4444' }}>*</span></label>
+                            <label className="form-label">Return Date                         <span style={{ color: 'var(--primary)' }}>*</span></label>
                             <input type="date" className="form-input"
                                 min={form.borrowDate || new Date().toISOString().split('T')[0]}
                                 value={form.returnDate} onChange={e => setField('returnDate', e.target.value)} />
@@ -211,7 +211,7 @@ export default function NewRequestPage() {
                         <div style={{ display: 'flex', alignItems: 'center', gap: 10, paddingTop: 22 }}>
                             <input type="checkbox" id="emergency" checked={form.isEmergency}
                                 onChange={e => setField('isEmergency', e.target.checked)}
-                                style={{ width: 16, height: 16, accentColor: '#dc2626' }} />
+                                style={{ width: 16, height: 16, accentColor: 'var(--primary)' }} />
                             <label htmlFor="emergency" style={{ fontSize: 14, color: 'var(--text-main)', cursor: 'pointer' }}>
                                 Mark as Emergency
                             </label>
@@ -221,7 +221,7 @@ export default function NewRequestPage() {
                     {/* Purpose */}
                     <div>
                         <label className="form-label">
-                            Purpose / Description <span style={{ color: '#ef4444' }}>*</span>
+                            Purpose / Description                         <span style={{ color: 'var(--primary)' }}>*</span>
                         </label>
                         <textarea className="form-input" rows={3}
                             placeholder="Describe why you need this equipment…"
@@ -241,7 +241,7 @@ export default function NewRequestPage() {
                     <div>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
                             <label className="form-label" style={{ margin: 0 }}>
-                                Equipment Items <span style={{ color: '#ef4444' }}>*</span>
+                                Equipment Items                         <span style={{ color: 'var(--primary)' }}>*</span>
                             </label>
                             <button className="btn btn-outline btn-sm" onClick={addItem}
                                 style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
@@ -285,8 +285,8 @@ export default function NewRequestPage() {
                                         onChange={e => setItem(idx, 'notes', e.target.value)} />
                                 </div>
                                 {form.items.length > 1 && (
-                                    <button className="btn btn-sm"
-                                        style={{ background: '#fee2e2', color: '#dc2626', border: '1px solid #fca5a5', alignSelf: idx === 0 ? 'flex-end' : 'auto' }}
+                                    <button className="btn btn-reject btn-sm"
+                                        style={{ alignSelf: idx === 0 ? 'flex-end' : 'auto' }}
                                         onClick={() => removeItem(idx)} title="Remove item">
                                         <HiOutlineTrash />
                                     </button>
