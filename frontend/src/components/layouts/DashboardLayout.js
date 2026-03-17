@@ -71,7 +71,13 @@ const technicalOfficerNav = [
     {
         title: 'OVERVIEW',
         items: [
-            { label: 'Dashboard',       href: '/technical-officer',          icon: HiOutlineHome             },
+            { label: 'Dashboard', href: '/technical-officer', icon: HiOutlineHome },
+        ],
+    },
+    {
+        title: 'EQUIPMENT',
+        items: [
+            { label: 'Equipment',       href: '/technical-officer/equipment',    icon: HiOutlineDesktopComputer  },
         ],
     },
     {
