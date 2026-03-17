@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import DashboardLayout from '@/components/layouts/DashboardLayout';
+import { useAuth } from '@/lib/auth';
 import { equipmentAPI, equipmentCategoryAPI } from '@/lib/api';
 import {
     HiOutlineDesktopComputer,
@@ -11,7 +12,6 @@ import {
     HiOutlineRefresh,
     HiOutlineSearch,
     HiOutlineXCircle,
-    HiOutlineTag,
     HiOutlineSwitchHorizontal,
 } from 'react-icons/hi';
 
@@ -39,6 +39,8 @@ const EMPTY_FORM = {
 const EMPTY_STATUS_FORM = { status: 'MAINTENANCE', reason: '' };
 
 export default function TOEquipmentPage() {
+    const { user } = useAuth();  // ← departmentId lives here
+
     const [equipment, setEquipment]   = useState([]);
     const [categories, setCategories] = useState([]);
     const [loading, setLoading]       = useState(true);
@@ -49,15 +51,15 @@ export default function TOEquipmentPage() {
     const [success, setSuccess]       = useState(null);
 
     // Modals
-    const [showModal, setShowModal]         = useState(false);
-    const [editTarget, setEditTarget]       = useState(null);
-    const [form, setForm]                   = useState(EMPTY_FORM);
-    const [formErrors, setFormErrors]       = useState({});
-    const [confirmId, setConfirmId]         = useState(null);
-    const [showStatusModal, setShowStatus]  = useState(false);
-    const [statusTarget, setStatusTarget]   = useState(null);
-    const [statusForm, setStatusForm]       = useState(EMPTY_STATUS_FORM);
-    const [statusSaving, setStatusSaving]   = useState(false);
+    const [showModal, setShowModal]        = useState(false);
+    const [editTarget, setEditTarget]      = useState(null);
+    const [form, setForm]                  = useState(EMPTY_FORM);
+    const [formErrors, setFormErrors]      = useState({});
+    const [confirmId, setConfirmId]        = useState(null);
+    const [showStatusModal, setShowStatus] = useState(false);
+    const [statusTarget, setStatusTarget]  = useState(null);
+    const [statusForm, setStatusForm]      = useState(EMPTY_STATUS_FORM);
+    const [statusSaving, setStatusSaving]  = useState(false);
 
     useEffect(() => { initPage(); }, []);
 
@@ -86,7 +88,7 @@ export default function TOEquipmentPage() {
         setTimeout(() => isErr ? setError(null) : setSuccess(null), 5000);
     };
 
-    // ── Equipment CRUD ───────────────────────────────────────────────────
+    // ── Equipment CRUD ────────────────────────────────────────────────────
     const openAdd = () => {
         setEditTarget(null);
         setForm({ ...EMPTY_FORM, equipmentId: generateId() });
@@ -121,17 +123,29 @@ export default function TOEquipmentPage() {
 
     const handleSave = async () => {
         if (!validate()) return;
+
+        // ── Guard: TO must have a departmentId in their JWT ──
+        const deptId = user?.departmentId;
+        if (!editTarget && !deptId) {
+            flash('Your account has no department assigned. Contact your administrator.', true);
+            return;
+        }
+
         setSaving(true);
         try {
             if (editTarget) {
                 await equipmentAPI.updateEquipment(editTarget.equipmentId || editTarget.id, {
-                    name: form.name, description: form.description,
-                    serialNumber: form.serialNumber, categoryId: parseInt(form.categoryId),
-                    type: form.type, totalQuantity: form.totalQuantity,
+                    name:            form.name,
+                    description:     form.description,
+                    serialNumber:    form.serialNumber,
+                    categoryId:      parseInt(form.categoryId),
+                    type:            form.type,
+                    totalQuantity:   form.totalQuantity,
                     currentLocation: form.currentLocation,
                 });
                 flash('Equipment updated successfully');
             } else {
+                // departmentId is injected from the authenticated user's JWT profile
                 await equipmentAPI.createEquipment({
                     equipmentId:     form.equipmentId,
                     name:            form.name.trim(),
@@ -139,6 +153,7 @@ export default function TOEquipmentPage() {
                     serialNumber:    form.serialNumber.trim(),
                     categoryId:      parseInt(form.categoryId),
                     type:            form.type,
+                    departmentId:    deptId,          // ← THE FIX
                     totalQuantity:   form.totalQuantity,
                     currentLocation: form.currentLocation.trim(),
                 });
@@ -162,7 +177,7 @@ export default function TOEquipmentPage() {
         }
     };
 
-    // ── Status change modal ──────────────────────────────────────────────
+    // ── Status change modal ───────────────────────────────────────────────
     const openStatus = (item) => {
         setStatusTarget(item);
         setStatusForm({ status: 'MAINTENANCE', reason: '' });
@@ -177,7 +192,10 @@ export default function TOEquipmentPage() {
         setStatusSaving(true);
         try {
             const id = statusTarget.equipmentId || statusTarget.id;
-            await equipmentAPI.updateEquipmentStatus(id, { status: statusForm.status, reason: statusForm.reason || undefined });
+            await equipmentAPI.updateEquipmentStatus(id, {
+                status: statusForm.status,
+                reason: statusForm.reason || undefined,
+            });
             flash(`Status updated to ${statusForm.status}`);
             setShowStatus(false); initPage();
         } catch (e) {
@@ -200,6 +218,13 @@ export default function TOEquipmentPage() {
             {error   && <div className="alert alert-danger"  style={{ marginBottom: 16 }}>{error}</div>}
             {success && <div className="alert alert-success" style={{ marginBottom: 16 }}>{success}</div>}
 
+            {/* Dept info banner */}
+            {user?.departmentId && (
+                <div style={{ marginBottom: 16, fontSize: 13, color: 'var(--secondary)' }}>
+                    Department ID: <strong style={{ fontFamily: 'monospace' }}>{user.departmentId}</strong>
+                </div>
+            )}
+
             {/* Toolbar */}
             <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginBottom: 20, alignItems: 'center' }}>
                 <div style={{ position: 'relative', flex: 1, minWidth: 200 }}>
@@ -219,7 +244,13 @@ export default function TOEquipmentPage() {
                 <button className="btn btn-outline btn-sm" onClick={initPage} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                     <HiOutlineRefresh /> Refresh
                 </button>
-                <button className="btn btn-primary" onClick={openAdd} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <button
+                    className="btn btn-primary"
+                    onClick={openAdd}
+                    disabled={!user?.departmentId}
+                    title={!user?.departmentId ? 'No department assigned to your account' : ''}
+                    style={{ display: 'flex', alignItems: 'center', gap: 6 }}
+                >
                     <HiOutlinePlus /> Add Equipment
                 </button>
             </div>
