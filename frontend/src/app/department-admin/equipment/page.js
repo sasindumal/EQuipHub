@@ -2,7 +2,8 @@
 
 import { useState, useEffect } from 'react';
 import DashboardLayout from '@/components/layouts/DashboardLayout';
-import { equipmentAPI } from '@/lib/api';
+import { equipmentAPI, deptAdminAPI } from '@/lib/api';
+import { useAuth } from '@/lib/auth';
 import {
     HiOutlineDesktopComputer,
     HiOutlinePlus,
@@ -27,6 +28,7 @@ const EMPTY_FORM = {
 };
 
 export default function DeptEquipmentPage() {
+    const { user } = useAuth();
     const [equipment, setEquipment]   = useState([]);
     const [loading, setLoading]       = useState(true);
     const [saving, setSaving]         = useState(false);
@@ -39,10 +41,32 @@ export default function DeptEquipmentPage() {
     const [form, setForm]             = useState(EMPTY_FORM);
     const [formErrors, setFormErrors] = useState({});
     const [confirmId, setConfirmId]   = useState(null);
+    const [departmentId, setDepartmentId] = useState(null);
 
-    useEffect(() => { load(); }, []);
+    useEffect(() => { 
+        loadDepartment(); 
+    }, []);
+
+    const loadDepartment = async () => {
+        try {
+            const res = await deptAdminAPI.getMyDepartment();
+            const dept = res.data?.data || res.data;
+            if (dept?.departmentId) {
+                setDepartmentId(dept.departmentId);
+                load(dept.departmentId);
+            } else if (dept?.id) {
+                setDepartmentId(dept.id);
+                load(dept.id);
+            }
+        } catch (e) {
+            console.error('Failed to load department:', e);
+            setError('Failed to load department. Please refresh the page.');
+            setLoading(false);
+        }
+    };
 
     const load = async () => {
+        if (!departmentId) return;
         setLoading(true);
         setError(null);
         try {
@@ -98,6 +122,10 @@ export default function DeptEquipmentPage() {
 
     const handleSave = async () => {
         if (!validate()) return;
+        if (!departmentId) {
+            flash('Department not loaded. Please refresh the page.', true);
+            return;
+        }
         setSaving(true);
         try {
             const payload = {
@@ -107,7 +135,7 @@ export default function DeptEquipmentPage() {
                 serialNumber: form.serialNumber,
                 categoryId: parseInt(form.categoryId),
                 type: form.type,
-                departmentId: editTarget?.departmentId || null,
+                departmentId: editTarget?.departmentId || editTarget?.id || departmentId,
                 totalQuantity: form.quantity,
                 currentLocation: form.currentLocation,
             };

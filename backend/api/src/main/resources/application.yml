@@ -48,7 +48,7 @@ spring:
     redis:
       host: ${REDIS_HOST:localhost}
       port: ${REDIS_PORT:6379}
-      password: ${REDIS_PASSWORD:12345678}
+      password: ${REDIS_PASSWORD:equiphub_redis_pass}
       timeout: 2000
       lettuce:
         pool:
