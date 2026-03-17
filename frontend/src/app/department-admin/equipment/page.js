@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import DashboardLayout from '@/components/layouts/DashboardLayout';
-import { equipmentAPI, deptAdminAPI } from '@/lib/api';
+import { equipmentAPI, deptAdminAPI, equipmentCategoryAPI } from '@/lib/api';
 import {
     HiOutlineDesktopComputer,
     HiOutlinePlus,
@@ -21,40 +21,47 @@ const STATUS_COLORS = {
     ARCHIVED:    { badge: 'badge-muted',   label: 'Archived'    },
 };
 
-// Known categories with their integer IDs from EquipmentCategory table.
-// If you have a /categories API endpoint, fetch dynamically instead.
-const CATEGORIES = [
-    { id: 1, name: 'Instruments' },
-    { id: 2, name: 'Computers' },
-    { id: 3, name: 'Lab Equipment' },
-    { id: 4, name: 'Audio/Visual' },
-    { id: 5, name: 'Other' },
-];
+// NOTE: CATEGORIES are no longer hardcoded here.
+// They are fetched dynamically from GET /equipment-categories on mount.
+// This prevents the "Category not found with ID: X" 500 error caused
+// by auto-generated DB IDs not matching hardcoded frontend values.
+
+const generateEquipmentId = () => {
+    if (typeof crypto !== 'undefined' && crypto.randomUUID) {
+        return crypto.randomUUID();
+    }
+    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
+        const r = (Math.random() * 16) | 0;
+        return (c === 'x' ? r : (r & 0x3) | 0x8).toString(16);
+    });
+};
 
 const EMPTY_FORM = {
-    name: '',
-    description: '',
-    serialNumber: '',
-    categoryId: '',          // integer FK — must match EquipmentCategory table
-    type: 'BORROWABLE',      // BORROWABLE | LABDEDICATED
-    totalQuantity: 1,
+    equipmentId:     '',           // pre-generated UUID — refreshed on every openAdd()
+    name:            '',
+    description:     '',
+    serialNumber:    '',
+    categoryId:      '',           // integer FK — loaded from /equipment-categories
+    type:            'BORROWABLE', // BORROWABLE | LABDEDICATED
+    totalQuantity:   1,
     currentLocation: '',
 };
 
 export default function DeptEquipmentPage() {
-    const [equipment, setEquipment]   = useState([]);
-    const [myDept, setMyDept]         = useState(null);   // dept info for current admin
-    const [loading, setLoading]       = useState(true);
-    const [saving, setSaving]         = useState(false);
-    const [search, setSearch]         = useState('');
-    const [filterStatus, setFilter]   = useState('ALL');
-    const [error, setError]           = useState(null);
-    const [success, setSuccess]       = useState(null);
-    const [showModal, setShowModal]   = useState(false);
-    const [editTarget, setEditTarget] = useState(null);
-    const [form, setForm]             = useState(EMPTY_FORM);
-    const [formErrors, setFormErrors] = useState({});
-    const [confirmId, setConfirmId]   = useState(null);
+    const [equipment, setEquipment]     = useState([]);
+    const [myDept, setMyDept]           = useState(null);
+    const [categories, setCategories]   = useState([]);   // loaded from API
+    const [loading, setLoading]         = useState(true);
+    const [saving, setSaving]           = useState(false);
+    const [search, setSearch]           = useState('');
+    const [filterStatus, setFilter]     = useState('ALL');
+    const [error, setError]             = useState(null);
+    const [success, setSuccess]         = useState(null);
+    const [showModal, setShowModal]     = useState(false);
+    const [editTarget, setEditTarget]   = useState(null);
+    const [form, setForm]               = useState(EMPTY_FORM);
+    const [formErrors, setFormErrors]   = useState({});
+    const [confirmId, setConfirmId]     = useState(null);
 
     useEffect(() => { initPage(); }, []);
 
@@ -62,12 +69,24 @@ export default function DeptEquipmentPage() {
         setLoading(true);
         setError(null);
         try {
-            // Fetch dept info (needed to set departmentId on new equipment)
+            // ── Fetch department ──────────────────────────────────────────────
+            // BUG FIX: The API response may nest the dept object under .data.data
+            // and the UUID field may be named either departmentId OR id depending
+            // on the serializer. We normalize it here to one canonical field:
+            // myDept.departmentId — used exclusively in createPayload below.
             const deptRes = await deptAdminAPI.getMyDepartment();
-            const dept = deptRes.data?.data || deptRes.data;
+            const rawDept = deptRes.data?.data || deptRes.data;
+            const resolvedDeptId = rawDept?.departmentId ?? rawDept?.id ?? '';
+            const dept = { ...rawDept, departmentId: resolvedDeptId };
             setMyDept(dept);
 
-            // Fetch equipment list
+            // ── Fetch categories dynamically ──────────────────────────────────
+            // Never rely on hardcoded IDs — DB auto-increments may differ per env.
+            const catRes = await equipmentCategoryAPI.getAll();
+            const catData = catRes.data?.data || catRes.data || [];
+            setCategories(Array.isArray(catData) ? catData : []);
+
+            // ── Fetch equipment list ──────────────────────────────────────────
             const eqRes = await equipmentAPI.getAllEquipment();
             const raw = eqRes.data?.data?.equipment || eqRes.data?.data || eqRes.data || [];
             setEquipment(Array.isArray(raw) ? raw : []);
@@ -85,7 +104,10 @@ export default function DeptEquipmentPage() {
 
     const openAdd = () => {
         setEditTarget(null);
-        setForm(EMPTY_FORM);
+        // BUG FIX: Always generate a fresh UUID when the modal opens.
+        // If we reuse the UUID from a previous failed/closed submission,
+        // the backend throws "Equipment ID already exists" (500).
+        setForm({ ...EMPTY_FORM, equipmentId: generateEquipmentId() });
         setFormErrors({});
         setShowModal(true);
     };
@@ -93,6 +115,7 @@ export default function DeptEquipmentPage() {
     const openEdit = (item) => {
         setEditTarget(item);
         setForm({
+            equipmentId:     item.equipmentId || item.id || '',
             name:            item.name            || '',
             description:     item.description     || '',
             serialNumber:    item.serialNumber    || '',
@@ -116,24 +139,11 @@ export default function DeptEquipmentPage() {
         return Object.keys(errs).length === 0;
     };
 
-    // Generate a UUID-compatible equipment ID from the name + serial
-    const generateEquipmentId = () => {
-        // Use crypto.randomUUID if available (modern browsers), else fallback
-        if (typeof crypto !== 'undefined' && crypto.randomUUID) {
-            return crypto.randomUUID();
-        }
-        return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
-            const r = (Math.random() * 16) | 0;
-            return (c === 'x' ? r : (r & 0x3) | 0x8).toString(16);
-        });
-    };
-
     const handleSave = async () => {
         if (!validate()) return;
         setSaving(true);
         try {
             if (editTarget) {
-                // PUT /equipment/:id  — UpdateEquipmentRequest (only changed fields)
                 const updatePayload = {
                     name:            form.name,
                     description:     form.description,
@@ -146,23 +156,26 @@ export default function DeptEquipmentPage() {
                 await equipmentAPI.updateEquipment(editTarget.equipmentId || editTarget.id, updatePayload);
                 flash('Equipment updated successfully');
             } else {
-                // POST /equipment  — CreateEquipmentRequest (all required fields must be present)
-                // Bug fix: frontend was missing equipmentId, departmentId, type, currentLocation
-                // and was sending categoryId as a string instead of integer.
-                const deptId = myDept?.departmentId || myDept?.id;
+                // ── BUG FIX: departmentId UUID mismatch ──────────────────────
+                // Previously used: myDept?.departmentId || myDept?.id
+                // This silently sends the wrong value if only one field exists.
+                // Now we always use the pre-normalized myDept.departmentId which
+                // was set to (rawDept.departmentId ?? rawDept.id) in initPage().
+                const deptId = myDept?.departmentId;
                 if (!deptId) {
-                    flash('Could not resolve your department. Please refresh the page.', true);
+                    flash('Could not resolve your department ID. Please refresh the page.', true);
                     setSaving(false);
                     return;
                 }
+
                 const createPayload = {
-                    equipmentId:     generateEquipmentId(),   // UUID — required by @NotNull
+                    equipmentId:     form.equipmentId,          // pre-generated fresh UUID
                     name:            form.name.trim(),
                     description:     form.description.trim() || null,
                     serialNumber:    form.serialNumber.trim(),
-                    categoryId:      parseInt(form.categoryId),  // must be Integer, not String
-                    type:            form.type,                  // BORROWABLE | LABDEDICATED
-                    departmentId:    deptId,                     // required String UUID
+                    categoryId:      parseInt(form.categoryId), // Integer, not String
+                    type:            form.type,
+                    departmentId:    deptId,                    // normalized UUID string
                     totalQuantity:   form.totalQuantity,
                     currentLocation: form.currentLocation.trim(),
                 };
@@ -386,7 +399,7 @@ export default function DeptEquipmentPage() {
                                 {formErrors.serialNumber && <p className="form-error">{formErrors.serialNumber}</p>}
                             </div>
 
-                            {/* Category — dropdown tied to integer categoryId */}
+                            {/* Category — dropdown populated from GET /equipment-categories */}
                             <div>
                                 <label className="form-label">Category *</label>
                                 <select
@@ -395,7 +408,7 @@ export default function DeptEquipmentPage() {
                                     onChange={(e) => setForm({ ...form, categoryId: e.target.value })}
                                 >
                                     <option value="">Select category…</option>
-                                    {CATEGORIES.map((c) => (
+                                    {categories.map((c) => (
                                         <option key={c.id} value={c.id}>{c.name}</option>
                                     ))}
                                 </select>
