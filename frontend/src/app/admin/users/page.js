@@ -45,8 +45,7 @@ export default function AdminUsersPage() {
     const [error, setError]           = useState('');
     const [success, setSuccess]       = useState('');
 
-    // modals
-    const [modal, setModal]           = useState(null); // 'create' | 'edit' | 'reset' | 'delete'
+    const [modal, setModal]           = useState(null);
     const [target, setTarget]         = useState(null);
     const [createForm, setCreate]     = useState(EMPTY_CREATE);
     const [editForm, setEdit]         = useState(EMPTY_EDIT);
@@ -54,7 +53,6 @@ export default function AdminUsersPage() {
 
     useEffect(() => { load(); }, []);
 
-    // debounced search
     useEffect(() => {
         const t = setTimeout(() => {
             if (search.trim().length >= 2) searchUsers();
@@ -97,9 +95,8 @@ export default function AdminUsersPage() {
 
     const closeModal = () => { setModal(null); setTarget(null); setError(''); };
 
-    // ── CREATE ──
+    // CREATE
     const openCreate = () => { setCreate(EMPTY_CREATE); setError(''); setModal('create'); };
-
     const handleCreate = async (e) => {
         e.preventDefault(); setSaving(true); setError('');
         try {
@@ -111,7 +108,7 @@ export default function AdminUsersPage() {
         } finally { setSaving(false); }
     };
 
-    // ── EDIT ──
+    // EDIT
     const openEdit = (u) => {
         setTarget(u);
         setEdit({
@@ -123,7 +120,6 @@ export default function AdminUsersPage() {
         });
         setError(''); setModal('edit');
     };
-
     const handleEdit = async (e) => {
         e.preventDefault(); setSaving(true); setError('');
         try {
@@ -135,9 +131,8 @@ export default function AdminUsersPage() {
         } finally { setSaving(false); }
     };
 
-    // ── RESET PASSWORD ──
+    // RESET PASSWORD
     const openReset = (u) => { setTarget(u); setReset(EMPTY_RESET); setError(''); setModal('reset'); };
-
     const handleReset = async (e) => {
         e.preventDefault();
         if (resetForm.newPassword.length < 8) { setError('Password must be at least 8 characters'); return; }
@@ -152,7 +147,7 @@ export default function AdminUsersPage() {
         } finally { setSaving(false); }
     };
 
-    // ── SUSPEND / ACTIVATE ──
+    // SUSPEND / ACTIVATE
     const handleSuspend = async (u) => {
         try { await userAPI.suspendUser(u.userId || u.id); load(); flash(`${u.firstName} suspended`); }
         catch (err) { flash(err.response?.data?.message || 'Failed to suspend', true); }
@@ -162,7 +157,7 @@ export default function AdminUsersPage() {
         catch (err) { flash(err.response?.data?.message || 'Failed to activate', true); }
     };
 
-    // ── DELETE ──
+    // DELETE
     const openDelete = (u) => { setTarget(u); setModal('delete'); };
     const handleDelete = async () => {
         setSaving(true);
@@ -184,7 +179,6 @@ export default function AdminUsersPage() {
             {error   && <div className="alert alert-danger"  style={{ marginBottom: 16 }}>{error}</div>}
             {success && <div className="alert alert-success" style={{ marginBottom: 16 }}>{success}</div>}
 
-            {/* Toolbar */}
             <div className="action-bar">
                 <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap', flex: 1 }}>
                     <div className="search-bar">
@@ -213,7 +207,6 @@ export default function AdminUsersPage() {
                 </div>
             </div>
 
-            {/* Summary pills */}
             <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginBottom: 20 }}>
                 {['ACTIVE','PENDING','SUSPENDED'].map(s => {
                     const cnt = users.filter(u => u.status === s).length;
@@ -230,7 +223,6 @@ export default function AdminUsersPage() {
                 </div>
             </div>
 
-            {/* Table */}
             <div className="content-card">
                 <div className="table-container">
                     <table className="table">
@@ -247,7 +239,7 @@ export default function AdminUsersPage() {
                                 [...Array(6)].map((_, i) => (
                                     <tr key={i}>
                                         {[130,180,80,100,60,100].map((w,j) => (
-                                            <td key={j} className={j===1||j===3?'hide-mobile':''}>
+                                            <td key={j} className={j===1||j===3 ? 'hide-mobile' : ''}>
                                                 <div className="skeleton" style={{ width: w, height: 16 }} />
                                             </td>
                                         ))}
@@ -313,7 +305,7 @@ export default function AdminUsersPage() {
                 </div>
             </div>
 
-            {/* ── CREATE MODAL ── */}
+            {/* CREATE MODAL */}
             {modal === 'create' && (
                 <div className="modal-overlay" onClick={closeModal}>
                     <div className="modal-content" style={{ maxWidth: 560 }} onClick={e => e.stopPropagation()}>
@@ -389,7 +381,7 @@ export default function AdminUsersPage() {
                 </div>
             )}
 
-            {/* ── EDIT MODAL ── */}
+            {/* EDIT MODAL */}
             {modal === 'edit' && target && (
                 <div className="modal-overlay" onClick={closeModal}>
                     <div className="modal-content" style={{ maxWidth: 520 }} onClick={e => e.stopPropagation()}>
@@ -450,7 +442,7 @@ export default function AdminUsersPage() {
                 </div>
             )}
 
-            {/* ── RESET PASSWORD MODAL ── */}
+            {/* RESET PASSWORD MODAL */}
             {modal === 'reset' && target && (
                 <div className="modal-overlay" onClick={closeModal}>
                     <div className="modal-content" style={{ maxWidth: 420 }} onClick={e => e.stopPropagation()}>
@@ -488,7 +480,7 @@ export default function AdminUsersPage() {
                 </div>
             )}
 
-            {/* ── DELETE CONFIRM MODAL ── */}
+            {/* DELETE CONFIRM MODAL */}
             {modal === 'delete' && target && (
                 <div className="modal-overlay" onClick={closeModal}>
                     <div className="modal-content" style={{ maxWidth: 400, textAlign: 'center', padding: 28 }} onClick={e => e.stopPropagation()}>

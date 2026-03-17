@@ -1,5 +1,6 @@
 package com.equiphub.api.dto.user;
 
+import com.equiphub.api.model.enums.UserRole;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 import lombok.Data;
@@ -20,4 +21,6 @@ public class UpdateUserRequest {
     private String status;
 
     private String departmentId; // reassign to different department
+
+    private UserRole role; // allow role change by admin
 }
