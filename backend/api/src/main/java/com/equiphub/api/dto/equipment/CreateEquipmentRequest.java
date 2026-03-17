@@ -21,12 +21,15 @@ public class CreateEquipmentRequest {
     @Size(max = 255, message = "Name cannot exceed 255 characters")
     private String name;
 
-    // Accept numeric categoryId OR a string categoryName from the frontend.
-    // @JsonAlias ensures legacy payloads sending "category" as an int still work.
-    @JsonAlias("category")
-    private Integer categoryId;    // e.g. 3  (numeric FK)
+    // Numeric category FK — send as "categoryId": 3
+    // No @JsonAlias here: if frontend sends "category":"instrument" it must NOT
+    // be routed to this Integer field (that is what caused the 500 error).
+    private Integer categoryId;
 
-    private String categoryName;   // e.g. "instrument" (frontend sends this)
+    // String category name — the frontend sends "category": "instrument".
+    // @JsonAlias maps the "category" JSON key to this String field.
+    @JsonAlias("category")
+    private String categoryName;
 
     @NotNull(message = "Equipment type is required")
     private Equipment.EquipmentType type; // LABDEDICATED or BORROWABLE
