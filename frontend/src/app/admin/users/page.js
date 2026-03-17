@@ -230,7 +230,7 @@ export default function AdminUsersPage() {
                             <th>User</th>
                             <th className="hide-mobile">Email</th>
                             <th>Role</th>
-                            <th className="hide-mobile">Department</th>
+                            <th className="hide-mobile">Dept</th>
                             <th>Status</th>
                             <th style={{ textAlign: 'right' }}>Actions</th>
                         </tr></thead>
@@ -238,7 +238,7 @@ export default function AdminUsersPage() {
                             {loading ? (
                                 [...Array(6)].map((_, i) => (
                                     <tr key={i}>
-                                        {[130,180,80,100,60,100].map((w,j) => (
+                                        {[130,180,80,60,60,100].map((w,j) => (
                                             <td key={j} className={j===1||j===3 ? 'hide-mobile' : ''}>
                                                 <div className="skeleton" style={{ width: w, height: 16 }} />
                                             </td>
@@ -261,7 +261,9 @@ export default function AdminUsersPage() {
                                         </td>
                                         <td className="hide-mobile" style={{ color:'var(--secondary)', fontSize:13 }}>{u.email}</td>
                                         <td><span className={`badge ${ROLE_BADGE[u.role]||'badge-muted'}`}>{ROLE_LABELS[u.role]||u.role}</span></td>
-                                        <td className="hide-mobile" style={{ fontSize:13 }}>{u.departmentName || u.departmentId || '—'}</td>
+                                        <td className="hide-mobile" style={{ fontSize:13, fontWeight:500, color:'var(--secondary)' }}>
+                                            {u.departmentCode || '—'}
+                                        </td>
                                         <td><span className={`badge ${STATUS_BADGE[u.status]||'badge-muted'}`}>{u.status}</span></td>
                                         <td style={{ textAlign:'right' }}>
                                             <div style={{ display:'flex', gap:4, justifyContent:'flex-end' }}>
