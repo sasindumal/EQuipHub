@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import DashboardLayout from '@/components/layouts/DashboardLayout';
-import { equipmentAPI } from '@/lib/api';
+import { equipmentAPI, deptAdminAPI } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
 import {
     HiOutlineDesktopComputer,
@@ -47,21 +47,42 @@ export default function StudentEquipmentCatalog() {
     const [filterStatus, setFilter]   = useState('ALL');
     const [filterCat, setFilterCat]   = useState('ALL');
     const [viewItem, setViewItem]     = useState(null);
+    const [departmentId, setDepartmentId] = useState(null);
 
-    useEffect(() => { if (user?.departmentId) load(); }, [user?.departmentId]);
+    useEffect(() => { 
+        loadDepartment(); 
+    }, []);
 
-    const load = async () => {
+    const loadDepartment = async () => {
+        try {
+            if (user?.departmentId) {
+                setDepartmentId(user.departmentId);
+                load(user.departmentId);
+                return;
+            }
+            const res = await deptAdminAPI.getMyDepartment();
+            const dept = res.data?.data || res.data;
+            const deptId = dept?.departmentId || dept?.id;
+            if (deptId) {
+                setDepartmentId(deptId);
+                load(deptId);
+            } else {
+                setError('No department assigned. Please contact administrator.');
+                setLoading(false);
+            }
+        } catch (e) {
+            console.error('Failed to load department:', e);
+            setError('Failed to load department. Please refresh the page.');
+            setLoading(false);
+        }
+    };
+
+    const load = async (deptId) => {
+        if (!deptId) return;
         setLoading(true); setError(null);
         try {
-            let res;
-            if (user?.departmentId) {
-                // Use department-specific endpoint (students can access this)
-                res = await equipmentAPI.getByDepartment(user.departmentId);
-            } else {
-                res = await equipmentAPI.getAllEquipment();
-            }
+            const res = await equipmentAPI.getAvailableByDept(deptId);
             const raw = res.data?.data || res.data || [];
-            // Handle both { equipment: [...] } and direct array
             const data = raw.equipment || raw;
             const list = Array.isArray(data) ? data : (data.content || []);
             setEquipment(list);
@@ -131,7 +152,7 @@ export default function StudentEquipmentCatalog() {
                         <option key={c} value={c}>{formatCategory(c)}</option>
                     ))}
                 </select>
-                <button className="btn btn-outline btn-sm" onClick={load}
+                <button className="btn btn-outline btn-sm" onClick={() => load(departmentId)}
                     style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                     <HiOutlineRefresh /> Refresh
                 </button>

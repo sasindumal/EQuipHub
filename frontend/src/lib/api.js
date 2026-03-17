@@ -138,13 +138,14 @@ export const deptAdminAPI = {
 
 // ─── Equipment APIs ────────────────────────────────────────
 export const equipmentAPI = {
-  getAllEquipment:        ()          => api.get('/equipment'),
-  getEquipmentById:      (id)        => api.get(`/equipment/${id}`),
-  getByDepartment:       (deptId, activeOnly = true) => api.get(`/equipment/department/${deptId}?activeOnly=${activeOnly}`),
-  getAvailableByDept:    (deptId)    => api.get(`/equipment/department/${deptId}/available`),
-  createEquipment:       (data)      => api.post('/equipment', data),
-  updateEquipment:       (id, data)  => api.put(`/equipment/${id}`, data),
-  updateEquipmentStatus: (id, data)  => api.patch(`/equipment/${id}/status`, data),
+  getMyDepartmentEquipment: ()       => api.get('/equipment/my-department'),
+  getEquipmentById:         (id)     => api.get(`/equipment/${id}`),
+  getByDepartment:          (deptId, activeOnly = true) => api.get(`/equipment/department/${deptId}?activeOnly=${activeOnly}`),
+  getAvailableByDept:       (deptId) => api.get(`/equipment/department/${deptId}/available`),
+  createEquipment:          (data)   => api.post('/equipment', data),
+  updateEquipment:          (id, data) => api.put(`/equipment/${id}`, data),
+  updateEquipmentStatus:    (id, data) => api.patch(`/equipment/${id}/status`, data),
+  getMyDepartmentStats:     ()       => api.get('/equipment/my-department/stats'),
 };
 
 // ─── Borrow Request APIs ──────────────────────────────────

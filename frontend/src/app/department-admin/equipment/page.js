@@ -2,7 +2,8 @@
 
 import { useState, useEffect } from 'react';
 import DashboardLayout from '@/components/layouts/DashboardLayout';
-import { equipmentAPI } from '@/lib/api';
+import { equipmentAPI, deptAdminAPI } from '@/lib/api';
+import { useAuth } from '@/lib/auth';
 import {
     HiOutlineDesktopComputer,
     HiOutlinePlus,
@@ -15,17 +16,19 @@ import {
 
 const STATUS_COLORS = {
     AVAILABLE:   { badge: 'badge-success', label: 'Available'   },
-    IN_USE:      { badge: 'badge-warning', label: 'In Use'      },
+    INUSE:       { badge: 'badge-warning', label: 'In Use'      },
     MAINTENANCE: { badge: 'badge-danger',  label: 'Maintenance' },
-    INACTIVE:    { badge: 'badge-muted',   label: 'Inactive'    },
+    ARCHIVED:    { badge: 'badge-muted',   label: 'Archived'    },
 };
 
 const EMPTY_FORM = {
     name: '', description: '', serialNumber: '',
-    category: '', quantity: 1, status: 'AVAILABLE',
+    categoryId: '', type: 'BORROWABLE', quantity: 1, 
+    currentLocation: '', status: 'AVAILABLE',
 };
 
 export default function DeptEquipmentPage() {
+    const { user } = useAuth();
     const [equipment, setEquipment]   = useState([]);
     const [loading, setLoading]       = useState(true);
     const [saving, setSaving]         = useState(false);
@@ -38,15 +41,37 @@ export default function DeptEquipmentPage() {
     const [form, setForm]             = useState(EMPTY_FORM);
     const [formErrors, setFormErrors] = useState({});
     const [confirmId, setConfirmId]   = useState(null);
+    const [departmentId, setDepartmentId] = useState(null);
 
-    useEffect(() => { load(); }, []);
+    useEffect(() => { 
+        loadDepartment(); 
+    }, []);
+
+    const loadDepartment = async () => {
+        try {
+            const res = await deptAdminAPI.getMyDepartment();
+            const dept = res.data?.data || res.data;
+            if (dept?.departmentId) {
+                setDepartmentId(dept.departmentId);
+                load(dept.departmentId);
+            } else if (dept?.id) {
+                setDepartmentId(dept.id);
+                load(dept.id);
+            }
+        } catch (e) {
+            console.error('Failed to load department:', e);
+            setError('Failed to load department. Please refresh the page.');
+            setLoading(false);
+        }
+    };
 
     const load = async () => {
+        if (!departmentId) return;
         setLoading(true);
         setError(null);
         try {
-            const res = await equipmentAPI.getAllEquipment();
-            const data = res.data?.data || res.data || [];
+            const res = await equipmentAPI.getMyDepartmentEquipment();
+            const data = res.data?.data?.equipment || res.data?.data || [];
             setEquipment(Array.isArray(data) ? data : []);
         } catch (e) {
             setError('Failed to load equipment. Is the backend running?');
@@ -70,12 +95,14 @@ export default function DeptEquipmentPage() {
     const openEdit = (item) => {
         setEditTarget(item);
         setForm({
-            name:         item.name         || '',
-            description:  item.description  || '',
-            serialNumber: item.serialNumber || '',
-            category:     item.category     || '',
-            quantity:     item.quantity     || 1,
-            status:       item.status       || 'AVAILABLE',
+            name:            item.name            || '',
+            description:     item.description     || '',
+            serialNumber:    item.serialNumber    || '',
+            categoryId:      item.categoryId      || item.category?.categoryId || '',
+            type:            item.type            || 'BORROWABLE',
+            quantity:        item.totalQuantity   || item.quantity || 1,
+            currentLocation: item.currentLocation || '',
+            status:          item.status          || 'AVAILABLE',
         });
         setFormErrors({});
         setShowModal(true);
@@ -85,7 +112,9 @@ export default function DeptEquipmentPage() {
         const errs = {};
         if (!form.name.trim())         errs.name         = 'Name is required';
         if (!form.serialNumber.trim()) errs.serialNumber = 'Serial number is required';
-        if (!form.category.trim())     errs.category     = 'Category is required';
+        if (!form.categoryId)          errs.categoryId   = 'Category is required';
+        if (!form.type)                errs.type         = 'Type is required';
+        if (!form.currentLocation?.trim()) errs.currentLocation = 'Location is required';
         if (form.quantity < 1)         errs.quantity     = 'Quantity must be at least 1';
         setFormErrors(errs);
         return Object.keys(errs).length === 0;
@@ -93,13 +122,29 @@ export default function DeptEquipmentPage() {
 
     const handleSave = async () => {
         if (!validate()) return;
+        if (!departmentId) {
+            flash('Department not loaded. Please refresh the page.', true);
+            return;
+        }
         setSaving(true);
         try {
+            const payload = {
+                equipmentId: editTarget?.equipmentId || crypto.randomUUID(),
+                name: form.name,
+                description: form.description || null,
+                serialNumber: form.serialNumber,
+                categoryId: parseInt(form.categoryId),
+                type: form.type,
+                departmentId: editTarget?.departmentId || editTarget?.id || departmentId,
+                totalQuantity: form.quantity,
+                currentLocation: form.currentLocation,
+            };
+            
             if (editTarget) {
-                await equipmentAPI.updateEquipment(editTarget.equipmentId || editTarget.id, form);
+                await equipmentAPI.updateEquipment(editTarget.equipmentId || editTarget.id, payload);
                 flash('Equipment updated successfully');
             } else {
-                await equipmentAPI.createEquipment(form);
+                await equipmentAPI.createEquipment(payload);
                 flash('Equipment added successfully');
             }
             setShowModal(false);
@@ -161,9 +206,9 @@ export default function DeptEquipmentPage() {
                 >
                     <option value="ALL">All Statuses</option>
                     <option value="AVAILABLE">Available</option>
-                    <option value="IN_USE">In Use</option>
+                    <option value="INUSE">In Use</option>
                     <option value="MAINTENANCE">Maintenance</option>
-                    <option value="INACTIVE">Inactive</option>
+                    <option value="ARCHIVED">Archived</option>
                 </select>
                 <button className="btn btn-outline btn-sm" onClick={load}
                     style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
@@ -177,7 +222,7 @@ export default function DeptEquipmentPage() {
 
             {/* status summary pills */}
             <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginBottom: 20 }}>
-                {['AVAILABLE', 'IN_USE', 'MAINTENANCE', 'INACTIVE'].map((s) => {
+                {['AVAILABLE', 'INUSE', 'MAINTENANCE', 'ARCHIVED'].map((s) => {
                     const count = equipment.filter((e) => e.status === s).length;
                     return (
                         <div key={s} style={{
@@ -237,8 +282,8 @@ export default function DeptEquipmentPage() {
                                                 )}
                                             </td>
                                             <td style={{ fontSize: 13, fontFamily: 'monospace' }}>{item.serialNumber || '—'}</td>
-                                            <td style={{ fontSize: 13 }}>{item.category || '—'}</td>
-                                            <td style={{ fontWeight: 600 }}>{item.quantity ?? 1}</td>
+                                            <td style={{ fontSize: 13 }}>{item.categoryName || '—'}</td>
+                                            <td style={{ fontWeight: 600 }}>{item.totalQuantity ?? 1}</td>
                                             <td><span className={`badge ${sc.badge}`}>{sc.label}</span></td>
                                             <td>
                                                 <div style={{ display: 'flex', gap: 6 }}>
@@ -312,13 +357,44 @@ export default function DeptEquipmentPage() {
                             {/* Category */}
                             <div>
                                 <label className="form-label">Category *</label>
+                                <select
+                                    className={`form-input ${formErrors.categoryId ? 'input-error' : ''}`}
+                                    value={form.categoryId}
+                                    onChange={(e) => setForm({ ...form, categoryId: e.target.value })}
+                                >
+                                    <option value="">Select Category</option>
+                                    <option value="1">MEASUREMENT - Measurement instruments</option>
+                                    <option value="2">POWER_SUPPLY - Power supplies</option>
+                                    <option value="3">DEVELOPMENT_TOOLS - Development boards</option>
+                                    <option value="4">COMPONENTS - Electronic components</option>
+                                    <option value="5">SPECIALIZED - Specialized lab equipment</option>
+                                    <option value="6">PORTABLE - Portable tools</option>
+                                </select>
+                                {formErrors.categoryId && <p className="form-error">{formErrors.categoryId}</p>}
+                            </div>
+                            {/* Type */}
+                            <div>
+                                <label className="form-label">Type *</label>
+                                <select
+                                    className={`form-input ${formErrors.type ? 'input-error' : ''}`}
+                                    value={form.type}
+                                    onChange={(e) => setForm({ ...form, type: e.target.value })}
+                                >
+                                    <option value="BORROWABLE">Borrowable</option>
+                                    <option value="LABDEDICATED">Lab Dedicated</option>
+                                </select>
+                                {formErrors.type && <p className="form-error">{formErrors.type}</p>}
+                            </div>
+                            {/* Location */}
+                            <div>
+                                <label className="form-label">Location *</label>
                                 <input
-                                    className={`form-input ${formErrors.category ? 'input-error' : ''}`}
-                                    value={form.category}
-                                    onChange={(e) => setForm({ ...form, category: e.target.value })}
-                                    placeholder="e.g. Instruments"
+                                    className={`form-input ${formErrors.currentLocation ? 'input-error' : ''}`}
+                                    value={form.currentLocation}
+                                    onChange={(e) => setForm({ ...form, currentLocation: e.target.value })}
+                                    placeholder="e.g. CSE Lab A"
                                 />
-                                {formErrors.category && <p className="form-error">{formErrors.category}</p>}
+                                {formErrors.currentLocation && <p className="form-error">{formErrors.currentLocation}</p>}
                             </div>
                             {/* Quantity */}
                             <div>
@@ -330,19 +406,6 @@ export default function DeptEquipmentPage() {
                                     onChange={(e) => setForm({ ...form, quantity: parseInt(e.target.value) || 1 })}
                                 />
                                 {formErrors.quantity && <p className="form-error">{formErrors.quantity}</p>}
-                            </div>
-                            {/* Status */}
-                            <div>
-                                <label className="form-label">Status</label>
-                                <select
-                                    className="form-input"
-                                    value={form.status}
-                                    onChange={(e) => setForm({ ...form, status: e.target.value })}
-                                >
-                                    <option value="AVAILABLE">Available</option>
-                                    <option value="IN_USE">In Use</option>
-                                    <option value="MAINTENANCE">Maintenance</option>
-                                </select>
                             </div>
                             {/* Description */}
                             <div style={{ gridColumn: '1 / -1' }}>
