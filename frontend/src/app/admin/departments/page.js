@@ -21,6 +21,13 @@ export default function DepartmentsPage() {
     const [form, setForm] = useState({ name: '', code: '', description: '' });
     const [saving, setSaving] = useState(false);
     const [error, setError] = useState('');
+    // Toast state
+    const [toast, setToast] = useState(null);
+
+    const showToast = (message, type = 'success') => {
+        setToast({ message, type });
+        setTimeout(() => setToast(null), 4000);
+    };
 
     useEffect(() => { loadDepartments(); }, []);
 
@@ -65,13 +72,15 @@ export default function DepartmentsPage() {
         try {
             if (editingDept) {
                 await adminAPI.updateDepartment(editingDept.departmentId || editingDept.id, form);
+                showToast(`Department "${form.name}" updated successfully.`);
             } else {
                 await adminAPI.createDepartment(form);
+                showToast(`Department "${form.name}" created successfully.`);
             }
             setShowModal(false);
             loadDepartments();
         } catch (err) {
-            setError(err.response?.data?.message || 'Operation failed');
+            setError(err.response?.data?.error || err.response?.data?.message || 'Operation failed');
         } finally {
             setSaving(false);
         }
@@ -81,9 +90,12 @@ export default function DepartmentsPage() {
         if (!confirm(`Are you sure you want to deactivate "${dept.name}"?`)) return;
         try {
             await adminAPI.deactivateDepartment(dept.departmentId || dept.id);
-            loadDepartments();
+            // Bug fix: re-fetch after deactivation so UI reflects new status
+            await loadDepartments();
+            showToast(`Department "${dept.name}" deactivated successfully.`);
         } catch (err) {
-            alert(err.response?.data?.message || 'Failed to deactivate');
+            const msg = err.response?.data?.error || err.response?.data?.message || 'Failed to deactivate';
+            showToast(msg, 'error');
         }
     };
 
@@ -95,6 +107,27 @@ export default function DepartmentsPage() {
 
     return (
         <DashboardLayout pageTitle="Departments" pageSubtitle="Manage university departments">
+            {/* Toast Notification */}
+            {toast && (
+                <div
+                    style={{
+                        position: 'fixed',
+                        top: 24,
+                        right: 24,
+                        zIndex: 9999,
+                        padding: '12px 20px',
+                        borderRadius: 8,
+                        background: toast.type === 'error' ? 'var(--danger)' : 'var(--success, #22c55e)',
+                        color: '#fff',
+                        fontWeight: 600,
+                        boxShadow: '0 4px 16px rgba(0,0,0,0.18)',
+                        minWidth: 260,
+                    }}
+                >
+                    {toast.message}
+                </div>
+            )}
+
             <div className="action-bar">
                 <div className="search-bar">
                     <div className="search-input-wrapper">
@@ -151,8 +184,15 @@ export default function DepartmentsPage() {
                                             {dept.description || '—'}
                                         </td>
                                         <td>
-                                            <span className={`badge ${dept.active !== false ? 'badge-success' : 'badge-danger'}`}>
-                                                {dept.active !== false ? 'Active' : 'Inactive'}
+                                            {/* Bug fix: backend returns isActive (not active). Check both for safety. */}
+                                            <span className={`badge ${
+                                                (dept.isActive !== undefined ? dept.isActive : dept.active) !== false
+                                                    ? 'badge-success'
+                                                    : 'badge-danger'
+                                            }`}>
+                                                {(dept.isActive !== undefined ? dept.isActive : dept.active) !== false
+                                                    ? 'Active'
+                                                    : 'Inactive'}
                                             </span>
                                         </td>
                                         <td style={{ textAlign: 'right' }}>
@@ -160,9 +200,17 @@ export default function DepartmentsPage() {
                                                 <button className="btn btn-ghost btn-sm" onClick={() => openEdit(dept)}>
                                                     <HiOutlinePencil />
                                                 </button>
-                                                <button className="btn btn-ghost btn-sm" style={{ color: 'var(--danger)' }} onClick={() => handleDeactivate(dept)}>
-                                                    <HiOutlineTrash />
-                                                </button>
+                                                {/* Only show Deactivate button if currently active */}
+                                                {(dept.isActive !== undefined ? dept.isActive : dept.active) !== false && (
+                                                    <button
+                                                        className="btn btn-ghost btn-sm"
+                                                        style={{ color: 'var(--danger)' }}
+                                                        onClick={() => handleDeactivate(dept)}
+                                                        title="Deactivate department"
+                                                    >
+                                                        <HiOutlineTrash />
+                                                    </button>
+                                                )}
                                             </div>
                                         </td>
                                     </tr>

@@ -84,12 +84,15 @@ export const authAPI = {
 // AdminController base: /admin  (baseURL already includes /api/v1)
 export const adminAPI = {
   getDashboard:          ()                      => api.get('/admin/dashboard'),
-  // Departments
-  getAllDepartments:     (activeOnly = false)    => api.get(`/admin/departments?activeOnly=${activeOnly}`),
-  getDepartmentById:    (id)                    => api.get(`/admin/departments/${id}`),
+  // Departments — NOTE: CRUD lives on /departments (DepartmentController),
+  // NOT /admin/departments (AdminController only has POST+GET there).
+  // Bug fix: deactivateDepartment was calling DELETE /admin/departments/:id
+  // which does not exist → 405 Method Not Allowed. Corrected to /departments/:id.
+  getAllDepartments:     (activeOnly = false)    => api.get(`/departments?activeOnly=${activeOnly}`),
+  getDepartmentById:    (id)                    => api.get(`/departments/${id}`),
   createDepartment:     (data, initConfig=true) => api.post(`/admin/departments?initConfig=${initConfig}`, data),
-  updateDepartment:     (id, data)              => api.put(`/admin/departments/${id}`, data),
-  deactivateDepartment: (id)                    => api.delete(`/admin/departments/${id}`),
+  updateDepartment:     (id, data)              => api.put(`/departments/${id}`, data),
+  deactivateDepartment: (id)                    => api.delete(`/departments/${id}`),
   // Department Config
   getAllConfigurations:  ()           => api.get('/admin/config'),
   getConfig:            (deptId)     => api.get(`/admin/config/${deptId}`),
