@@ -32,9 +32,9 @@ public class EquipmentService {
     private static final int CONDITION_FAIR       = 40;
     private static final int CONDITION_POOR       = 20;
 
-    // ─────────────────────────────────────────────────────────────
+    // ────────────────────────────────────────────────────────────
     //  CREATE
-    // ─────────────────────────────────────────────────────────────
+    // ────────────────────────────────────────────────────────────
     @Transactional
     public EquipmentResponse createEquipment(CreateEquipmentRequest req, UUID createdBy) {
         if (equipmentRepository.existsById(req.getEquipmentId())) {
@@ -48,7 +48,6 @@ public class EquipmentService {
         Department dept = departmentRepository.findById(UUID.fromString(req.getDepartmentId()))
                 .orElseThrow(() -> new RuntimeException("Department not found: " + req.getDepartmentId()));
 
-        // ── Category resolution: numeric ID → name string fallback ──────────
         EquipmentCategory category = null;
         if (req.getCategoryId() != null) {
             category = categoryRepository.findById(req.getCategoryId())
@@ -61,7 +60,6 @@ public class EquipmentService {
         } else {
             throw new RuntimeException("Either categoryId or categoryName is required");
         }
-        // ───────────────────────────────────────────────────────────────────
 
         Equipment equipment = Equipment.builder()
                 .equipmentId(req.getEquipmentId())
@@ -96,16 +94,20 @@ public class EquipmentService {
         return mapToResponse(saved);
     }
 
-    // ─────────────────────────────────────────────────────────────
+    // ────────────────────────────────────────────────────────────
     //  READ — single
-    // ─────────────────────────────────────────────────────────────
+    //  @Transactional(readOnly=true) keeps the session open through mapToResponse()
+    //  so lazy proxies (category, department) can be initialized safely.
+    // ────────────────────────────────────────────────────────────
+    @Transactional(readOnly = true)
     public EquipmentResponse getById(UUID equipmentId) {
         return mapToResponse(findEquipment(equipmentId));
     }
 
-    // ─────────────────────────────────────────────────────────────
+    // ────────────────────────────────────────────────────────────
     //  READ — all (SYSTEMADMIN)
-    // ─────────────────────────────────────────────────────────────
+    // ────────────────────────────────────────────────────────────
+    @Transactional(readOnly = true)
     public List<EquipmentResponse> getAll(boolean activeOnly) {
         List<Equipment> list = activeOnly
                 ? equipmentRepository.findAllActive()
@@ -113,9 +115,10 @@ public class EquipmentService {
         return list.stream().map(this::mapToResponse).collect(Collectors.toList());
     }
 
-    // ─────────────────────────────────────────────────────────────
+    // ────────────────────────────────────────────────────────────
     //  READ — by department
-    // ─────────────────────────────────────────────────────────────
+    // ────────────────────────────────────────────────────────────
+    @Transactional(readOnly = true)
     public List<EquipmentResponse> getByDepartment(UUID departmentId, boolean activeOnly) {
         List<Equipment> list = activeOnly
                 ? equipmentRepository.findActiveByDepartmentId(departmentId)
@@ -123,40 +126,47 @@ public class EquipmentService {
         return list.stream().map(this::mapToResponse).collect(Collectors.toList());
     }
 
+    @Transactional(readOnly = true)
     public List<EquipmentResponse> getAvailableByDepartment(UUID departmentId) {
         return equipmentRepository.findAvailableByDepartmentId(departmentId)
                 .stream().map(this::mapToResponse).collect(Collectors.toList());
     }
 
+    @Transactional(readOnly = true)
     public List<EquipmentResponse> getByDepartmentAndStatus(UUID departmentId, Equipment.EquipmentStatus status) {
         return equipmentRepository.findByDepartmentIdAndStatus(departmentId, status)
                 .stream().map(this::mapToResponse).collect(Collectors.toList());
     }
 
+    @Transactional(readOnly = true)
     public List<EquipmentResponse> getByDepartmentAndType(UUID departmentId, Equipment.EquipmentType type) {
         return equipmentRepository
                 .findByDepartmentDepartmentIdAndTypeAndRetiredFalse(departmentId, type)
                 .stream().map(this::mapToResponse).collect(Collectors.toList());
     }
 
+    @Transactional(readOnly = true)
     public List<EquipmentResponse> getRetiredByDepartment(UUID departmentId) {
         return equipmentRepository.findByDepartmentDepartmentIdAndRetiredTrue(departmentId)
                 .stream().map(this::mapToResponse).collect(Collectors.toList());
     }
 
+    @Transactional(readOnly = true)
     public List<EquipmentResponse> getMaintenanceDue(UUID departmentId) {
         return equipmentRepository.findMaintenanceDueByDepartment(departmentId, LocalDate.now())
                 .stream().map(this::mapToResponse).collect(Collectors.toList());
     }
 
+    @Transactional(readOnly = true)
     public List<EquipmentResponse> getLowCondition(UUID departmentId, int threshold) {
         return equipmentRepository.findLowConditionByDepartment(departmentId, threshold)
                 .stream().map(this::mapToResponse).collect(Collectors.toList());
     }
 
-    // ─────────────────────────────────────────────────────────────
+    // ────────────────────────────────────────────────────────────
     //  SEARCH
-    // ─────────────────────────────────────────────────────────────
+    // ────────────────────────────────────────────────────────────
+    @Transactional(readOnly = true)
     public List<EquipmentResponse> search(UUID departmentId, String keyword) {
         if (keyword == null || keyword.trim().length() < 2)
             throw new RuntimeException("Search keyword must be at least 2 characters");
@@ -164,6 +174,7 @@ public class EquipmentService {
                 .stream().map(this::mapToResponse).collect(Collectors.toList());
     }
 
+    @Transactional(readOnly = true)
     public List<EquipmentResponse> searchGlobal(String keyword) {
         if (keyword == null || keyword.trim().length() < 2)
             throw new RuntimeException("Search keyword must be at least 2 characters");
@@ -171,9 +182,9 @@ public class EquipmentService {
                 .stream().map(this::mapToResponse).collect(Collectors.toList());
     }
 
-    // ─────────────────────────────────────────────────────────────
+    // ────────────────────────────────────────────────────────────
     //  UPDATE — metadata
-    // ─────────────────────────────────────────────────────────────
+    // ────────────────────────────────────────────────────────────
     @Transactional
     public EquipmentResponse updateEquipment(UUID equipmentId, UpdateEquipmentRequest req, UUID updatedBy) {
         Equipment e = findEquipment(equipmentId);
@@ -211,9 +222,9 @@ public class EquipmentService {
         return mapToResponse(updated);
     }
 
-    // ─────────────────────────────────────────────────────────────
+    // ────────────────────────────────────────────────────────────
     //  UPDATE — status
-    // ─────────────────────────────────────────────────────────────
+    // ────────────────────────────────────────────────────────────
     @Transactional
     public EquipmentResponse updateStatus(UUID equipmentId, EquipmentStatusUpdateRequest req, UUID updatedBy) {
         Equipment e = findEquipment(equipmentId);
@@ -247,9 +258,9 @@ public class EquipmentService {
         return mapToResponse(updated);
     }
 
-    // ─────────────────────────────────────────────────────────────
+    // ────────────────────────────────────────────────────────────
     //  RETIRE (soft delete)
-    // ─────────────────────────────────────────────────────────────
+    // ────────────────────────────────────────────────────────────
     @Transactional
     public EquipmentResponse retireEquipment(UUID equipmentId, String reason, UUID retiredBy) {
         Equipment e = findEquipment(equipmentId);
@@ -272,9 +283,10 @@ public class EquipmentService {
         return mapToResponse(updated);
     }
 
-    // ─────────────────────────────────────────────────────────────
+    // ────────────────────────────────────────────────────────────
     //  CHECK AVAILABILITY
-    // ─────────────────────────────────────────────────────────────
+    // ────────────────────────────────────────────────────────────
+    @Transactional(readOnly = true)
     public Map<String, Object> checkAvailability(UUID equipmentId) {
         Equipment e = findEquipment(equipmentId);
         Map<String, Object> result = new HashMap<>();
@@ -291,9 +303,10 @@ public class EquipmentService {
         return result;
     }
 
-    // ─────────────────────────────────────────────────────────────
+    // ────────────────────────────────────────────────────────────
     //  DEPARTMENT DASHBOARD STATS
-    // ─────────────────────────────────────────────────────────────
+    // ────────────────────────────────────────────────────────────
+    @Transactional(readOnly = true)
     public Map<String, Object> getDepartmentStats(UUID departmentId) {
         Map<String, Object> stats = new HashMap<>();
         stats.put("departmentId",        departmentId);
@@ -321,9 +334,9 @@ public class EquipmentService {
         return stats;
     }
 
-    // ─────────────────────────────────────────────────────────────
+    // ────────────────────────────────────────────────────────────
     //  PRIVATE HELPERS
-    // ─────────────────────────────────────────────────────────────
+    // ────────────────────────────────────────────────────────────
     private Equipment findEquipment(UUID equipmentId) {
         return equipmentRepository.findById(equipmentId)
                 .orElseThrow(() -> new RuntimeException("Equipment not found: " + equipmentId));
@@ -354,9 +367,9 @@ public class EquipmentService {
                 && !e.getNextMaintenanceDate().isAfter(LocalDate.now());
     }
 
-    // ─────────────────────────────────────────────────────────────
+    // ────────────────────────────────────────────────────────────
     //  MAPPER
-    // ─────────────────────────────────────────────────────────────
+    // ────────────────────────────────────────────────────────────
     public EquipmentResponse mapToResponse(Equipment e) {
         return EquipmentResponse.builder()
                 .equipmentId(e.getEquipmentId().toString())
