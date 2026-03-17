@@ -24,14 +24,17 @@ import java.util.stream.Collectors;
 @RestController
 @RequestMapping("/equipment-categories")
 @RequiredArgsConstructor
-@Tag(name = "Equipment Categories", description = "CRUD for equipment categories. GET endpoints open to all authenticated users; POST/PUT restricted to DEPTADMIN.")
+@Tag(name = "Equipment Categories",
+     description = "CRUD for equipment categories. " +
+                   "GET endpoints open to all authenticated users; " +
+                   "POST/PUT restricted to DEPARTMENTADMIN.")
 @SecurityRequirement(name = "bearerAuth")
 public class EquipmentCategoryController {
 
     private final EquipmentCategoryRepository categoryRepository;
 
     // ────────────────────────────────────────────────────────────
-    //  Inner DTO — keeps the controller self-contained, no extra files needed
+    //  Inner DTO — keeps the controller self-contained
     // ────────────────────────────────────────────────────────────
     @Data
     public static class CategoryRequest {
@@ -50,11 +53,10 @@ public class EquipmentCategoryController {
     @GetMapping
     @PreAuthorize("isAuthenticated()")
     @Operation(summary = "Get all equipment categories",
-               description = "Returns all categories. Used to populate the category dropdown in the equipment registration form.")
+               description = "Returns all categories. Used to populate the category dropdown.")
     public ResponseEntity<Map<String, Object>> getAllCategories() {
         List<Map<String, Object>> data = categoryRepository.findAll()
-            .stream().map(this::toMap).collect(Collectors.toList());
-
+                .stream().map(this::toMap).collect(Collectors.toList());
         return ok("Equipment categories retrieved successfully", data, data.size());
     }
 
@@ -67,34 +69,37 @@ public class EquipmentCategoryController {
     public ResponseEntity<Map<String, Object>> getCategoryById(@PathVariable Integer id) {
         Map<String, Object> response = new HashMap<>();
         return categoryRepository.findById(id)
-            .map(c -> {
-                response.put("success",   true);
-                response.put("message",   "Category retrieved successfully");
-                response.put("timestamp", LocalDateTime.now());
-                response.put("data",      toMap(c));
-                return ResponseEntity.ok(response);
-            })
-            .orElseGet(() -> {
-                response.put("success",   false);
-                response.put("message",   "Category not found with ID: " + id);
-                response.put("timestamp", LocalDateTime.now());
-                return ResponseEntity.status(404).body(response);
-            });
+                .map(c -> {
+                    response.put("success",   true);
+                    response.put("message",   "Category retrieved successfully");
+                    response.put("timestamp", LocalDateTime.now());
+                    response.put("data",      toMap(c));
+                    return ResponseEntity.ok(response);
+                })
+                .orElseGet(() -> {
+                    response.put("success",   false);
+                    response.put("message",   "Category not found with ID: " + id);
+                    response.put("timestamp", LocalDateTime.now());
+                    return ResponseEntity.status(404).body(response);
+                });
     }
 
     // ────────────────────────────────────────────────────────────
-    //  POST /api/v1/equipment-categories  (DEPTADMIN only)
-    //  Creates a new equipment category.
-    //  Returns 409 Conflict if a category with the same name already exists.
+    //  POST /api/v1/equipment-categories  (DEPARTMENTADMIN only)
+    //
+    //  BUG FIX: was @PreAuthorize("hasRole('DEPTADMIN')")
+    //  CustomUserDetails.build() grants: ROLE_DEPARTMENTADMIN
+    //    (via: new SimpleGrantedAuthority("ROLE_" + user.getRole().name()))
+    //  hasRole('DEPTADMIN') checks for:  ROLE_DEPTADMIN  ← MISMATCH → 403
+    //  hasRole('DEPARTMENTADMIN') checks: ROLE_DEPARTMENTADMIN ← MATCH → 201
     // ────────────────────────────────────────────────────────────
     @PostMapping
-    @PreAuthorize("hasRole('DEPTADMIN')")
+    @PreAuthorize("hasRole('DEPARTMENTADMIN')")
     @Operation(summary = "Create a new equipment category",
-               description = "Restricted to DEPTADMIN. Returns 409 if a category with the same name already exists.")
+               description = "Restricted to DEPARTMENTADMIN. Returns 409 if a category with the same name already exists.")
     public ResponseEntity<Map<String, Object>> createCategory(@Valid @RequestBody CategoryRequest req) {
         Map<String, Object> response = new HashMap<>();
 
-        // Duplicate name check
         if (categoryRepository.findByNameIgnoreCase(req.getName().trim()).isPresent()) {
             response.put("success",   false);
             response.put("message",   "A category named '" + req.getName().trim() + "' already exists");
@@ -119,14 +124,13 @@ public class EquipmentCategoryController {
     }
 
     // ────────────────────────────────────────────────────────────
-    //  PUT /api/v1/equipment-categories/{id}  (DEPTADMIN only)
-    //  Updates name / description / multiplier / replacement cost.
-    //  Returns 404 if category not found, 409 if new name conflicts.
+    //  PUT /api/v1/equipment-categories/{id}  (DEPARTMENTADMIN only)
+    //  Same fix as POST — DEPTADMIN → DEPARTMENTADMIN
     // ────────────────────────────────────────────────────────────
     @PutMapping("/{id}")
-    @PreAuthorize("hasRole('DEPTADMIN')")
+    @PreAuthorize("hasRole('DEPARTMENTADMIN')")
     @Operation(summary = "Update an equipment category",
-               description = "Restricted to DEPTADMIN. Partial update — only non-null fields are changed.")
+               description = "Restricted to DEPARTMENTADMIN. Partial update — only non-null fields are changed.")
     public ResponseEntity<Map<String, Object>> updateCategory(
             @PathVariable Integer id,
             @Valid @RequestBody CategoryRequest req) {
@@ -134,34 +138,33 @@ public class EquipmentCategoryController {
         Map<String, Object> response = new HashMap<>();
 
         return categoryRepository.findById(id)
-            .map(existing -> {
-                // Name conflict check — skip if same record
-                if (req.getName() != null) {
-                    String newName = req.getName().trim();
-                    categoryRepository.findByNameIgnoreCase(newName).ifPresent(conflict -> {
-                        if (!conflict.getCategoryId().equals(id)) {
-                            throw new RuntimeException("CONFLICT: A category named '" + newName + "' already exists");
-                        }
-                    });
-                    existing.setName(newName);
-                }
-                if (req.getDescription()           != null) existing.setDescription(req.getDescription());
-                if (req.getDamageMultiplierBase()  != null) existing.setDamageMultiplierBase(req.getDamageMultiplierBase());
-                if (req.getTypicalReplacementCost() != null) existing.setTypicalReplacementCost(req.getTypicalReplacementCost());
+                .map(existing -> {
+                    if (req.getName() != null) {
+                        String newName = req.getName().trim();
+                        categoryRepository.findByNameIgnoreCase(newName).ifPresent(conflict -> {
+                            if (!conflict.getCategoryId().equals(id)) {
+                                throw new RuntimeException("CONFLICT: A category named '" + newName + "' already exists");
+                            }
+                        });
+                        existing.setName(newName);
+                    }
+                    if (req.getDescription()            != null) existing.setDescription(req.getDescription());
+                    if (req.getDamageMultiplierBase()   != null) existing.setDamageMultiplierBase(req.getDamageMultiplierBase());
+                    if (req.getTypicalReplacementCost() != null) existing.setTypicalReplacementCost(req.getTypicalReplacementCost());
 
-                EquipmentCategory updated = categoryRepository.save(existing);
-                response.put("success",   true);
-                response.put("message",   "Category updated successfully");
-                response.put("timestamp", LocalDateTime.now());
-                response.put("data",      toMap(updated));
-                return ResponseEntity.ok(response);
-            })
-            .orElseGet(() -> {
-                response.put("success",   false);
-                response.put("message",   "Category not found with ID: " + id);
-                response.put("timestamp", LocalDateTime.now());
-                return ResponseEntity.status(404).body(response);
-            });
+                    EquipmentCategory updated = categoryRepository.save(existing);
+                    response.put("success",   true);
+                    response.put("message",   "Category updated successfully");
+                    response.put("timestamp", LocalDateTime.now());
+                    response.put("data",      toMap(updated));
+                    return ResponseEntity.ok(response);
+                })
+                .orElseGet(() -> {
+                    response.put("success",   false);
+                    response.put("message",   "Category not found with ID: " + id);
+                    response.put("timestamp", LocalDateTime.now());
+                    return ResponseEntity.status(404).body(response);
+                });
     }
 
     // ────────────────────────────────────────────────────────────
@@ -174,7 +177,7 @@ public class EquipmentCategoryController {
         m.put("description",           c.getDescription());
         m.put("damageMultiplierBase",  c.getDamageMultiplierBase());
         m.put("typicalReplacementCost",
-            c.getTypicalReplacementCost() != null ? c.getTypicalReplacementCost() : BigDecimal.ZERO);
+                c.getTypicalReplacementCost() != null ? c.getTypicalReplacementCost() : BigDecimal.ZERO);
         return m;
     }
 
