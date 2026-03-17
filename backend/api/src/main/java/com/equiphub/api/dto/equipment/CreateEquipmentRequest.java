@@ -11,7 +11,7 @@ import java.time.LocalDate;
 import java.util.UUID;
 
 @Data
-@JsonIgnoreProperties(ignoreUnknown = true)  // prevents 500 on unexpected fields from frontend
+@JsonIgnoreProperties(ignoreUnknown = true)
 public class CreateEquipmentRequest {
 
     @NotNull(message = "Equipment ID is required (e.g. MULTI-001)")
@@ -21,10 +21,12 @@ public class CreateEquipmentRequest {
     @Size(max = 255, message = "Name cannot exceed 255 characters")
     private String name;
 
-    // Bug fix: frontend sends "category" — @JsonAlias maps both "category" and "categoryId" to this field
-    @NotNull(message = "Category ID is required")
+    // Accept numeric categoryId OR a string categoryName from the frontend.
+    // @JsonAlias ensures legacy payloads sending "category" as an int still work.
     @JsonAlias("category")
-    private Integer categoryId;
+    private Integer categoryId;    // e.g. 3  (numeric FK)
+
+    private String categoryName;   // e.g. "instrument" (frontend sends this)
 
     @NotNull(message = "Equipment type is required")
     private Equipment.EquipmentType type; // LABDEDICATED or BORROWABLE
@@ -34,7 +36,7 @@ public class CreateEquipmentRequest {
 
     private String description;
 
-    private String specificationsJson; // free-form JSON text
+    private String specificationsJson;
 
     private LocalDate purchaseDate;
 
@@ -48,11 +50,10 @@ public class CreateEquipmentRequest {
     @Max(value = 1000, message = "Total quantity cannot exceed 1000")
     private Integer totalQuantity = 1;
 
-    @NotBlank(message = "Current location is required")
     @Size(max = 100)
     private String currentLocation;
 
-    private String assignedLabs;  // comma-separated lab IDs
+    private String assignedLabs;
 
     @Min(value = 1,    message = "Maintenance interval must be at least 1 day")
     @Max(value = 3650, message = "Maintenance interval cannot exceed 10 years")

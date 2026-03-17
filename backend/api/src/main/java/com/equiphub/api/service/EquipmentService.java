@@ -27,7 +27,6 @@ public class EquipmentService {
     private final DepartmentRepository        departmentRepository;
     private final EquipmentCategoryRepository categoryRepository;
 
-    // ── Condition label thresholds ───────────────────────────────
     private static final int CONDITION_EXCELLENT = 85;
     private static final int CONDITION_GOOD      = 65;
     private static final int CONDITION_FAIR       = 40;
@@ -49,8 +48,20 @@ public class EquipmentService {
         Department dept = departmentRepository.findById(UUID.fromString(req.getDepartmentId()))
                 .orElseThrow(() -> new RuntimeException("Department not found: " + req.getDepartmentId()));
 
-        EquipmentCategory category = categoryRepository.findById(req.getCategoryId())
-                .orElseThrow(() -> new RuntimeException("Category not found: " + req.getCategoryId()));
+        // ── Category resolution: numeric ID → name string fallback ──────────
+        EquipmentCategory category = null;
+        if (req.getCategoryId() != null) {
+            category = categoryRepository.findById(req.getCategoryId())
+                    .orElseThrow(() -> new RuntimeException("Category not found with ID: " + req.getCategoryId()));
+        } else if (req.getCategoryName() != null && !req.getCategoryName().isBlank()) {
+            category = categoryRepository.findByNameIgnoreCase(req.getCategoryName().trim())
+                    .orElseThrow(() -> new RuntimeException(
+                            "Category not found: '" + req.getCategoryName() + "'. " +
+                            "Please use a valid category name or pass categoryId."));
+        } else {
+            throw new RuntimeException("Either categoryId or categoryName is required");
+        }
+        // ───────────────────────────────────────────────────────────────────
 
         Equipment equipment = Equipment.builder()
                 .equipmentId(req.getEquipmentId())
@@ -232,7 +243,7 @@ public class EquipmentService {
         }
 
         Equipment updated = equipmentRepository.save(e);
-        log.info("[EQUIP_STATUS] {} status {} → {} by {}", equipmentId, oldStatus, req.getStatus(), updatedBy);
+        log.info("[EQUIP_STATUS] {} status {} -> {} by {}", equipmentId, oldStatus, req.getStatus(), updatedBy);
         return mapToResponse(updated);
     }
 
