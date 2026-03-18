@@ -12,17 +12,30 @@ import java.util.UUID;
 @Repository
 public interface RequestItemRepository extends JpaRepository<RequestItem, Integer> {
 
-    List<RequestItem> findByRequestRequestId(String requestId);
+    /**
+     * Eagerly fetches the associated Equipment in a single JOIN query.
+     * This prevents LazyInitializationException when the session is closed
+     * before mapItemToResponse() accesses equipment.getName() / getSerialNumber().
+     */
+    @Query("SELECT ri FROM RequestItem ri JOIN FETCH ri.equipment WHERE ri.request.requestId = :requestId")
+    List<RequestItem> findByRequestRequestId(@Param("requestId") String requestId);
 
-    List<RequestItem> findByRequestRequestIdAndStatus(String requestId, RequestItem.ItemStatus status);
+    @Query("SELECT ri FROM RequestItem ri JOIN FETCH ri.equipment " +
+           "WHERE ri.request.requestId = :requestId AND ri.status = :status")
+    List<RequestItem> findByRequestRequestIdAndStatus(
+            @Param("requestId") String requestId,
+            @Param("status") RequestItem.ItemStatus status);
 
     List<RequestItem> findByEquipmentEquipmentId(UUID equipmentId);
 
-    @Query("SELECT ri FROM RequestItem ri WHERE ri.equipment.equipmentId = :equipmentId " +
+    @Query("SELECT ri FROM RequestItem ri JOIN FETCH ri.equipment " +
+           "WHERE ri.equipment.equipmentId = :equipmentId " +
            "AND ri.status IN ('PENDING', 'APPROVED', 'ISSUED')")
     List<RequestItem> findActiveByEquipment(@Param("equipmentId") UUID equipmentId);
 
     void deleteByRequestRequestId(String requestId);
 
-    List<RequestItem> findByRequestRequestIdOrderByRequestItemIdAsc(String requestId);
+    @Query("SELECT ri FROM RequestItem ri JOIN FETCH ri.equipment " +
+           "WHERE ri.request.requestId = :requestId ORDER BY ri.requestItemId ASC")
+    List<RequestItem> findByRequestRequestIdOrderByRequestItemIdAsc(@Param("requestId") String requestId);
 }

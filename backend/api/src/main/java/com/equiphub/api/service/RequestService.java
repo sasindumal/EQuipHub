@@ -168,6 +168,7 @@ public class RequestService {
     // ─────────────────────────────────────────────────────────────
     //  GET REQUEST BY ID
     // ─────────────────────────────────────────────────────────────
+    @Transactional(readOnly = true)
     public RequestResponseDTO getRequestById(String requestId) {
         Request request = findRequest(requestId);
         List<RequestItem> items = requestItemRepository.findByRequestRequestId(requestId);
@@ -178,6 +179,7 @@ public class RequestService {
     // ─────────────────────────────────────────────────────────────
     //  GET MY REQUESTS (paginated)
     // ─────────────────────────────────────────────────────────────
+    @Transactional(readOnly = true)
     public Page<RequestResponseDTO> getMyRequests(UUID studentId, Pageable pageable) {
         return requestRepository.findByStudentUserId(studentId, pageable)
                 .map(request -> {
@@ -191,6 +193,7 @@ public class RequestService {
     // ─────────────────────────────────────────────────────────────
     //  GET DEPARTMENT REQUESTS (paginated)
     // ─────────────────────────────────────────────────────────────
+    @Transactional(readOnly = true)
     public Page<RequestResponseDTO> getDepartmentRequests(UUID departmentId, Pageable pageable) {
         return requestRepository.findByDepartmentDepartmentId(departmentId, pageable)
                 .map(request -> {
@@ -204,6 +207,7 @@ public class RequestService {
     // ─────────────────────────────────────────────────────────────
     //  GET REQUESTS BY STATUS
     // ─────────────────────────────────────────────────────────────
+    @Transactional(readOnly = true)
     public Page<RequestResponseDTO> getRequestsByStatus(Request.RequestStatus status, Pageable pageable) {
         return requestRepository.findByStatus(status, pageable)
                 .map(request -> {
@@ -313,6 +317,7 @@ public class RequestService {
     // ─────────────────────────────────────────────────────────────
     //  GET EMERGENCY REQUESTS
     // ─────────────────────────────────────────────────────────────
+    @Transactional(readOnly = true)
     public List<RequestResponseDTO> getEmergencyRequests(UUID departmentId) {
         List<Request> emergencyRequests = requestRepository.findEmergencyByDepartment(
                 departmentId, ACTIVE_STATUSES);
@@ -327,6 +332,7 @@ public class RequestService {
     // ─────────────────────────────────────────────────────────────
     //  GET SLA-BREACHED REQUESTS
     // ─────────────────────────────────────────────────────────────
+    @Transactional(readOnly = true)
     public List<RequestResponseDTO> getSlaBreachedRequests() {
         List<Request.RequestStatus> pendingStatuses = List.of(
                 Request.RequestStatus.PENDINGAPPROVAL,
@@ -345,6 +351,7 @@ public class RequestService {
     // ─────────────────────────────────────────────────────────────
     //  DASHBOARD STATS
     // ─────────────────────────────────────────────────────────────
+    @Transactional(readOnly = true)
     public Map<String, Object> getDepartmentRequestStats(UUID departmentId) {
         Map<String, Object> stats = new LinkedHashMap<>();
         stats.put("departmentId", departmentId);
@@ -393,11 +400,11 @@ public class RequestService {
 
     private Request.RequestStatus determineSubmitStatus(Request.RequestType type) {
         return switch (type) {
-            case LABSESSION    -> Request.RequestStatus.PENDINGRECOMMENDATION;
-            case COURSEWORK    -> Request.RequestStatus.PENDINGRECOMMENDATION;
-            case RESEARCH      -> Request.RequestStatus.PENDINGRECOMMENDATION;
+            case LABSESSION      -> Request.RequestStatus.PENDINGRECOMMENDATION;
+            case COURSEWORK      -> Request.RequestStatus.PENDINGRECOMMENDATION;
+            case RESEARCH        -> Request.RequestStatus.PENDINGRECOMMENDATION;
             case EXTRACURRICULAR -> Request.RequestStatus.PENDINGAPPROVAL;
-            case PERSONAL      -> Request.RequestStatus.PENDINGAPPROVAL;
+            case PERSONAL        -> Request.RequestStatus.PENDINGAPPROVAL;
         };
     }
 
