@@ -63,9 +63,8 @@ export default function DeptStaffPage() {
 
     const closeModal = () => { setModal(null); setTarget(null); setError(''); };
 
-    // ── CREATE ──
+    // -- CREATE --
     const openCreate = () => {
-        // departmentId auto-injected from JWT
         setCreate({ ...EMPTY_CREATE, departmentId: user?.departmentId || '' });
         setError(''); setModal('create');
     };
@@ -73,7 +72,9 @@ export default function DeptStaffPage() {
     const handleCreate = async (e) => {
         e.preventDefault(); setSaving(true); setError('');
         try {
-            await userAPI.createStaff(createForm);
+            // Always inject the caller's departmentId — backend enforces it too
+            const payload = { ...createForm, departmentId: user?.departmentId || createForm.departmentId };
+            await userAPI.createStaff(payload);
             flash('Staff member added successfully');
             closeModal(); load();
         } catch (err) {
@@ -81,7 +82,7 @@ export default function DeptStaffPage() {
         } finally { setSaving(false); }
     };
 
-    // ── EDIT ──
+    // -- EDIT --
     const openEdit = (u) => {
         setTarget(u);
         setEdit({ firstName: u.firstName||'', lastName: u.lastName||'', phone: u.phone||'', role: u.role||'' });
@@ -99,7 +100,7 @@ export default function DeptStaffPage() {
         } finally { setSaving(false); }
     };
 
-    // ── RESET PASSWORD ──
+    // -- RESET PASSWORD --
     const openReset = (u) => { setTarget(u); setReset(EMPTY_RESET); setError(''); setModal('reset'); };
 
     const handleReset = async (e) => {
@@ -116,7 +117,7 @@ export default function DeptStaffPage() {
         } finally { setSaving(false); }
     };
 
-    // ── SUSPEND / ACTIVATE ──
+    // -- SUSPEND / ACTIVATE --
     const handleSuspend = async (u) => {
         try { await userAPI.suspendUser(u.userId||u.id); flash(`${u.firstName} suspended`); load(); }
         catch (err) { flash(err.response?.data?.message||'Failed', true); }
@@ -126,7 +127,7 @@ export default function DeptStaffPage() {
         catch (err) { flash(err.response?.data?.message||'Failed', true); }
     };
 
-    // ── DELETE ──
+    // -- DELETE --
     const openDelete = (u) => { setTarget(u); setModal('delete'); };
     const handleDelete = async () => {
         setSaving(true);
@@ -165,9 +166,7 @@ export default function DeptStaffPage() {
                     <button className="btn btn-outline btn-sm" onClick={load} style={{ display:'flex', alignItems:'center', gap:4 }}>
                         <HiOutlineRefresh /> Refresh
                     </button>
-                    <button className="btn btn-primary" onClick={openCreate}
-                        disabled={!user?.departmentId}
-                        title={!user?.departmentId ? 'No department assigned' : ''}>
+                    <button className="btn btn-primary" onClick={openCreate}>
                         <HiOutlinePlus /> Add Staff
                     </button>
                 </div>
@@ -262,7 +261,7 @@ export default function DeptStaffPage() {
                 </div>
             </div>
 
-            {/* ── CREATE MODAL ── */}
+            {/* -- CREATE MODAL -- */}
             {modal === 'create' && (
                 <div className="modal-overlay" onClick={closeModal}>
                     <div className="modal-content" onClick={e=>e.stopPropagation()}>
@@ -330,7 +329,7 @@ export default function DeptStaffPage() {
                 </div>
             )}
 
-            {/* ── EDIT MODAL ── */}
+            {/* -- EDIT MODAL -- */}
             {modal === 'edit' && target && (
                 <div className="modal-overlay" onClick={closeModal}>
                     <div className="modal-content" style={{maxWidth:480}} onClick={e=>e.stopPropagation()}>
@@ -380,7 +379,7 @@ export default function DeptStaffPage() {
                 </div>
             )}
 
-            {/* ── RESET PASSWORD MODAL ── */}
+            {/* -- RESET PASSWORD MODAL -- */}
             {modal === 'reset' && target && (
                 <div className="modal-overlay" onClick={closeModal}>
                     <div className="modal-content" style={{maxWidth:400}} onClick={e=>e.stopPropagation()}>
@@ -418,7 +417,7 @@ export default function DeptStaffPage() {
                 </div>
             )}
 
-            {/* ── DELETE CONFIRM MODAL ── */}
+            {/* -- DELETE CONFIRM MODAL -- */}
             {modal === 'delete' && target && (
                 <div className="modal-overlay" onClick={closeModal}>
                     <div className="modal-content" style={{maxWidth:400,textAlign:'center',padding:28}} onClick={e=>e.stopPropagation()}>
