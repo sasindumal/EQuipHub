@@ -51,4 +51,8 @@ public class UpdateEquipmentRequest {
 
     @Min(0) @Max(100)
     private Integer depreciationRate;
+
+    @Min(value = 1,    message = "Total quantity must be at least 1")
+    @Max(value = 1000, message = "Total quantity cannot exceed 1000")
+    private Integer totalQuantity;
 }
