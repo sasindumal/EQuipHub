@@ -12,8 +12,8 @@ import com.equiphub.api.model.User.Role;
 
 @Data
 public class RegisterRequest {
-    
-@NotBlank(message = "Email is required")
+
+    @NotBlank(message = "Email is required")
     @Email(message = "Email must be valid")
     private String email;
 
@@ -36,9 +36,15 @@ public class RegisterRequest {
     @Max(value = 8, message = "Semester year cannot exceed 8")
     private Integer semesterYear;
 
+    /**
+     * University registration number format: YYYYEXXX
+     * Examples: 2022E001, 2021E123
+     * YYYY = 4-digit enrollment year, E = faculty code letter, XXX = 3-digit sequence
+     */
     @NotBlank(message = "Index number is required")
-    @Pattern(regexp = "^\\d{2}[A-Za-z]\\d{3}$", message = "Index must be in format: 21E001")
+    @Pattern(
+        regexp = "^\\d{4}[A-Za-z]\\d{3}$",
+        message = "Please enter the full registration number (e.g., 2022E001)"
+    )
     private String indexNumber;
-
-    
 }

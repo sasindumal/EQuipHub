@@ -41,9 +41,10 @@ export default function RegisterPage() {
         if (form.password !== form.confirmPassword) {
             return 'Passwords do not match';
         }
-        const indexRegex = /^\d{2}[A-Za-z]\d{3}$/;
+        // Full 4-digit year format: YYYYEXXX (e.g. 2022E001)
+        const indexRegex = /^\d{4}[A-Za-z]\d{3}$/;
         if (!indexRegex.test(form.indexNumber)) {
-            return 'Index number must be in format: 21E001';
+            return 'Please enter the full registration number (e.g., 2022E001)';
         }
         const sem = parseInt(form.semesterYear);
         if (isNaN(sem) || sem < 1 || sem > 8) {
@@ -153,9 +154,10 @@ export default function RegisterPage() {
                                         type="text"
                                         name="indexNumber"
                                         className="form-input"
-                                        placeholder="21E001"
+                                        placeholder="2022E001"
                                         value={form.indexNumber}
                                         onChange={handleChange}
+                                        maxLength={8}
                                         required
                                     />
                                 </div>
