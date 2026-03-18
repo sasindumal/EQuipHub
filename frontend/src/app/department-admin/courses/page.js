@@ -17,6 +17,9 @@ const EMPTY_FORM = {
 
 const SEM_OPTIONS = [1, 2, 3, 4, 5, 6, 7, 8];
 
+// Roles that are allowed to create / edit / delete courses
+const MANAGE_ROLES = ['DEPARTMENTADMIN', 'HEADOFDEPARTMENT', 'SYSTEMADMIN'];
+
 export default function DeptCoursesPage() {
     const { user } = useAuth();
 
@@ -31,6 +34,9 @@ export default function DeptCoursesPage() {
     const [form, setForm]         = useState(EMPTY_FORM);
 
     const departmentId = user?.departmentId;
+
+    // true when the logged-in user may mutate courses
+    const canManage = MANAGE_ROLES.includes(user?.role) && !!departmentId;
 
     useEffect(() => { load(); }, [departmentId]);
 
@@ -85,12 +91,12 @@ export default function DeptCoursesPage() {
     const openEdit = (c) => {
         setTarget(c);
         setForm({
-            courseId:       c.courseId,
-            courseCode:     c.courseCode,
-            courseName:     c.courseName,
+            courseId:        c.courseId,
+            courseCode:      c.courseCode,
+            courseName:      c.courseName,
             semesterOffered: c.semesterOffered,
-            credits:        c.credits,
-            labRequired:    c.labRequired || false,
+            credits:         c.credits,
+            labRequired:     c.labRequired || false,
         });
         setError('');
         setModal('edit');
@@ -161,11 +167,23 @@ export default function DeptCoursesPage() {
                         style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                         <HiOutlineRefresh /> Refresh
                     </button>
-                    <button className="btn btn-primary" onClick={openCreate}
-                        disabled={!departmentId}
-                        title={!departmentId ? 'No department assigned' : ''}>
-                        <HiOutlinePlus /> Add Course
-                    </button>
+
+                    {/* Add Course — visible & enabled only for DEPARTMENTADMIN / HOD / SYSTEMADMIN */}
+                    {canManage && (
+                        <button className="btn btn-primary" onClick={openCreate}
+                            style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                            <HiOutlinePlus /> Add Course
+                        </button>
+                    )}
+
+                    {/* Disabled placeholder shown to read-only roles so layout doesn't shift */}
+                    {!canManage && !!user && (
+                        <button className="btn btn-primary" disabled
+                            title="You do not have permission to add courses"
+                            style={{ display: 'flex', alignItems: 'center', gap: 6, opacity: 0.45, cursor: 'not-allowed' }}>
+                            <HiOutlinePlus /> Add Course
+                        </button>
+                    )}
                 </div>
             </div>
 
@@ -197,15 +215,16 @@ export default function DeptCoursesPage() {
                             <th>Semester</th>
                             <th className="hide-mobile">Credits</th>
                             <th>Lab</th>
-                            <th style={{ textAlign: 'right' }}>Actions</th>
+                            {/* Only show Actions column when user can manage */}
+                            {canManage && <th style={{ textAlign: 'right' }}>Actions</th>}
                         </tr></thead>
                         <tbody>
                             {loading ? (
                                 [...Array(4)].map((_, i) => (
                                     <tr key={i}>
-                                        {[200, 80, 60, 50, 60, 80].map((w, j) => (
+                                        {[200, 80, 60, 50, 60, canManage ? 80 : 0].map((w, j) => (
                                             <td key={j} className={j === 1 || j === 3 ? 'hide-mobile' : ''}>
-                                                <div className="skeleton" style={{ width: w, height: 16 }} />
+                                                {w > 0 && <div className="skeleton" style={{ width: w, height: 16 }} />}
                                             </td>
                                         ))}
                                     </tr>
@@ -225,21 +244,24 @@ export default function DeptCoursesPage() {
                                         <td>{semBadge(c.semesterOffered)}</td>
                                         <td className="hide-mobile" style={{ color: 'var(--secondary)', fontSize: 13 }}>{c.credits}</td>
                                         <td>{labBadge(c.labRequired)}</td>
-                                        <td style={{ textAlign: 'right' }}>
-                                            <div style={{ display: 'flex', gap: 4, justifyContent: 'flex-end' }}>
-                                                <button className="btn btn-ghost btn-sm" title="Edit" onClick={() => openEdit(c)}>
-                                                    <HiOutlinePencil />
-                                                </button>
-                                                <button className="btn btn-ghost btn-sm" title="Delete"
-                                                    style={{ color: 'var(--danger)' }} onClick={() => openDelete(c)}>
-                                                    <HiOutlineTrash />
-                                                </button>
-                                            </div>
-                                        </td>
+                                        {/* Edit / Delete only for privileged roles */}
+                                        {canManage && (
+                                            <td style={{ textAlign: 'right' }}>
+                                                <div style={{ display: 'flex', gap: 4, justifyContent: 'flex-end' }}>
+                                                    <button className="btn btn-ghost btn-sm" title="Edit" onClick={() => openEdit(c)}>
+                                                        <HiOutlinePencil />
+                                                    </button>
+                                                    <button className="btn btn-ghost btn-sm" title="Delete"
+                                                        style={{ color: 'var(--danger)' }} onClick={() => openDelete(c)}>
+                                                        <HiOutlineTrash />
+                                                    </button>
+                                                </div>
+                                            </td>
+                                        )}
                                     </tr>
                                 ))
                             ) : (
-                                <tr><td colSpan={6}>
+                                <tr><td colSpan={canManage ? 6 : 5}>
                                     <div className="empty-state">
                                         <HiOutlineBookOpen className="empty-state-icon" />
                                         <div className="empty-state-title">No courses found</div>
@@ -253,7 +275,7 @@ export default function DeptCoursesPage() {
             </div>
 
             {/* ── CREATE MODAL ── */}
-            {modal === 'create' && (
+            {modal === 'create' && canManage && (
                 <div className="modal-overlay" onClick={closeModal}>
                     <div className="modal-content" style={{ maxWidth: 520 }} onClick={e => e.stopPropagation()}>
                         <div className="modal-header">
@@ -319,7 +341,7 @@ export default function DeptCoursesPage() {
             )}
 
             {/* ── EDIT MODAL ── */}
-            {modal === 'edit' && target && (
+            {modal === 'edit' && target && canManage && (
                 <div className="modal-overlay" onClick={closeModal}>
                     <div className="modal-content" style={{ maxWidth: 520 }} onClick={e => e.stopPropagation()}>
                         <div className="modal-header">
@@ -380,7 +402,7 @@ export default function DeptCoursesPage() {
             )}
 
             {/* ── DELETE CONFIRM ── */}
-            {modal === 'delete' && target && (
+            {modal === 'delete' && target && canManage && (
                 <div className="modal-overlay" onClick={closeModal}>
                     <div className="modal-content" style={{ maxWidth: 400, textAlign: 'center', padding: 28 }}
                         onClick={e => e.stopPropagation()}>
