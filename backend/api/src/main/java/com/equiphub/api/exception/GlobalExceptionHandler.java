@@ -1,5 +1,6 @@
 package com.equiphub.api.exception;
 
+import com.fasterxml.jackson.databind.exc.UnrecognizedPropertyException;
 import io.jsonwebtoken.ExpiredJwtException;
 import io.jsonwebtoken.MalformedJwtException;
 import io.jsonwebtoken.security.SignatureException;
@@ -8,6 +9,7 @@ import jakarta.validation.ConstraintViolationException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.core.AuthenticationException;
@@ -121,6 +123,33 @@ public class GlobalExceptionHandler {
             .validationErrors(errors)
             .build();
 
+        return new ResponseEntity<>(error, HttpStatus.BAD_REQUEST);
+    }
+
+    // Malformed or unrecognized JSON body → 400 Bad Request
+    @ExceptionHandler(HttpMessageNotReadableException.class)
+    public ResponseEntity<ErrorResponse> handleHttpMessageNotReadable(
+            HttpMessageNotReadableException ex, WebRequest request) {
+
+        String detail = "Malformed or unreadable request body";
+        Throwable cause = ex.getCause();
+        if (cause instanceof UnrecognizedPropertyException upe) {
+            detail = String.format(
+                "Unrecognized field '%s'. Accepted fields: %s",
+                upe.getPropertyName(),
+                upe.getKnownPropertyIds()
+            );
+        }
+
+        ErrorResponse error = ErrorResponse.builder()
+            .timestamp(LocalDateTime.now())
+            .status(HttpStatus.BAD_REQUEST.value())
+            .error("Bad Request")
+            .message(detail)
+            .path(request.getDescription(false).replace("uri=", ""))
+            .build();
+
+        log.warn("HttpMessageNotReadableException: {}", ex.getMessage());
         return new ResponseEntity<>(error, HttpStatus.BAD_REQUEST);
     }
 
@@ -286,12 +315,8 @@ public class GlobalExceptionHandler {
             .error("Duplicate Email")
             .message(ex.getMessage())
             .path(request.getDescription(false).replace("uri=", ""))
-            .build();   
+            .build();
         log.error("DuplicateEmailException: {}", ex.getMessage());
-            return new ResponseEntity<>(error, HttpStatus.BAD_REQUEST);
-
-            }
-
-
-    
+        return new ResponseEntity<>(error, HttpStatus.BAD_REQUEST);
+    }
 }

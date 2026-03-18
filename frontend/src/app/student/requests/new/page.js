@@ -29,7 +29,6 @@ export default function NewRequestPage() {
         purpose:       '',
         borrowDate:    '',   // UI only  → mapped to fromDateTime
         returnDate:    '',   // UI only  → mapped to toDateTime
-        notes:         '',
         priorityLevel: 1,    // 1 = Normal, 2 = High, 3 = Emergency
         isEmergency:   false,
         items: [{ equipmentId: '', quantityRequested: 1, notes: '' }],
@@ -97,7 +96,7 @@ export default function NewRequestPage() {
             //   toDateTime         LocalDateTime @NotNull  (ISO string)
             //   priorityLevel      Integer       @NotNull  (1-3)
             //   slaHours           Integer       @NotNull  (default 48)
-            //   description/notes  String        optional
+            //   description        String        optional
             //   isEmergency        Boolean       optional
             //   items[]
             //     equipmentId      UUID          @NotNull
@@ -113,8 +112,7 @@ export default function NewRequestPage() {
                 requestType:  form.requestType,
                 fromDateTime: toDateTime(form.borrowDate, false),
                 toDateTime:   toDateTime(form.returnDate, true),
-                description:  form.purpose.trim(),
-                notes:        form.notes.trim() || null,
+                description:  form.purpose.trim() || null,
                 priorityLevel: form.isEmergency ? 3 : form.priorityLevel,
                 slaHours:     48,
                 isEmergency:  form.isEmergency,
@@ -238,15 +236,6 @@ export default function NewRequestPage() {
                         <textarea className="form-input" rows={3}
                             placeholder="Describe why you need this equipment…"
                             value={form.purpose} onChange={e => setField('purpose', e.target.value)} />
-                    </div>
-
-                    {/* Notes */}
-                    <div>
-                        <label className="form-label">
-                            Additional Notes <span style={{ color: 'var(--secondary)', fontSize: 12 }}>(optional)</span>
-                        </label>
-                        <input className="form-input" placeholder="Any special requirements…"
-                            value={form.notes} onChange={e => setField('notes', e.target.value)} />
                     </div>
 
                     {/* Equipment Items */}
