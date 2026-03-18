@@ -1,6 +1,7 @@
 package com.equiphub.api.controller;
 
 import com.equiphub.api.dto.penalty.*;
+import com.equiphub.api.security.CustomUserDetails;
 import com.equiphub.api.service.PenaltyService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -11,7 +12,6 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -32,11 +32,11 @@ public class PenaltyController {
     @Operation(summary = "Create a penalty", description = "Issue penalty points for late return, damage, or lab override")
     public ResponseEntity<PenaltyResponseDTO> createPenalty(
             @Valid @RequestBody CreatePenaltyDTO dto,
-            @AuthenticationPrincipal UserDetails userDetails) {
+            @AuthenticationPrincipal CustomUserDetails userDetails) {
 
-        UUID issuedById = UUID.fromString(userDetails.getUsername());
+        UUID issuedById = userDetails.getUserId();
         log.info("[PENALTY] Creating {} penalty for student {} by {}",
-                dto.getPenaltyType(), dto.getStudentId(), userDetails.getUsername());
+                dto.getPenaltyType(), dto.getStudentId(), userDetails.getEmail());
 
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(penaltyService.createPenalty(dto, issuedById));
@@ -48,9 +48,9 @@ public class PenaltyController {
     @Operation(summary = "Approve a pending penalty")
     public ResponseEntity<PenaltyResponseDTO> approvePenalty(
             @PathVariable Integer penaltyId,
-            @AuthenticationPrincipal UserDetails userDetails) {
+            @AuthenticationPrincipal CustomUserDetails userDetails) {
 
-        UUID approvedById = UUID.fromString(userDetails.getUsername());
+        UUID approvedById = userDetails.getUserId();
         return ResponseEntity.ok(penaltyService.approvePenalty(penaltyId, approvedById));
     }
 
@@ -61,9 +61,9 @@ public class PenaltyController {
     public ResponseEntity<PenaltyResponseDTO> waivePenalty(
             @PathVariable Integer penaltyId,
             @RequestParam String reason,
-            @AuthenticationPrincipal UserDetails userDetails) {
+            @AuthenticationPrincipal CustomUserDetails userDetails) {
 
-        UUID waivedById = UUID.fromString(userDetails.getUsername());
+        UUID waivedById = userDetails.getUserId();
         return ResponseEntity.ok(penaltyService.waivePenalty(penaltyId, waivedById, reason));
     }
 
@@ -117,9 +117,9 @@ public class PenaltyController {
     @Operation(summary = "Submit a penalty appeal", description = "Students can appeal approved penalties within 7 days")
     public ResponseEntity<PenaltyResponseDTO> submitAppeal(
             @Valid @RequestBody AppealRequestDTO dto,
-            @AuthenticationPrincipal UserDetails userDetails) {
+            @AuthenticationPrincipal CustomUserDetails userDetails) {
 
-        UUID studentId = UUID.fromString(userDetails.getUsername());
+        UUID studentId = userDetails.getUserId();
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(penaltyService.submitAppeal(dto, studentId));
     }
@@ -131,9 +131,9 @@ public class PenaltyController {
     public ResponseEntity<PenaltyResponseDTO> decideAppeal(
             @PathVariable Integer penaltyId,
             @Valid @RequestBody AppealDecisionDTO dto,
-            @AuthenticationPrincipal UserDetails userDetails) {
+            @AuthenticationPrincipal CustomUserDetails userDetails) {
 
-        UUID decidedById = UUID.fromString(userDetails.getUsername());
+        UUID decidedById = userDetails.getUserId();
         return ResponseEntity.ok(penaltyService.decideAppeal(penaltyId, dto, decidedById));
     }
 
@@ -142,9 +142,9 @@ public class PenaltyController {
     @PreAuthorize("hasAnyRole('STUDENT','SYSTEMADMIN')")
     @Operation(summary = "Get my own penalties")
     public ResponseEntity<List<PenaltyResponseDTO>> getMyPenalties(
-            @AuthenticationPrincipal UserDetails userDetails) {
+            @AuthenticationPrincipal CustomUserDetails userDetails) {
 
-        UUID studentId = UUID.fromString(userDetails.getUsername());
+        UUID studentId = userDetails.getUserId();
         return ResponseEntity.ok(penaltyService.getStudentPenalties(studentId));
     }
 
@@ -153,9 +153,9 @@ public class PenaltyController {
     @PreAuthorize("hasAnyRole('STUDENT','SYSTEMADMIN')")
     @Operation(summary = "Get my penalty summary")
     public ResponseEntity<StudentPenaltySummaryDTO> getMySummary(
-            @AuthenticationPrincipal UserDetails userDetails) {
+            @AuthenticationPrincipal CustomUserDetails userDetails) {
 
-        UUID studentId = UUID.fromString(userDetails.getUsername());
+        UUID studentId = userDetails.getUserId();
         return ResponseEntity.ok(penaltyService.getStudentSummary(studentId));
     }
 }
