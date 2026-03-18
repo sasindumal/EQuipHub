@@ -9,7 +9,7 @@ import com.equiphub.api.exception.BadRequestException;
 import com.equiphub.api.exception.ResourceNotFoundException;
 import com.equiphub.api.exception.UnauthorizedException;
 import com.equiphub.api.model.*;
-import com.equiphub.api.model.RequestApproval.ApprovalDecision;   // ← KEY IMPORT
+import com.equiphub.api.model.RequestApproval.ApprovalDecision;
 import com.equiphub.api.repository.*;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -33,12 +33,37 @@ public class ApprovalService {
     private final EquipmentRepository equipmentRepository;
     private final CourseRepository courseRepository;
 
+    // Statuses in which auto-approval is meaningful
+    private static final Set<Request.RequestStatus> AUTO_APPROVAL_ALLOWED_STATUSES = Set.of(
+            Request.RequestStatus.PENDINGRECOMMENDATION,
+            Request.RequestStatus.PENDINGAPPROVAL
+    );
+
     // ═══════════════════════════════════════════════════════════
     //  1. AUTO-APPROVAL ENGINE  (COURSEWORK only — 6 conditions)
     // ═══════════════════════════════════════════════════════════
     public AutoApprovalResultDTO attemptAutoApproval(String requestId) {
         Request request = findRequestOrThrow(requestId);
 
+        // ── Bug-2 fix: status guard ──────────────────────────────────────────────
+        // Auto-approval must only run when the request is actually in a pending
+        // state.  Without this check, a race condition between submitRequest() and
+        // attemptAutoApproval() (or a direct API call) could promote a DRAFT or
+        // already-APPROVED request to APPROVED, bypassing the entire workflow.
+        if (!AUTO_APPROVAL_ALLOWED_STATUSES.contains(request.getStatus())) {
+            log.warn("[AUTO_APPROVE] Rejected for {} — status is {} (must be PENDINGRECOMMENDATION or PENDINGAPPROVAL)",
+                    requestId, request.getStatus());
+            return AutoApprovalResultDTO.builder()
+                    .autoApproved(false)
+                    .requestId(requestId)
+                    .failureReason("Request is not in a pending state. Current status: "
+                            + request.getStatus())
+                    .conditionChecks(Collections.emptyList())
+                    .build();
+        }
+        // ────────────────────────────────────────────────────────────────────────
+
+        // Auto-approval only applies to COURSEWORK
         if (request.getRequestType() != Request.RequestType.COURSEWORK) {
             return AutoApprovalResultDTO.builder()
                     .autoApproved(false)
@@ -121,7 +146,7 @@ public class ApprovalService {
                 "Lecturer assigned to course", true,
                 "Lecturer-course assignment verified"));
 
-        // ── Execute auto-approval ─────────────────────────────
+        // ── Execute auto-approval ────────────────────────────────
         if (allPassed) {
             request.setStatus(Request.RequestStatus.APPROVED);
             request.setApprovedAt(LocalDateTime.now());
@@ -138,7 +163,7 @@ public class ApprovalService {
                     .actorId(UUID.fromString("00000000-0000-0000-0000-000000000000"))
                     .actorRole("SYSTEM")
                     .action(RequestApproval.ApprovalAction.APPROVE)
-                    .decision(ApprovalDecision.APPROVED)          // ✅ FIXED
+                    .decision(ApprovalDecision.APPROVED)
                     .reason("Auto-approved: all 6 conditions met")
                     .decidedAt(LocalDateTime.now())
                     .build();
@@ -170,11 +195,11 @@ public class ApprovalService {
         validateActorAuthority(actor, request, stage);
 
         if (approvalRepository.existsByRequestRequestIdAndActorIdAndDecisionNot(
-                requestId, actorId, ApprovalDecision.PENDING)) {   // ✅
+                requestId, actorId, ApprovalDecision.PENDING)) {
             throw new BadRequestException("You have already acted on this request");
         }
 
-        ApprovalDecision decision = mapActionToDecision(dto.getAction());  // ✅
+        ApprovalDecision decision = mapActionToDecision(dto.getAction());
 
         RequestApproval approval = RequestApproval.builder()
                 .request(request)
@@ -182,7 +207,7 @@ public class ApprovalService {
                 .actorId(actorId)
                 .actorRole(actor.getRole().name())
                 .action(dto.getAction())
-                .decision(decision)                                // ✅
+                .decision(decision)
                 .reason(dto.getReason())
                 .comments(dto.getComments())
                 .decidedAt(LocalDateTime.now())
@@ -190,7 +215,7 @@ public class ApprovalService {
         approvalRepository.save(approval);
 
         if (dto.getItemModifications() != null && !dto.getItemModifications().isEmpty()
-                && decision == ApprovalDecision.APPROVED) {       // ✅
+                && decision == ApprovalDecision.APPROVED) {
             processItemModifications(requestId, dto.getItemModifications());
         }
 
@@ -208,7 +233,7 @@ public class ApprovalService {
     @Transactional(readOnly = true)
     public List<ApprovalQueueItemDTO> getMyApprovalQueue(UUID actorId) {
         List<RequestApproval> pending = approvalRepository.findByActorIdAndDecision(
-                actorId, ApprovalDecision.PENDING);                // ✅
+                actorId, ApprovalDecision.PENDING);
         return pending.stream()
                 .map(ra -> mapToQueueItem(ra.getRequest(), ra))
                 .collect(Collectors.toList());
@@ -220,7 +245,7 @@ public class ApprovalService {
     @Transactional(readOnly = true)
     public List<ApprovalQueueItemDTO> getDepartmentApprovalQueue(UUID departmentId) {
         List<RequestApproval> pending = approvalRepository.findPendingByDepartment(
-                departmentId, ApprovalDecision.PENDING);           // ✅
+                departmentId, ApprovalDecision.PENDING);
         return pending.stream()
                 .map(ra -> mapToQueueItem(ra.getRequest(), ra))
                 .collect(Collectors.toList());
@@ -248,7 +273,7 @@ public class ApprovalService {
     public ApprovalStatsDTO getDepartmentApprovalStats(UUID departmentId) {
         List<Object[]> byDecision = approvalRepository.countByDecisionForDepartment(departmentId);
         List<Object[]> byStage = approvalRepository.countPendingByStageForDepartment(
-                departmentId, ApprovalDecision.PENDING);           // ✅
+                departmentId, ApprovalDecision.PENDING);
 
         Map<String, Long> decisionMap = new HashMap<>();
         byDecision.forEach(row -> decisionMap.put(row[0].toString(), (Long) row[1]));
@@ -302,7 +327,7 @@ public class ApprovalService {
                         approvalRepository.findByRequestRequestIdOrderByDecidedAtAsc(
                                 request.getRequestId());
                 Set<RequestApproval.ApprovalStage> completedStages = existing.stream()
-                        .filter(a -> a.getDecision() != ApprovalDecision.PENDING)  // ✅ FIXED
+                        .filter(a -> a.getDecision() != ApprovalDecision.PENDING)
                         .map(RequestApproval::getApprovalStage)
                         .collect(Collectors.toSet());
 
@@ -333,12 +358,11 @@ public class ApprovalService {
                 .actorId(assignedActorId)
                 .actorRole(resolveActorRole(stage))
                 .action(RequestApproval.ApprovalAction.RECOMMEND)
-                .decision(ApprovalDecision.PENDING)                // ✅
+                .decision(ApprovalDecision.PENDING)
                 .decidedAt(LocalDateTime.now())
                 .build();
         return approvalRepository.save(pending);
     }
-
 
     // ═══════════════════════════════════════════════════════════
     //  9. PUBLIC REQUEST LOOKUP (used by ApprovalController)
@@ -347,22 +371,21 @@ public class ApprovalService {
         return findRequestOrThrow(requestId);
     }
 
-
     // ───────────────────────────────────────────────────────────
     //  PRIVATE HELPERS
     // ───────────────────────────────────────────────────────────
 
     private void advanceWorkflowState(Request request,
                                        RequestApproval.ApprovalStage completedStage,
-                                       ApprovalDecision decision) {                // ✅
-        if (decision == ApprovalDecision.REJECTED) {                               // ✅
+                                       ApprovalDecision decision) {
+        if (decision == ApprovalDecision.REJECTED) {
             request.setStatus(Request.RequestStatus.REJECTED);
             request.setRejectionReason("Rejected at stage: " + completedStage.name());
             requestRepository.save(request);
             return;
         }
 
-        if (decision == ApprovalDecision.MODIFIED) {                               // ✅
+        if (decision == ApprovalDecision.MODIFIED) {
             request.setStatus(Request.RequestStatus.MODIFICATIONPROPOSED);
             requestRepository.save(request);
             return;
@@ -473,13 +496,13 @@ public class ApprovalService {
         }
     }
 
-    private ApprovalDecision mapActionToDecision(RequestApproval.ApprovalAction action) {  // ✅
+    private ApprovalDecision mapActionToDecision(RequestApproval.ApprovalAction action) {
         return switch (action) {
-            case APPROVE   -> ApprovalDecision.APPROVED;      // ✅
-            case RECOMMEND -> ApprovalDecision.RECOMMENDED;   // ✅
-            case REJECT    -> ApprovalDecision.REJECTED;      // ✅
-            case MODIFY    -> ApprovalDecision.MODIFIED;      // ✅
-            case REVERSE   -> ApprovalDecision.PENDING;       // ✅
+            case APPROVE   -> ApprovalDecision.APPROVED;
+            case RECOMMEND -> ApprovalDecision.RECOMMENDED;
+            case REJECT    -> ApprovalDecision.REJECTED;
+            case MODIFY    -> ApprovalDecision.MODIFIED;
+            case REVERSE   -> ApprovalDecision.PENDING;
         };
     }
 
