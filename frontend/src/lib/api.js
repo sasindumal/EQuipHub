@@ -93,7 +93,7 @@ export const adminAPI = {
   getSystemDefaults:    ()           => api.get('/admin/config/system-defaults'),
 };
 
-// ─── User Management APIs ─────────────────────────────────
+// ─── User Management APIs ───────────────────────────────────────
 export const userAPI = {
   getAllUsers:          ()              => api.get('/users'),
   getMyProfile:        ()              => api.get('/users/me'),
@@ -113,8 +113,7 @@ export const userAPI = {
   getSystemAdmins:     ()              => api.get('/users/system-admins'),
 };
 
-// ─── Department Admin APIs ────────────────────────────────
-export const deptAdminAPI = {
+// ─── Department Admin APIs ──────────────────────────────────────nexport const deptAdminAPI = {
   getMyDepartment:          ()     => api.get('/department-admin/my-department'),
   updateMyDepartment:       (data) => api.put('/department-admin/my-department', data),
   getMyDepartmentUsers:     ()     => api.get('/department-admin/my-department/users'),
@@ -128,11 +127,19 @@ export const deptAdminAPI = {
   getDepartmentById:        (id)   => api.get(`/department-admin/departments/${id}`),
 };
 
-// ─── Equipment Category APIs ──────────────────────────────
-// EquipmentCategoryController base: /equipment-categories
-// GET  → all authenticated users
-// POST → DEPTADMIN only  (create)
-// PUT  → DEPTADMIN only  (update)
+// ─── Course APIs ─────────────────────────────────────────────
+export const courseAPI = {
+  // Write — DEPARTMENTADMIN / SYSTEMADMIN only
+  createCourse:          (data)            => api.post('/courses', data),
+  updateCourse:          (courseId, data)  => api.put(`/courses/${courseId}`, data),
+  deleteCourse:          (courseId)        => api.delete(`/courses/${courseId}`),
+  // Read — all authenticated users
+  getAllCourses:          ()               => api.get('/courses'),
+  getCourseById:         (courseId)        => api.get(`/courses/${courseId}`),
+  getCoursesByDepartment:(departmentId)    => api.get(`/courses/department/${departmentId}`),
+};
+
+// ─── Equipment Category APIs ────────────────────────────────────
 export const equipmentCategoryAPI = {
   getAll:          ()         => api.get('/equipment-categories'),
   getById:         (id)       => api.get(`/equipment-categories/${id}`),
@@ -140,7 +147,7 @@ export const equipmentCategoryAPI = {
   updateCategory:  (id, data) => api.put(`/equipment-categories/${id}`, data),
 };
 
-// ─── Equipment APIs ────────────────────────────────────────
+// ─── Equipment APIs ──────────────────────────────────────────
 export const equipmentAPI = {
   getAllEquipment:        ()          => api.get('/equipment'),
   getEquipmentById:      (id)        => api.get(`/equipment/${id}`),
@@ -151,7 +158,7 @@ export const equipmentAPI = {
   updateEquipmentStatus: (id, data)  => api.patch(`/equipment/${id}/status`, data),
 };
 
-// ─── Borrow Request APIs ──────────────────────────────────
+// ─── Borrow Request APIs ────────────────────────────────────────
 export const requestAPI = {
   getDepartmentRequests:   ()                    => api.get('/requests/department'),
   getAllRequests:           ()                    => api.get('/requests'),
@@ -176,7 +183,7 @@ export const requestAPI = {
   returnEquipment:         (id)                  => api.patch(`/requests/${id}/return`),
 };
 
-// ─── Approval Workflow APIs ───────────────────────────────
+// ─── Approval Workflow APIs ─────────────────────────────────────
 export const approvalAPI = {
   attemptAutoApproval:  (requestId)             => api.post(`/approvals/requests/${requestId}/auto-approve`),
   processDecision:      (requestId, stage, data) =>
@@ -188,7 +195,7 @@ export const approvalAPI = {
   getNextStage:         (requestId)             => api.get(`/approvals/requests/${requestId}/next-stage`),
 };
 
-// ─── Inspection APIs ──────────────────────────────────────
+// ─── Inspection APIs ──────────────────────────────────────────
 export const inspectionAPI = {
   issueEquipment:       (data)                  => api.post('/inspections/issue', data),
   processReturn:        (data)                  => api.post('/inspections/return', data),
@@ -203,7 +210,7 @@ export const inspectionAPI = {
   getDepartmentStats:   (departmentId)          => api.get(`/inspections/department/${departmentId}/stats`),
 };
 
-// ─── Penalty APIs ─────────────────────────────────────────
+// ─── Penalty APIs ───────────────────────────────────────────
 export const penaltyAPI = {
   createPenalty:        (data)                  => api.post('/penalties', data),
   approvePenalty:       (penaltyId)             => api.post(`/penalties/${penaltyId}/approve`),

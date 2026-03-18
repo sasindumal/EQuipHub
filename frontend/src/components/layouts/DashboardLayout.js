@@ -23,6 +23,7 @@ import {
     HiOutlineSwitchHorizontal,
     HiOutlineArrowCircleDown,
     HiOutlineBan,
+    HiOutlineBookOpen,
 } from 'react-icons/hi';
 import './dashboard.css';
 
@@ -45,7 +46,7 @@ const sysAdminNav = [
     },
 ];
 
-// ─── Department Admin ─────────────────────────────────────────
+// ─── Department Admin ───────────────────────────────────────────
 const deptAdminNav = [
     {
         title: 'DEPARTMENT',
@@ -59,6 +60,7 @@ const deptAdminNav = [
         title: 'MANAGEMENT',
         items: [
             { label: 'Equipment', href: '/department-admin/equipment', icon: HiOutlineDesktopComputer   },
+            { label: 'Courses',   href: '/department-admin/courses',   icon: HiOutlineBookOpen          },
             { label: 'Requests',  href: '/department-admin/requests',  icon: HiOutlineClipboardList     },
             { label: 'Penalties', href: '/department-admin/penalties', icon: HiOutlineExclamationCircle },
             { label: 'Settings',  href: '/department-admin/settings',  icon: HiOutlineCog               },
@@ -66,7 +68,7 @@ const deptAdminNav = [
     },
 ];
 
-// ─── Technical Officer ────────────────────────────────────────
+// ─── Technical Officer ──────────────────────────────────────────
 const technicalOfficerNav = [
     {
         title: 'OVERVIEW',
@@ -90,7 +92,7 @@ const technicalOfficerNav = [
     },
 ];
 
-// ─── Lecturer / HOD ───────────────────────────────────────────
+// ─── Lecturer / HOD ─────────────────────────────────────────────
 const lecturerNav = [
     {
         title: 'APPROVALS',
@@ -100,7 +102,7 @@ const lecturerNav = [
     },
 ];
 
-// ─── Student ──────────────────────────────────────────────────
+// ─── Student ────────────────────────────────────────────────────
 const studentNav = [
     {
         title: 'MY PORTAL',
@@ -109,12 +111,12 @@ const studentNav = [
             { label: 'Equipment Catalog', href: '/student/equipment', icon: HiOutlineDesktopComputer  },
             { label: 'My Requests',       href: '/student/requests',  icon: HiOutlineClipboardList    },
             { label: 'Request History',   href: '/student/history',   icon: HiOutlineChartBar         },
-            { label: 'Penalties',         href: '/student/penalties',  icon: HiOutlineBan             },
+            { label: 'Penalties',         href: '/student/penalties', icon: HiOutlineBan              },
         ],
     },
 ];
 
-// ─── Role → nav config map ────────────────────────────────────
+// ─── Role → nav config map ──────────────────────────────────────────
 const ROLE_CONFIG = {
     SYSTEMADMIN:       { nav: sysAdminNav,        label: 'System Admin',       rootHref: '/admin'             },
     DEPARTMENTADMIN:   { nav: deptAdminNav,        label: 'Dept Admin',         rootHref: '/department-admin'  },
@@ -140,7 +142,6 @@ export default function DashboardLayout({ children, pageTitle, pageSubtitle }) {
     const { user, logout } = useAuth();
     const [sidebarOpen, setSidebarOpen] = useState(false);
 
-    // Resolve nav + label by user role; fall back to path-based detection
     const roleKey    = user?.role?.toUpperCase();
     const roleConfig = ROLE_CONFIG[roleKey] || (
         pathname.startsWith('/admin')             ? ROLE_CONFIG.SYSTEMADMIN      :
@@ -160,13 +161,11 @@ export default function DashboardLayout({ children, pageTitle, pageSubtitle }) {
 
     return (
         <div className="dashboard-layout">
-            {/* Overlay for mobile */}
             <div
                 className={`sidebar-overlay ${sidebarOpen ? 'visible' : ''}`}
                 onClick={() => setSidebarOpen(false)}
             />
 
-            {/* Sidebar */}
             <aside className={`sidebar ${sidebarOpen ? 'open' : ''}`}>
                 <div className="sidebar-header">
                     <Image src="/logo.png" alt="EQuipHub" width={40} height={40} className="sidebar-logo" />
@@ -224,7 +223,6 @@ export default function DashboardLayout({ children, pageTitle, pageSubtitle }) {
                 </div>
             </aside>
 
-            {/* Topbar */}
             <header className="topbar">
                 <div className="topbar-left">
                     <button className="topbar-hamburger" onClick={() => setSidebarOpen(true)}>
@@ -242,7 +240,6 @@ export default function DashboardLayout({ children, pageTitle, pageSubtitle }) {
                 </div>
             </header>
 
-            {/* Main */}
             <main className="main-content">
                 {children}
             </main>
