@@ -3,12 +3,11 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import DashboardLayout from '@/components/layouts/DashboardLayout';
-import { requestAPI, equipmentAPI, approvalAPI } from '@/lib/api';
+import { requestAPI, equipmentAPI, approvalAPI, courseAPI } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
 import { HiOutlinePlusCircle, HiOutlineTrash } from 'react-icons/hi';
 
-// Convert a date string 'YYYY-MM-DD' to a full ISO LocalDateTime string
-// Backend @NotNull LocalDateTime fromDateTime expects e.g. "2026-03-20T00:00:00"
+// Convert 'YYYY-MM-DD' -> ISO LocalDateTime string expected by backend
 const toDateTime = (dateStr, endOfDay = false) => {
     if (!dateStr) return null;
     return `${dateStr}T${endOfDay ? '23:59:59' : '00:00:00'}`;
@@ -18,7 +17,9 @@ export default function NewRequestPage() {
     const router = useRouter();
     const { user } = useAuth();
     const [equipment, setEquipment] = useState([]);
+    const [courses,   setCourses]   = useState([]);
     const [loadingEq, setLoadingEq]   = useState(true);
+    const [loadingCourses, setLoadingCourses] = useState(false);
     const [submitting, setSubmitting] = useState(false);
     const [error, setError]           = useState(null);
     const [success, setSuccess]       = useState(null);
@@ -26,28 +27,24 @@ export default function NewRequestPage() {
 
     const [form, setForm] = useState({
         requestType:   'COURSEWORK',
+        courseId:      '',      // integer PK — required when type === COURSEWORK
         purpose:       '',
-        borrowDate:    '',   // UI only  → mapped to fromDateTime
-        returnDate:    '',   // UI only  → mapped to toDateTime
-        priorityLevel: 1,    // 1 = Normal, 2 = High, 3 = Emergency
+        borrowDate:    '',
+        returnDate:    '',
+        priorityLevel: 1,
         isEmergency:   false,
         items: [{ equipmentId: '', quantityRequested: 1, notes: '' }],
     });
 
+    // Load equipment for the student's department
     useEffect(() => {
         if (!user?.departmentId) return;
         const loadEquipment = async () => {
             try {
-                let res;
-                if (user?.departmentId) {
-                    res = await equipmentAPI.getByDepartment(user.departmentId);
-                } else {
-                    res = await equipmentAPI.getAllEquipment();
-                }
+                const res  = await equipmentAPI.getByDepartment(user.departmentId);
                 const raw  = res.data?.data || res.data || [];
                 const data = raw.equipment || raw;
-                const list = Array.isArray(data) ? data : (data.content || []);
-                setEquipment(list);
+                setEquipment(Array.isArray(data) ? data : (data.content || []));
             } catch {
                 setEquipment([]);
             } finally {
@@ -55,6 +52,24 @@ export default function NewRequestPage() {
             }
         };
         loadEquipment();
+    }, [user?.departmentId]);
+
+    // Load courses for the student's department
+    useEffect(() => {
+        if (!user?.departmentId) return;
+        const loadCourses = async () => {
+            setLoadingCourses(true);
+            try {
+                const res  = await courseAPI.getCoursesByDepartment(user.departmentId);
+                const raw  = res.data?.data || res.data || [];
+                setCourses(Array.isArray(raw) ? raw : (raw.courses || []));
+            } catch {
+                setCourses([]);
+            } finally {
+                setLoadingCourses(false);
+            }
+        };
+        loadCourses();
     }, [user?.departmentId]);
 
     const setField = (key, val) => setForm(f => ({ ...f, [key]: val }));
@@ -65,10 +80,14 @@ export default function NewRequestPage() {
     const addItem    = () => setForm(f => ({ ...f, items: [...f.items, { equipmentId: '', quantityRequested: 1, notes: '' }] }));
     const removeItem = idx => setForm(f => ({ ...f, items: f.items.filter((_, i) => i !== idx) }));
 
+    const isCoursework = form.requestType === 'COURSEWORK';
+
     const handleSubmit = async () => {
-        // --- Client-side validation ---
         if (!form.purpose.trim()) {
             setError('Purpose is required.'); return;
+        }
+        if (isCoursework && !form.courseId) {
+            setError('Please select a course for Coursework requests.'); return;
         }
         if (!form.borrowDate || !form.returnDate) {
             setError('Borrow date and return date are required.'); return;
@@ -87,36 +106,22 @@ export default function NewRequestPage() {
         let createdId = null;
 
         try {
-            // ----------------------------------------------------------------
-            // Build payload matching backend CreateRequestDTO exactly:
-            //   studentId          UUID          @NotNull
-            //   departmentId       UUID          @NotNull
-            //   requestType        Enum          @NotNull  (COURSEWORK|RESEARCH|PERSONAL|LABSESSION|EXTRACURRICULAR)
-            //   fromDateTime       LocalDateTime @NotNull  (ISO string)
-            //   toDateTime         LocalDateTime @NotNull  (ISO string)
-            //   priorityLevel      Integer       @NotNull  (1-3)
-            //   slaHours           Integer       @NotNull  (default 48)
-            //   description        String        optional
-            //   isEmergency        Boolean       optional
-            //   items[]
-            //     equipmentId      UUID          @NotNull
-            //     quantityRequested Integer      @NotNull  (NOT "quantity")
-            //     notes            String        optional
-            // ----------------------------------------------------------------
             const studentId = user?.userId || user?.id;
             if (!studentId) throw new Error('User session expired. Please log in again.');
 
             const payload = {
-                studentId:    studentId,
-                departmentId: user?.departmentId,
-                requestType:  form.requestType,
-                fromDateTime: toDateTime(form.borrowDate, false),
-                toDateTime:   toDateTime(form.returnDate, true),
-                description:  form.purpose.trim() || null,
+                studentId,
+                departmentId:  user?.departmentId,
+                requestType:   form.requestType,
+                fromDateTime:  toDateTime(form.borrowDate, false),
+                toDateTime:    toDateTime(form.returnDate, true),
+                description:   form.purpose.trim() || null,
                 priorityLevel: form.isEmergency ? 3 : form.priorityLevel,
-                slaHours:     48,
-                isEmergency:  form.isEmergency,
+                slaHours:      48,
+                isEmergency:   form.isEmergency,
                 emergencyJustification: form.isEmergency ? form.purpose.trim() : null,
+                // courseId is an Integer on the backend — send null when not COURSEWORK
+                courseId: isCoursework && form.courseId ? Number(form.courseId) : null,
                 items: form.items.map(it => ({
                     equipmentId:       it.equipmentId,
                     quantityRequested: Number(it.quantityRequested) || 1,
@@ -128,18 +133,15 @@ export default function NewRequestPage() {
             const createRes = await requestAPI.createRequest(payload);
             const newReq    = createRes.data?.data || createRes.data;
             createdId       = newReq?.requestId || newReq?.id;
-
             if (!createdId) throw new Error('Server did not return a request ID.');
 
-            // Step 2: Submit DRAFT → PENDINGAPPROVAL
+            // Step 2: Submit DRAFT -> PENDINGAPPROVAL
             await requestAPI.submitRequest(createdId);
 
-            // Step 3: Attempt auto-approval (silent — eligible for COURSEWORK + low qty)
+            // Step 3: Attempt auto-approval (silent)
             try {
                 await approvalAPI.attemptAutoApproval(createdId);
-            } catch {
-                // Not eligible — safe to ignore, request stays in PENDINGAPPROVAL
-            }
+            } catch { /* not eligible — stays PENDINGAPPROVAL */ }
 
             setSuccess(`Request ${createdId} submitted! It is now pending approval.`);
             setStep('success');
@@ -159,7 +161,7 @@ export default function NewRequestPage() {
         }
     };
 
-    // ── Success screen ──────────────────────────────────────────────────────
+    // Success screen
     if (step === 'success') {
         return (
             <DashboardLayout pageTitle="Request Submitted" pageSubtitle="Your request is now pending approval">
@@ -173,7 +175,6 @@ export default function NewRequestPage() {
         );
     }
 
-    // ── Form ────────────────────────────────────────────────────────────────
     return (
         <DashboardLayout pageTitle="New Borrow Request" pageSubtitle="Fill in the details to borrow equipment">
             {error && <div className="alert alert-danger" style={{ marginBottom: 16 }}>{error}</div>}
@@ -184,11 +185,12 @@ export default function NewRequestPage() {
                 </div>
                 <div style={{ padding: '0 20px 24px', display: 'flex', flexDirection: 'column', gap: 16 }}>
 
-                    {/* Type + Dates */}
+                    {/* Row 1: Type + Dates */}
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 16 }}>
                         <div>
                             <label className="form-label">Request Type</label>
-                            <select className="form-input" value={form.requestType} onChange={e => setField('requestType', e.target.value)}>
+                            <select className="form-input" value={form.requestType}
+                                onChange={e => setField('requestType', e.target.value)}>
                                 <option value="COURSEWORK">Coursework</option>
                                 <option value="RESEARCH">Research</option>
                                 <option value="PERSONAL">Personal Project</option>
@@ -196,24 +198,59 @@ export default function NewRequestPage() {
                             </select>
                         </div>
                         <div>
-                            <label className="form-label">Borrow Date                         <span style={{ color: 'var(--primary)' }}>*</span></label>
+                            <label className="form-label">
+                                Borrow Date <span style={{ color: 'var(--primary)' }}>*</span>
+                            </label>
                             <input type="date" className="form-input"
                                 min={new Date().toISOString().split('T')[0]}
                                 value={form.borrowDate} onChange={e => setField('borrowDate', e.target.value)} />
                         </div>
                         <div>
-                            <label className="form-label">Return Date                         <span style={{ color: 'var(--primary)' }}>*</span></label>
+                            <label className="form-label">
+                                Return Date <span style={{ color: 'var(--primary)' }}>*</span>
+                            </label>
                             <input type="date" className="form-input"
                                 min={form.borrowDate || new Date().toISOString().split('T')[0]}
                                 value={form.returnDate} onChange={e => setField('returnDate', e.target.value)} />
                         </div>
                     </div>
 
-                    {/* Priority + Emergency */}
+                    {/* Course dropdown — visible only for COURSEWORK */}
+                    {isCoursework && (
+                        <div>
+                            <label className="form-label">
+                                Course <span style={{ color: 'var(--primary)' }}>*</span>
+                            </label>
+                            <select className="form-input" value={form.courseId}
+                                onChange={e => setField('courseId', e.target.value)}
+                                required={isCoursework}>
+                                <option value="">— Select Course —</option>
+                                {loadingCourses
+                                    ? <option disabled>Loading courses…</option>
+                                    : courses.length === 0
+                                        ? <option disabled>No courses found for your department</option>
+                                        : courses.map(c => (
+                                            <option key={c.courseId || c.id} value={c.courseId || c.id}>
+                                                {c.courseCode ? `${c.courseCode} — ` : ''}{c.courseName || c.name}
+                                                {c.semester ? ` (Sem ${c.semester})` : ''}
+                                            </option>
+                                        ))
+                                }
+                            </select>
+                            {!loadingCourses && courses.length === 0 && (
+                                <p style={{ fontSize: 12, color: 'var(--warning)', marginTop: 4 }}>
+                                    No courses are set up for your department yet. Contact your department admin.
+                                </p>
+                            )}
+                        </div>
+                    )}
+
+                    {/* Row 2: Priority + Emergency */}
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 16 }}>
                         <div>
                             <label className="form-label">Priority</label>
-                            <select className="form-input" value={form.priorityLevel} onChange={e => setField('priorityLevel', Number(e.target.value))}>
+                            <select className="form-input" value={form.priorityLevel}
+                                onChange={e => setField('priorityLevel', Number(e.target.value))}>
                                 <option value={1}>Normal</option>
                                 <option value={2}>High</option>
                             </select>
@@ -231,7 +268,7 @@ export default function NewRequestPage() {
                     {/* Purpose */}
                     <div>
                         <label className="form-label">
-                            Purpose / Description                         <span style={{ color: 'var(--primary)' }}>*</span>
+                            Purpose / Description <span style={{ color: 'var(--primary)' }}>*</span>
                         </label>
                         <textarea className="form-input" rows={3}
                             placeholder="Describe why you need this equipment…"
@@ -242,7 +279,7 @@ export default function NewRequestPage() {
                     <div>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
                             <label className="form-label" style={{ margin: 0 }}>
-                                Equipment Items                         <span style={{ color: 'var(--primary)' }}>*</span>
+                                Equipment Items <span style={{ color: 'var(--primary)' }}>*</span>
                             </label>
                             <button className="btn btn-outline btn-sm" onClick={addItem}
                                 style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
@@ -274,7 +311,6 @@ export default function NewRequestPage() {
                                 </div>
                                 <div>
                                     {idx === 0 && <label className="form-label">Qty</label>}
-                                    {/* Field name is quantityRequested to match backend DTO */}
                                     <input type="number" min={1} className="form-input"
                                         value={item.quantityRequested}
                                         onChange={e => setItem(idx, 'quantityRequested', Number(e.target.value))} />
