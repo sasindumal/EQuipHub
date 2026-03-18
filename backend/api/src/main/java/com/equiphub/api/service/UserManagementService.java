@@ -87,7 +87,7 @@ public class UserManagementService {
 
     @Transactional(readOnly = true)
     public List<UserResponse> getAllStaff() {
-        return userRepository.findAllStaff()        // uses @Query — no full table scan
+        return userRepository.findAllStaff()
                 .stream()
                 .map(this::mapToResponse)
                 .collect(Collectors.toList());
@@ -170,6 +170,14 @@ public class UserManagementService {
             log.info("User {} status changed to {} by {}", userId, req.getStatus(), updatedBy);
         }
 
+        if (req.getRole() != null) {
+            // Convert UserRole (DTO enum) → User.Role (entity enum) via name-matching
+            User.Role newRole = req.getRole().toUserRole();
+            log.info("User {} role changed from {} to {} by {}",
+                    userId, user.getRole(), newRole, updatedBy);
+            user.setRole(newRole);
+        }
+
         if (req.getDepartmentId() != null) {
             UUID deptId = UUID.fromString(req.getDepartmentId());
             Department dept = departmentRepository.findById(deptId)
@@ -178,6 +186,7 @@ public class UserManagementService {
         }
 
         User updated = userRepository.save(user);
+        log.info("User {} updated by {}", userId, updatedBy);
         return mapToResponse(updated);
     }
 
