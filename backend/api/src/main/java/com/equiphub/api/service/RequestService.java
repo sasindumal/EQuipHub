@@ -81,10 +81,10 @@ public class RequestService {
             throw new RuntimeException("Emergency justification is required for emergency requests");
         }
 
-        // Resolve optional references
+        // Resolve optional course — courseId is a String PK (e.g. "CS3012")
         Course course = null;
-        if (dto.getCourseId() != null) {
-            course = courseRepository.findById(dto.getCourseId().toString())
+        if (dto.getCourseId() != null && !dto.getCourseId().isBlank()) {
+            course = courseRepository.findById(dto.getCourseId())
                     .orElseThrow(() -> new RuntimeException("Course not found: " + dto.getCourseId()));
         }
 
@@ -237,9 +237,9 @@ public class RequestService {
         if (dto.getIsEmergency() != null)            request.setEmergency(dto.getIsEmergency());
         if (dto.getEmergencyJustification() != null) request.setEmergencyJustification(dto.getEmergencyJustification());
 
-        // Resolve optional references
-        if (dto.getCourseId() != null) {
-            Course course = courseRepository.findById(dto.getCourseId().toString())
+        // Resolve optional course — courseId is a String PK (e.g. "CS3012")
+        if (dto.getCourseId() != null && !dto.getCourseId().isBlank()) {
+            Course course = courseRepository.findById(dto.getCourseId())
                     .orElseThrow(() -> new RuntimeException("Course not found: " + dto.getCourseId()));
             request.setCourse(course);
         }
@@ -383,7 +383,7 @@ public class RequestService {
                 }
                 break;
             case COURSEWORK:
-                if (dto.getCourseId() == null) {
+                if (dto.getCourseId() == null || dto.getCourseId().isBlank()) {
                     throw new RuntimeException("Course is required for COURSEWORK requests");
                 }
                 break;

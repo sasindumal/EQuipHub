@@ -20,7 +20,8 @@ public class UpdateRequestDTO {
     @Size(max = 1000, message = "Description cannot exceed 1000 characters")
     private String description;
 
-    private Integer courseId;
+    // courseId matches Course entity @Id type (String, e.g. "CS3012")
+    private String courseId;
 
     private UUID supervisorId;
 
