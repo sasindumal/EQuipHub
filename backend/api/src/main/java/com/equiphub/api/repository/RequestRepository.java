@@ -19,28 +19,28 @@ import java.util.UUID;
 @Repository
 public interface RequestRepository extends JpaRepository<Request, String> {
 
-    // ── Find by student ────────────────────────────────────
+    // ── Find by student ──────────────────────────────────────────
     Page<Request> findByStudentUserId(UUID studentId, Pageable pageable);
 
     List<Request> findByStudentUserIdAndStatus(UUID studentId, Request.RequestStatus status);
 
-    // ── Find by department ─────────────────────────────────
+    // ── Find by department ──────────────────────────────────────
     Page<Request> findByDepartmentDepartmentId(UUID departmentId, Pageable pageable);
 
     List<Request> findByDepartmentDepartmentIdAndStatus(UUID departmentId, Request.RequestStatus status);
 
-    // ── Find by status ─────────────────────────────────────
+    // ── Find by status ───────────────────────────────────────────
     Page<Request> findByStatus(Request.RequestStatus status, Pageable pageable);
 
     List<Request> findByStatusIn(List<Request.RequestStatus> statuses);
 
-    // ── Find by request type ───────────────────────────────
+    // ── Find by request type ─────────────────────────────────────
     Page<Request> findByRequestType(Request.RequestType type, Pageable pageable);
 
     Page<Request> findByDepartmentDepartmentIdAndRequestType(
             UUID departmentId, Request.RequestType type, Pageable pageable);
 
-    // ── Complex queries ────────────────────────────────────
+    // ── Complex queries ─────────────────────────────────────────
     @Query("SELECT r FROM Request r WHERE r.department.departmentId = :deptId " +
            "AND r.status = :status AND r.requestType = :type")
     Page<Request> findByDepartmentStatusAndType(
@@ -62,7 +62,7 @@ public interface RequestRepository extends JpaRepository<Request, String> {
             @Param("studentId") UUID studentId,
             @Param("statuses") List<Request.RequestStatus> statuses);
 
-    // ── Emergency requests ─────────────────────────────────
+    // ── Emergency requests ─────────────────────────────────────
     List<Request> findByEmergencyTrueAndStatus(Request.RequestStatus status);
 
     @Query("SELECT r FROM Request r WHERE r.department.departmentId = :deptId " +
@@ -71,7 +71,7 @@ public interface RequestRepository extends JpaRepository<Request, String> {
             @Param("deptId") UUID departmentId,
             @Param("statuses") List<Request.RequestStatus> statuses);
 
-    // ── SLA tracking ───────────────────────────────────────
+    // ── SLA tracking ───────────────────────────────────────────
     @Query("SELECT r FROM Request r WHERE r.status IN :statuses " +
            "AND r.submittedAt IS NOT NULL " +
            "AND FUNCTION('TIMESTAMPADD', HOUR, r.slaHours, r.submittedAt) < :now")
@@ -79,19 +79,19 @@ public interface RequestRepository extends JpaRepository<Request, String> {
             @Param("statuses") List<Request.RequestStatus> statuses,
             @Param("now") LocalDateTime now);
 
-    // ── Count queries for dashboard ────────────────────────
+    // ── Count queries for dashboard ─────────────────────────────
     long countByDepartmentDepartmentIdAndStatus(UUID departmentId, Request.RequestStatus status);
 
     long countByStudentUserIdAndStatus(UUID studentId, Request.RequestStatus status);
 
     long countByDepartmentDepartmentId(UUID departmentId);
 
-    // ── Request ID generation ──────────────────────────────
+    // ── Request ID generation ──────────────────────────────────
     @Query("SELECT r.requestId FROM Request r WHERE r.requestId LIKE :prefix% " +
            "ORDER BY r.requestId DESC LIMIT 1")
     Optional<String> findLastRequestIdByPrefix(@Param("prefix") String prefix);
 
-    // ── Overlap detection for lab sessions ─────────────────
+    // ── Overlap detection for availability check ─────────────────
     @Query("SELECT r FROM Request r JOIN RequestItem ri ON ri.request = r " +
            "WHERE ri.equipment.equipmentId = :equipmentId " +
            "AND r.status IN :activeStatuses " +
@@ -103,14 +103,31 @@ public interface RequestRepository extends JpaRepository<Request, String> {
             @Param("fromDateTime") LocalDateTime fromDateTime,
             @Param("toDateTime") LocalDateTime toDateTime);
 
-    @Query("SELECT r "+
-            "FROM Request r "+
-            "WHERE r.status = :requestStatus "+
-            "AND r.requestType = :requestType"
-            )
-            List<Request> findByStatusAndType(
-                @Param("requestStatus") RequestStatus status, 
-                @Param("requestType") RequestType requestType);
+    /**
+     * Bug-3 fix: sum of quantityRequested across ALL active overlapping requests
+     * for a given piece of equipment in the requested time window.
+     * Used to compute availableQuantity = totalQuantity - committedQuantity.
+     */
+    @Query("SELECT COALESCE(SUM(ri.quantityRequested), 0) " +
+           "FROM RequestItem ri " +
+           "JOIN ri.request r " +
+           "WHERE ri.equipment.equipmentId = :equipmentId " +
+           "AND r.status IN :activeStatuses " +
+           "AND r.fromDateTime < :toDateTime " +
+           "AND r.toDateTime > :fromDateTime")
+    int sumCommittedQuantity(
+            @Param("equipmentId") UUID equipmentId,
+            @Param("activeStatuses") List<Request.RequestStatus> activeStatuses,
+            @Param("fromDateTime") LocalDateTime fromDateTime,
+            @Param("toDateTime") LocalDateTime toDateTime);
+
+    @Query("SELECT r " +
+            "FROM Request r " +
+            "WHERE r.status = :requestStatus " +
+            "AND r.requestType = :requestType")
+    List<Request> findByStatusAndType(
+            @Param("requestStatus") RequestStatus status,
+            @Param("requestType") RequestType requestType);
 
     @Query("SELECT COUNT(r) FROM Request r " +
        "WHERE r.department.departmentId = :deptId " +
@@ -119,17 +136,13 @@ public interface RequestRepository extends JpaRepository<Request, String> {
     long countSlaBreachedByDepartment(
             @Param("deptId") UUID deptId,
             @Param("pendingStatuses") List<Request.RequestStatus> pendingStatuses);
-            
+
     @Query("SELECT COUNT(ri) FROM RequestItem ri " +
             "JOIN ri.request r " +
             "WHERE r.student.userId = :studentId " +
             "AND r.status = 'APPROVED' " +
             "AND r.submittedAt >= :semesterStart")
-        long countApprovedItemsByStudentThisSemester(
-                @Param("studentId") UUID studentId,
-                @Param("semesterStart") LocalDateTime semesterStart);
-
-
-    }
-
-    
+    long countApprovedItemsByStudentThisSemester(
+            @Param("studentId") UUID studentId,
+            @Param("semesterStart") LocalDateTime semesterStart);
+}

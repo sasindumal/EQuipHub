@@ -36,9 +36,9 @@ public class RequestService {
             Request.RequestStatus.INUSE
     );
 
-    // ─────────────────────────────────────────────────────────────
+    // ──────────────────────────────────────────────────────────────
     //  REQUEST ID GENERATION: REQ-YYYY-NNNNN
-    // ─────────────────────────────────────────────────────────────
+    // ──────────────────────────────────────────────────────────────
     private String generateRequestId() {
         String prefix = "REQ-" + Year.now().getValue() + "-";
         Optional<String> lastId = requestRepository.findLastRequestIdByPrefix(prefix);
@@ -55,17 +55,15 @@ public class RequestService {
         return String.format("%s%05d", prefix, nextNumber);
     }
 
-    // ─────────────────────────────────────────────────────────────
+    // ──────────────────────────────────────────────────────────────
     //  CREATE REQUEST
-    // ─────────────────────────────────────────────────────────────
+    // ──────────────────────────────────────────────────────────────
     @Transactional
     public RequestResponseDTO createRequest(CreateRequestDTO dto, UUID submitterId) {
-        // Validate date range
         if (!dto.getToDateTime().isAfter(dto.getFromDateTime())) {
             throw new RuntimeException("End date must be after start date");
         }
 
-        // Resolve entities
         User student = userRepository.findById(dto.getStudentId())
                 .orElseThrow(() -> new RuntimeException("Student not found: " + dto.getStudentId()));
 
@@ -75,13 +73,11 @@ public class RequestService {
         Department department = departmentRepository.findById(dto.getDepartmentId())
                 .orElseThrow(() -> new RuntimeException("Department not found: " + dto.getDepartmentId()));
 
-        // Emergency validation
         if (Boolean.TRUE.equals(dto.getIsEmergency())
                 && (dto.getEmergencyJustification() == null || dto.getEmergencyJustification().isBlank())) {
             throw new RuntimeException("Emergency justification is required for emergency requests");
         }
 
-        // Resolve optional course — courseId is a String PK (e.g. "CS3012")
         Course course = null;
         if (dto.getCourseId() != null && !dto.getCourseId().isBlank()) {
             course = courseRepository.findById(dto.getCourseId())
@@ -100,10 +96,8 @@ public class RequestService {
                     .orElseThrow(() -> new RuntimeException("Instructor not found: " + dto.getInstructorId()));
         }
 
-        // Validate request type requirements
         validateRequestTypeRequirements(dto);
 
-        // Build request
         String requestId = generateRequestId();
         Request request = Request.builder()
                 .requestId(requestId)
@@ -130,15 +124,13 @@ public class RequestService {
         log.info("[REQUEST_CREATE] {} type={} by student={} submitter={}",
                 requestId, dto.getRequestType(), student.getEmail(), submitter.getEmail());
 
-        // Create request items
         List<RequestItem> savedItems = createRequestItems(savedRequest, dto.getItems());
-
         return mapToResponse(savedRequest, savedItems, Collections.emptyList());
     }
 
-    // ─────────────────────────────────────────────────────────────
+    // ──────────────────────────────────────────────────────────────
     //  SUBMIT REQUEST (DRAFT → PENDING)
-    // ─────────────────────────────────────────────────────────────
+    // ──────────────────────────────────────────────────────────────
     @Transactional
     public RequestResponseDTO submitRequest(String requestId, UUID submitterId) {
         Request request = findRequest(requestId);
@@ -147,13 +139,16 @@ public class RequestService {
             throw new RuntimeException("Only DRAFT requests can be submitted. Current status: " + request.getStatus());
         }
 
-        // Validate equipment availability for all items
+        // Validate equipment availability (status + quantity) for every item
         List<RequestItem> items = requestItemRepository.findByRequestRequestId(requestId);
         for (RequestItem item : items) {
-            validateEquipmentAvailability(item.getEquipment(), request.getFromDateTime(), request.getToDateTime());
+            validateEquipmentAvailability(
+                    item.getEquipment(),
+                    item,                          // Bug-3: pass item for quantity check
+                    request.getFromDateTime(),
+                    request.getToDateTime());
         }
 
-        // Determine initial status based on request type
         Request.RequestStatus nextStatus = determineSubmitStatus(request.getRequestType());
         request.setStatus(nextStatus);
         request.setSubmittedAt(LocalDateTime.now());
@@ -165,9 +160,9 @@ public class RequestService {
         return mapToResponse(updated, items, approvals);
     }
 
-    // ─────────────────────────────────────────────────────────────
+    // ──────────────────────────────────────────────────────────────
     //  GET REQUEST BY ID
-    // ─────────────────────────────────────────────────────────────
+    // ──────────────────────────────────────────────────────────────
     @Transactional(readOnly = true)
     public RequestResponseDTO getRequestById(String requestId) {
         Request request = findRequest(requestId);
@@ -176,9 +171,9 @@ public class RequestService {
         return mapToResponse(request, items, approvals);
     }
 
-    // ─────────────────────────────────────────────────────────────
+    // ──────────────────────────────────────────────────────────────
     //  GET MY REQUESTS (paginated)
-    // ─────────────────────────────────────────────────────────────
+    // ──────────────────────────────────────────────────────────────
     @Transactional(readOnly = true)
     public Page<RequestResponseDTO> getMyRequests(UUID studentId, Pageable pageable) {
         return requestRepository.findByStudentUserId(studentId, pageable)
@@ -190,9 +185,9 @@ public class RequestService {
                 });
     }
 
-    // ─────────────────────────────────────────────────────────────
+    // ──────────────────────────────────────────────────────────────
     //  GET DEPARTMENT REQUESTS (paginated)
-    // ─────────────────────────────────────────────────────────────
+    // ──────────────────────────────────────────────────────────────
     @Transactional(readOnly = true)
     public Page<RequestResponseDTO> getDepartmentRequests(UUID departmentId, Pageable pageable) {
         return requestRepository.findByDepartmentDepartmentId(departmentId, pageable)
@@ -204,9 +199,9 @@ public class RequestService {
                 });
     }
 
-    // ─────────────────────────────────────────────────────────────
+    // ──────────────────────────────────────────────────────────────
     //  GET REQUESTS BY STATUS
-    // ─────────────────────────────────────────────────────────────
+    // ──────────────────────────────────────────────────────────────
     @Transactional(readOnly = true)
     public Page<RequestResponseDTO> getRequestsByStatus(Request.RequestStatus status, Pageable pageable) {
         return requestRepository.findByStatus(status, pageable)
@@ -218,9 +213,9 @@ public class RequestService {
                 });
     }
 
-    // ─────────────────────────────────────────────────────────────
+    // ──────────────────────────────────────────────────────────────
     //  UPDATE REQUEST (only DRAFT)
-    // ─────────────────────────────────────────────────────────────
+    // ──────────────────────────────────────────────────────────────
     @Transactional
     public RequestResponseDTO updateRequest(String requestId, UpdateRequestDTO dto, UUID updatedBy) {
         Request request = findRequest(requestId);
@@ -229,7 +224,6 @@ public class RequestService {
             throw new RuntimeException("Only DRAFT requests can be updated. Current status: " + request.getStatus());
         }
 
-        // Update fields if provided
         if (dto.getFromDateTime() != null)           request.setFromDateTime(dto.getFromDateTime());
         if (dto.getToDateTime() != null)             request.setToDateTime(dto.getToDateTime());
         if (dto.getDescription() != null)            request.setDescription(dto.getDescription());
@@ -237,7 +231,6 @@ public class RequestService {
         if (dto.getIsEmergency() != null)            request.setEmergency(dto.getIsEmergency());
         if (dto.getEmergencyJustification() != null) request.setEmergencyJustification(dto.getEmergencyJustification());
 
-        // Resolve optional course — courseId is a String PK (e.g. "CS3012")
         if (dto.getCourseId() != null && !dto.getCourseId().isBlank()) {
             Course course = courseRepository.findById(dto.getCourseId())
                     .orElseThrow(() -> new RuntimeException("Course not found: " + dto.getCourseId()));
@@ -254,7 +247,6 @@ public class RequestService {
             request.setInstructor(instructor);
         }
 
-        // Update items if provided
         List<RequestItem> items;
         if (dto.getItems() != null && !dto.getItems().isEmpty()) {
             requestItemRepository.deleteByRequestRequestId(requestId);
@@ -263,7 +255,6 @@ public class RequestService {
             items = requestItemRepository.findByRequestRequestId(requestId);
         }
 
-        // Validate date range
         if (request.getToDateTime() != null && request.getFromDateTime() != null
                 && !request.getToDateTime().isAfter(request.getFromDateTime())) {
             throw new RuntimeException("End date must be after start date");
@@ -276,14 +267,13 @@ public class RequestService {
         return mapToResponse(updated, items, approvals);
     }
 
-    // ─────────────────────────────────────────────────────────────
+    // ──────────────────────────────────────────────────────────────
     //  CANCEL REQUEST
-    // ─────────────────────────────────────────────────────────────
+    // ──────────────────────────────────────────────────────────────
     @Transactional
     public RequestResponseDTO cancelRequest(String requestId, UUID cancelledBy) {
         Request request = findRequest(requestId);
 
-        // Can only cancel DRAFT, PENDING, or PENDINGRECOMMENDATION
         List<Request.RequestStatus> cancellableStatuses = List.of(
                 Request.RequestStatus.DRAFT,
                 Request.RequestStatus.PENDINGAPPROVAL,
@@ -297,7 +287,6 @@ public class RequestService {
 
         request.setStatus(Request.RequestStatus.CANCELLED);
 
-        // Cancel all pending items
         List<RequestItem> items = requestItemRepository.findByRequestRequestId(requestId);
         items.forEach(item -> {
             if (item.getStatus() == RequestItem.ItemStatus.PENDING
@@ -314,9 +303,9 @@ public class RequestService {
         return mapToResponse(updated, items, approvals);
     }
 
-    // ─────────────────────────────────────────────────────────────
+    // ──────────────────────────────────────────────────────────────
     //  GET EMERGENCY REQUESTS
-    // ─────────────────────────────────────────────────────────────
+    // ──────────────────────────────────────────────────────────────
     @Transactional(readOnly = true)
     public List<RequestResponseDTO> getEmergencyRequests(UUID departmentId) {
         List<Request> emergencyRequests = requestRepository.findEmergencyByDepartment(
@@ -329,9 +318,9 @@ public class RequestService {
         }).collect(Collectors.toList());
     }
 
-    // ─────────────────────────────────────────────────────────────
+    // ──────────────────────────────────────────────────────────────
     //  GET SLA-BREACHED REQUESTS
-    // ─────────────────────────────────────────────────────────────
+    // ──────────────────────────────────────────────────────────────
     @Transactional(readOnly = true)
     public List<RequestResponseDTO> getSlaBreachedRequests() {
         List<Request.RequestStatus> pendingStatuses = List.of(
@@ -348,9 +337,9 @@ public class RequestService {
         }).collect(Collectors.toList());
     }
 
-    // ─────────────────────────────────────────────────────────────
+    // ──────────────────────────────────────────────────────────────
     //  DASHBOARD STATS
-    // ─────────────────────────────────────────────────────────────
+    // ──────────────────────────────────────────────────────────────
     @Transactional(readOnly = true)
     public Map<String, Object> getDepartmentRequestStats(UUID departmentId) {
         Map<String, Object> stats = new LinkedHashMap<>();
@@ -366,9 +355,9 @@ public class RequestService {
         return stats;
     }
 
-    // ═════════════════════════════════════════════════════════════
+    // ══════════════════════════════════════════════════════════════
     //  PRIVATE HELPERS
-    // ═════════════════════════════════════════════════════════════
+    // ══════════════════════════════════════════════════════════════
 
     private Request findRequest(String requestId) {
         return requestRepository.findById(requestId)
@@ -408,21 +397,48 @@ public class RequestService {
         };
     }
 
-    private void validateEquipmentAvailability(Equipment equipment, LocalDateTime from, LocalDateTime to) {
+    /**
+     * Bug-3 fix: validates both equipment status AND that sufficient quantity is
+     * available within the requested time window.
+     *
+     * Available quantity is computed as:
+     *   equipment.totalQuantity  −  sum(quantityRequested from active overlapping items)
+     *
+     * This is safe against concurrent submissions because the check runs inside
+     * the same @Transactional as the status transition in submitRequest().
+     *
+     * @param equipment  the equipment entity to validate
+     * @param item       the RequestItem carrying the requested quantity
+     * @param from       start of the requested window
+     * @param to         end of the requested window
+     */
+    private void validateEquipmentAvailability(Equipment equipment,
+                                                RequestItem item,
+                                                LocalDateTime from,
+                                                LocalDateTime to) {
+        // 1. Status check (unchanged)
         if (equipment.getStatus() != Equipment.EquipmentStatus.AVAILABLE) {
             throw new RuntimeException("Equipment '" + equipment.getName() +
                     "' is not available. Current status: " + equipment.getStatus());
         }
-        if (equipment.getRetired() != null && equipment.getRetired()) {
+        if (Boolean.TRUE.equals(equipment.getRetired())) {
             throw new RuntimeException("Equipment '" + equipment.getName() + "' is retired");
         }
 
-        // Check for overlapping requests
-        List<Request> overlapping = requestRepository.findOverlappingRequests(
+        // 2. Bug-3 fix: quantity check
+        //    totalQuantity is the physical stock; committedQuantity is what is
+        //    already allocated to active overlapping requests in the same window.
+        int total     = equipment.getTotalQuantity() != null ? equipment.getTotalQuantity() : 0;
+        int committed = requestRepository.sumCommittedQuantity(
                 equipment.getEquipmentId(), ACTIVE_STATUSES, from, to);
-        if (!overlapping.isEmpty()) {
-            throw new RuntimeException("Equipment '" + equipment.getName() +
-                    "' has conflicting reservations in the requested time range");
+        int available = total - committed;
+
+        if (available < item.getQuantityRequested()) {
+            throw new RuntimeException(
+                    "Only " + available + " unit(s) of '" + equipment.getName() +
+                    "' available in the requested time window (" +
+                    total + " total, " + committed + " already committed), " +
+                    "but " + item.getQuantityRequested() + " were requested");
         }
     }
 
@@ -451,22 +467,19 @@ public class RequestService {
                 && ACTIVE_STATUSES.contains(request.getStatus());
     }
 
-    // ─────────────────────────────────────────────────────────────
+    // ──────────────────────────────────────────────────────────────
     //  MAPPER
-    // ─────────────────────────────────────────────────────────────
+    // ──────────────────────────────────────────────────────────────
     public RequestResponseDTO mapToResponse(Request r, List<RequestItem> items,
                                              List<RequestApproval> approvals) {
-        // Map items
         List<RequestItemResponseDTO> itemResponses = items.stream()
                 .map(this::mapItemToResponse)
                 .collect(Collectors.toList());
 
-        // Map approvals
         List<RequestApprovalResponseDTO> approvalResponses = approvals.stream()
                 .map(this::mapApprovalToResponse)
                 .collect(Collectors.toList());
 
-        // Calculate SLA deadline
         LocalDateTime slaDeadline = null;
         if (r.getSubmittedAt() != null && r.getSlaHours() != null) {
             slaDeadline = r.getSubmittedAt().plusHours(r.getSlaHours());
@@ -476,23 +489,18 @@ public class RequestService {
                 .requestId(r.getRequestId())
                 .requestType(r.getRequestType())
                 .status(r.getStatus())
-                // Student
                 .studentId(r.getStudent() != null ? r.getStudent().getUserId() : null)
                 .studentName(r.getStudent() != null
                         ? r.getStudent().getFirstName() + " " + r.getStudent().getLastName() : null)
                 .studentEmail(r.getStudent() != null ? r.getStudent().getEmail() : null)
-                // Submitter
                 .submitterId(r.getSubmitter() != null ? r.getSubmitter().getUserId() : null)
                 .submitterName(r.getSubmitter() != null
                         ? r.getSubmitter().getFirstName() + " " + r.getSubmitter().getLastName() : null)
-                // Department
                 .departmentId(r.getDepartment() != null ? r.getDepartment().getDepartmentId() : null)
                 .departmentName(r.getDepartment() != null ? r.getDepartment().getName() : null)
                 .departmentCode(r.getDepartment() != null ? r.getDepartment().getCode() : null)
-                // Schedule
                 .fromDateTime(r.getFromDateTime())
                 .toDateTime(r.getToDateTime())
-                // Details
                 .description(r.getDescription())
                 .courseId(r.getCourse() != null ? r.getCourse().getCourseId() : null)
                 .courseName(r.getCourse() != null ? r.getCourse().getCourseName() : null)
@@ -502,27 +510,21 @@ public class RequestService {
                 .instructorId(r.getInstructor() != null ? r.getInstructor().getUserId() : null)
                 .instructorName(r.getInstructor() != null
                         ? r.getInstructor().getFirstName() + " " + r.getInstructor().getLastName() : null)
-                // Priority & SLA
                 .priorityLevel(r.getPriorityLevel())
                 .slaHours(r.getSlaHours())
                 .slaDeadline(slaDeadline)
                 .slaBreached(isSlaBreached(r))
-                // Emergency
                 .emergency(Boolean.TRUE.equals(r.getEmergency()))
                 .emergencyJustification(r.getEmergencyJustification())
-                // Extensions
                 .extensionCount(r.getExtensionCount())
                 .maxExtensions(r.getMaxExtensions())
-                // Rejection
                 .rejectionReason(r.getRejectionReason())
-                // Timestamps
                 .submittedAt(r.getSubmittedAt())
                 .approvedAt(r.getApprovedAt())
                 .returnedAt(r.getReturnedAt())
                 .completedAt(r.getCompletedAt())
                 .createdAt(r.getCreatedAt())
                 .updatedAt(r.getUpdatedAt())
-                // Nested
                 .items(itemResponses)
                 .approvals(approvalResponses)
                 .build();
@@ -544,7 +546,6 @@ public class RequestService {
     }
 
     private RequestApprovalResponseDTO mapApprovalToResponse(RequestApproval approval) {
-        // Resolve actor name
         String actorName = null;
         try {
             User actor = userRepository.findById(approval.getActorId()).orElse(null);
