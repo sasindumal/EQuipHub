@@ -235,6 +235,8 @@ public class GlobalExceptionHandler {
         return new ResponseEntity<>(error, HttpStatus.UNAUTHORIZED);
     }
 
+    
+
     @ExceptionHandler(SignatureException.class)
     public ResponseEntity<ErrorResponse> handleSignatureException(
             SignatureException ex, WebRequest request) {
@@ -319,4 +321,21 @@ public class GlobalExceptionHandler {
         log.error("DuplicateEmailException: {}", ex.getMessage());
         return new ResponseEntity<>(error, HttpStatus.BAD_REQUEST);
     }
+
+    @ExceptionHandler(ValidationException.class)
+    public ResponseEntity<ErrorResponse> handleValidationException(
+            ValidationException ex, WebRequest request) {
+        log.warn("Validation error: {}", ex.getMessage());
+        ErrorResponse error = new ErrorResponse().builder()
+            .timestamp(LocalDateTime.now())
+            .status(HttpStatus.BAD_REQUEST.value())
+            .error("Validation Error")
+            .message(ex.getMessage())
+            .path(request.getDescription(false).replace("uri=", ""))
+            .build();
+        return ResponseEntity.badRequest().body(error);
+    }
+
+
+
 }

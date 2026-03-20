@@ -68,28 +68,33 @@ export default function DeptRequestsPage() {
 
     // Resolve the correct approval stage from the request status
     const resolveStage = (status) => {
-        if (status === 'PENDINGRECOMMENDATION') return 'LECTURERAPPROVAL';
-        return 'DEPARTMENTADMINAPPROVAL';
+        switch (status) {
+            case 'PENDINGRECOMMENDATION': return 'LECTURERAPPROVAL';
+            case 'PENDINGAPPROVAL':       return 'DEPARTMENTADMINAPPROVAL';
+            default:                      return null;
+        }
     };
 
     const handleApprove = async (req) => {
         const id    = req.requestId || req.id;
         const stage = resolveStage(req.status);
+
+        if (!stage) {
+            setError(`Cannot approve a request with status: ${req.status}`);
+            return;
+        }
+
         setActionId(id);
         try {
             // Use the proper approval workflow endpoint
-            await approvalAPI.processDecision(id, stage, { action: 'APPROVE', comments: '' });
+            await approvalAPI.processDecision(id, stage, { action: 'APPROVE', 
+                                                comments: '' });
             flash('Request approved successfully');
             load();
         } catch (e) {
             // Fallback to legacy PATCH endpoint if approval workflow not wired
-            try {
-                await requestAPI.approveRequest(id);
-                flash('Request approved successfully');
-                load();
-            } catch (e2) {
-                flash(e2.response?.data?.message || e.response?.data?.message || 'Approval failed', true);
-            }
+            // ❌ REMOVED broken fallback — no /requests/{id}/approve endpoint exists
+            flash(e.response?.data?.message || 'Approval failed', true);
         } finally {
             setActionId(null);
         }
@@ -106,14 +111,8 @@ export default function DeptRequestsPage() {
             load();
         } catch (e) {
             // Fallback
-            try {
-                await requestAPI.rejectRequest(id, { reason: rejectNote });
-                flash('Request rejected');
-                setShowReject(null); setRejectNote('');
-                load();
-            } catch (e2) {
-                flash(e2.response?.data?.message || e.response?.data?.message || 'Rejection failed', true);
-            }
+            // ❌ REMOVED broken fallback — no /requests/{id}/reject endpoint exists
+            flash(e.response?.data?.message || 'Rejection failed', true);
         } finally {
             setActionId(null);
         }

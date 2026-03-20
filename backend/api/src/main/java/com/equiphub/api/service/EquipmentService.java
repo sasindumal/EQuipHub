@@ -216,6 +216,7 @@ public class EquipmentService {
             e.setCategory(cat);
         }
         if (req.getType() != null) e.setType(req.getType());
+        if (req.getTotalQuantity() != null) e.setTotalQuantity(req.getTotalQuantity());
 
         Equipment updated = equipmentRepository.save(e);
         log.info("[EQUIP_UPDATE] {} updated by {}", equipmentId, updatedBy);
