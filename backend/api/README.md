@@ -1,6 +1,6 @@
 # EQuipHub Backend API
 
-This is a Spring Boot 3.2 application that manages the backend services for EQuipHub. It relies on PostgreSQL for the database and Redis for caching and session management.
+This is a Spring Boot 3.2 application that manages the backend services for EQuipHub. It relies on PostgreSQL (hosted on Neon) for the cloud database and Redis (hosted on Upstash) for caching and session management.
 
 ## Prerequisites
 
@@ -12,26 +12,26 @@ This is a Spring Boot 3.2 application that manages the backend services for EQui
 
 ## How to Run the Application
 
-There are two main ways to run this project: using Docker (the easiest way), or running the application locally on your machine.
+The application is configured to connect to **Neon (PostgreSQL)** and **Upstash (Redis)** using environment variables.
 
-### Option 1: Using Docker Compose (Recommended)
-If you have Docker Desktop installed, you can spin up the application, database, and cache all at once:
+### Option 1: Running with `.env` (Recommended - Cloud DBs)
+Since the database and cache are hosted in the cloud, you do not need Docker. Just configure your `.env` file in the `backend/api` directory:
 
 ```bash
 cd backend/api
-docker compose up -d
+./mvnw spring-boot:run
 ```
-*Note: This will start the API on port `8080`, Postgres on `5432`, and Redis on `6379`.*
 
-### Option 2: Running Locally (Development)
-For local development with hot-reload via Spring DevTools, you can run the services using Docker and start the app natively.
+### Option 2: Running with Local Database (Offline/Testing)
+If you prefer not to use the cloud databases for local development, you can spin up a local PostgreSQL and Redis instance using Docker:
 
-**1. Start the Database and Cache:**
+**1. Start the Database and Cache locally:**
 ```bash
 docker compose up -d postgres redis
 ```
 
 **2. Start the Spring Boot App:**
+Make sure your `.env` points to the local instances (remove Neon and Upstash URLs).
 ```bash
 ./mvnw spring-boot:run
 ```
@@ -136,11 +136,14 @@ The application reads configuration from `src/main/resources/application.yml`. I
 
 ```env
 SPRING_PROFILES_ACTIVE=dev
-DATABASE_URL=jdbc:postgresql://localhost:5432/equiphub_dev
-DATABASE_USERNAME=your_username
-DATABASE_PASSWORD=your_password
-REDIS_HOST=localhost
+# Neon PostgreSQL
+DATABASE_URL=jdbc:postgresql://ep-cold-bar-...neon.tech:5432/neondb?sslmode=require
+DATABASE_USERNAME=your_neon_username
+DATABASE_PASSWORD=your_neon_password
+# Upstash Redis
+REDIS_HOST=modern-yeti-...upstash.io
 REDIS_PORT=6379
-REDIS_PASSWORD=your_redis_password
+REDIS_PASSWORD=your_upstash_token
+REDIS_SSL=true
 ```
 

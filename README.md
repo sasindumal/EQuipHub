@@ -45,10 +45,10 @@ A comprehensive university equipment borrowing and management system with a **Re
          │                   │                      │
          └───────────────────┴──────────────────────┘
                              │
-                    ┌────────▼────────┐
-                    │   PostgreSQL    │
-                    │   (Database)    │
-                    └─────────────────┘
+                    ┌─────────▼─────────┐
+                    │ Neon (PostgreSQL) │
+                    │  Upstash (Redis)  │
+                    └───────────────────┘
 ```
 
 ### System Flow
@@ -114,8 +114,8 @@ A robust **Spring Boot 3.2** REST API with JWT authentication.
 
 - **Java 17** with Spring Boot 3.2
 - **Spring Security** with JWT authentication
-- **Spring Data JPA** with PostgreSQL
-- **Redis** for caching and session management
+- **Spring Data JPA** with Neon PostgreSQL (Cloud)
+- **Upstash Redis** (Cloud) for caching and session management
 - **Email Service** for notifications
 
 ### Key Modules
@@ -190,15 +190,14 @@ git clone <repository-url>
 cd EQuipHub
 ```
 
-### Step 2: Start PostgreSQL & Redis
+### Step 2: Configure Cloud Databases (Neon & Upstash)
 
-Using Docker:
-```bash
-docker run -d --name postgres -e POSTGRES_PASSWORD=password -p 5432:5432 postgres:14
-docker run -d --name redis -p 6379:6379 redis:6
-```
+This project is configured to use cloud-managed databases:
 
-Or use local installations.
+1. **PostgreSQL via Neon**: Set up your database on [Neon](https://neon.tech/) and grab the connection URL, username, and password.
+2. **Redis via Upstash**: Set up your Redis instance on [Upstash](https://upstash.com/) and get the host URL and token.
+
+Update your `.env` file with these credentials to connect directly to your managed cloud databases.
 
 ### Step 3: Start the Backend
 
@@ -411,20 +410,12 @@ http://localhost:8080/api/v1
 ### Backend Issues
 
 **Database connection failed**
-```bash
-# Check PostgreSQL is running
-docker ps | grep postgres
-
-# Verify connection in application.yml
-```
+- Check your Neon Dashboard for connectivity issues.
+- Verify that `DATABASE_URL` in your `.env` starts with `jdbc:postgresql://` and includes `sslmode=require`.
 
 **Redis connection refused**
-```bash
-# Check Redis is running
-docker ps | grep redis
-
-# Verify connection in application.yml
-```
+- Check your Upstash Dashboard to ensure the instance is active.
+- Verify `REDIS_HOST`, `REDIS_PASSWORD` (which maps to your Upstash REST Token), and `REDIS_SSL=true` are set correctly in `.env`.
 
 ### Mobile App Issues
 

@@ -9,6 +9,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import com.equiphub.api.exception.ValidationException;
 
 import java.time.LocalDateTime;
 import java.time.Year;
@@ -368,17 +369,17 @@ public class RequestService {
         switch (dto.getRequestType()) {
             case LABSESSION:
                 if (dto.getInstructorId() == null) {
-                    throw new RuntimeException("Instructor is required for LABSESSION requests");
+                    throw new ValidationException("Instructor is required for LABSESSION requests");
                 }
                 break;
             case COURSEWORK:
                 if (dto.getCourseId() == null || dto.getCourseId().isBlank()) {
-                    throw new RuntimeException("Course is required for COURSEWORK requests");
+                    throw new ValidationException("Course is required for COURSEWORK requests");
                 }
                 break;
             case RESEARCH:
                 if (dto.getSupervisorId() == null) {
-                    throw new RuntimeException("Supervisor is required for RESEARCH requests");
+                    throw new ValidationException("Supervisor is required for RESEARCH requests");
                 }
                 break;
             case EXTRACURRICULAR:

@@ -121,7 +121,7 @@ export default function NewRequestPage() {
                 isEmergency:   form.isEmergency,
                 emergencyJustification: form.isEmergency ? form.purpose.trim() : null,
                 // courseId is an Integer on the backend — send null when not COURSEWORK
-                courseId: isCoursework && form.courseId ? Number(form.courseId) : null,
+                courseId: isCoursework && form.courseId ? String(form.courseId) : null,
                 items: form.items.map(it => ({
                     equipmentId:       it.equipmentId,
                     quantityRequested: Number(it.quantityRequested) || 1,

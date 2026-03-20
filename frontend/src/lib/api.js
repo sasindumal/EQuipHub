@@ -178,8 +178,8 @@ export const requestAPI = {
   getMyDepartmentRequests:   (page = 0)                 => api.get(`/requests/my-department?page=${page}`),
   getMyDepartmentStats:      ()                         => api.get('/requests/my-department/stats'),
   getSlaBreached:            ()                         => api.get('/requests/sla-breached'),
-  approveRequest:            (id)                       => api.patch(`/requests/${id}/approve`),
-  rejectRequest:             (id, data)                 => api.patch(`/requests/${id}/reject`, data),
+  approveRequest:            (id)                       => api.patch(`/requests/${id}/decide?status=APPROVED`,data),
+  rejectRequest:             (id, data)                 => api.patch(`/requests/${id}/decide?status=REJECTED`, data),
   returnEquipment:           (id)                       => api.patch(`/requests/${id}/return`),
 };
 
