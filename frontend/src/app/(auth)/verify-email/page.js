@@ -4,7 +4,7 @@ import { useState, useRef, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
-import { HiOutlineMail, HiOutlineShieldCheck } from 'react-icons/hi';
+import { HiOutlineShieldCheck } from 'react-icons/hi';
 import { authAPI } from '@/lib/api';
 import '../auth.css';
 
@@ -57,6 +57,13 @@ function VerifyEmailContent() {
         e.preventDefault();
         setError('');
         setSuccess('');
+
+        // BUG-7 FIX: guard against missing emailParam before making the API call
+        if (!emailParam) {
+            setError('Email address is missing. Please go back and register again.');
+            return;
+        }
+
         const fullCode = code.join('');
         if (fullCode.length !== 6) {
             setError('Please enter the complete 6-digit code');

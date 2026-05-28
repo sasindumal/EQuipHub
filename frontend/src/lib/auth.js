@@ -1,6 +1,7 @@
 'use client';
 
 import { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import { useRouter } from 'next/navigation';
 import { authAPI } from './api';
 
 const AuthContext = createContext(null);
@@ -25,6 +26,7 @@ const extractUser = (payload) => {
 export function AuthProvider({ children }) {
     const [user, setUser]       = useState(null);
     const [loading, setLoading] = useState(true);
+    const router                = useRouter();
 
     const fetchUser = useCallback(async () => {
         try {
@@ -33,16 +35,13 @@ export function AuthProvider({ children }) {
                 setLoading(false);
                 return;
             }
-            const res  = await authAPI.getCurrentUser();
-            // Backend wraps: { success, message, data: { userId, role, ... } }
-            // Unwrap with extractUser so user.role is never undefined.
+            const res    = await authAPI.getCurrentUser();
             const parsed = extractUser(res.data);
             if (!parsed) throw new Error('Invalid user payload from /auth/me');
             setUser(parsed);
         } catch (err) {
             const status = err?.response?.status;
             if (status === 401 || status === 403) {
-                // Token is truly invalid — clear it
                 localStorage.removeItem('equiphub_token');
                 localStorage.removeItem('equiphub_user');
                 setUser(null);
@@ -51,11 +50,11 @@ export function AuthProvider({ children }) {
                 const cached = localStorage.getItem('equiphub_user');
                 if (cached) {
                     try {
-                        const parsed = extractUser(JSON.parse(cached));
-                        if (parsed) { setUser(parsed); return; }
+                        // BUG-2 FIX: renamed inner variable to avoid shadowing outer `parsed`
+                        const cachedUser = extractUser(JSON.parse(cached));
+                        if (cachedUser) { setUser(cachedUser); return; }
                     } catch { /* ignore parse errors */ }
                 }
-                // No cache either — clear
                 setUser(null);
             }
         } finally {
@@ -70,7 +69,6 @@ export function AuthProvider({ children }) {
     const login = async (email, password) => {
         const res  = await authAPI.login({ email, password });
         const data = res.data;
-        // Login endpoint returns token + user fields at top level
         localStorage.setItem('equiphub_token', data.token);
         localStorage.setItem('equiphub_user', JSON.stringify(data));
         const parsed = extractUser(data);
@@ -78,11 +76,12 @@ export function AuthProvider({ children }) {
         return data;
     };
 
+    // BUG-10 FIX: use router.push instead of window.location.href to avoid full page reload
     const logout = () => {
         localStorage.removeItem('equiphub_token');
         localStorage.removeItem('equiphub_user');
         setUser(null);
-        window.location.href = '/login';
+        router.push('/login');
     };
 
     const getRedirectPath = (role) => {

@@ -11,9 +11,11 @@ export default function Home() {
   useEffect(() => {
     if (!loading) {
       if (user) {
+        // Authenticated users go to their role-specific dashboard
         router.replace(getRedirectPath(user.role));
       } else {
-        router.replace('/login');
+        // BUG-3 FIX: unauthenticated users land on the welcome/landing page
+        router.replace('/welcome');
       }
     }
   }, [user, loading, router, getRedirectPath]);
