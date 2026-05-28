@@ -20,23 +20,11 @@ export default function ForgotPasswordPage() {
             return;
         }
         setLoading(true);
-        try {
-            // BUG-6 FIX: replaced fake setTimeout with a real API call
-            // TODO: wire to authAPI.forgotPassword(email) once backend endpoint is implemented
-            // await authAPI.forgotPassword(email);
-            // Temporary: show success UI — remove the line below once the API is ready
-            await new Promise((resolve, reject) => {
-                // Placeholder — swap this block for the actual API call above
-                // For now, simulate network call duration without faking success silently
-                setTimeout(resolve, 800);
-            });
+        // Simulate request — backend forgot-password endpoint not yet implemented
+        setTimeout(() => {
             setSubmitted(true);
-        } catch (err) {
-            const msg = err.response?.data?.message || 'Failed to send reset link. Please try again.';
-            setError(msg);
-        } finally {
             setLoading(false);
-        }
+        }, 1500);
     };
 
     return (
@@ -58,11 +46,10 @@ export default function ForgotPasswordPage() {
 
                             <form className="auth-form" onSubmit={handleSubmit}>
                                 <div className="form-group">
-                                    <label htmlFor="forgot-email" className="form-label">Email Address</label>
+                                    <label className="form-label">Email Address</label>
                                     <div className="auth-input-group">
                                         <HiOutlineMail className="auth-input-icon" />
                                         <input
-                                            id="forgot-email"
                                             type="email"
                                             className="form-input"
                                             placeholder="your.email@eng.jfn.ac.lk"

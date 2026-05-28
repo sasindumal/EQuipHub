@@ -72,8 +72,7 @@ export const authAPI = {
   login:           (data)  => api.post('/auth/login', data),
   register:        (data)  => api.post('/auth/register', data),
   verifyEmail:     (data)  => api.post('/auth/verify-email', data),
-  // BUG-9 FIX: send email as JSON body instead of query param
-  resendCode:      (email) => api.post('/auth/resend-code', { email }),
+  resendCode:      (email) => api.post(`/auth/resend-code?email=${encodeURIComponent(email)}`),
   getCurrentUser:  ()      => api.get('/auth/me'),
   refreshToken:    ()      => api.post('/auth/refresh'),
 };
@@ -131,9 +130,11 @@ export const deptAdminAPI = {
 
 // --- Course APIs ---------------------------------------------------------
 export const courseAPI = {
+  // Write: DEPARTMENTADMIN / SYSTEMADMIN only
   createCourse:           (data)            => api.post('/courses', data),
   updateCourse:           (courseId, data)  => api.put(`/courses/${courseId}`, data),
   deleteCourse:           (courseId)        => api.delete(`/courses/${courseId}`),
+  // Read: all authenticated users
   getAllCourses:           ()               => api.get('/courses'),
   getCourseById:          (courseId)        => api.get(`/courses/${courseId}`),
   getCoursesByDepartment: (departmentId)    => api.get(`/courses/department/${departmentId}`),
@@ -149,13 +150,13 @@ export const equipmentCategoryAPI = {
 
 // --- Equipment APIs ------------------------------------------------------
 export const equipmentAPI = {
-  getAllEquipment:        ()                          => api.get('/equipment'),
-  getEquipmentById:      (id)                        => api.get(`/equipment/${id}`),
+  getAllEquipment:        ()                         => api.get('/equipment'),
+  getEquipmentById:      (id)                       => api.get(`/equipment/${id}`),
   getByDepartment:       (deptId, activeOnly = true) => api.get(`/equipment/department/${deptId}?activeOnly=${activeOnly}`),
-  getAvailableByDept:    (deptId)                    => api.get(`/equipment/department/${deptId}/available`),
-  createEquipment:       (data)                      => api.post('/equipment', data),
-  updateEquipment:       (id, data)                  => api.put(`/equipment/${id}`, data),
-  updateEquipmentStatus: (id, data)                  => api.patch(`/equipment/${id}/status`, data),
+  getAvailableByDept:    (deptId)                   => api.get(`/equipment/department/${deptId}/available`),
+  createEquipment:       (data)                     => api.post('/equipment', data),
+  updateEquipment:       (id, data)                 => api.put(`/equipment/${id}`, data),
+  updateEquipmentStatus: (id, data)                 => api.patch(`/equipment/${id}/status`, data),
 };
 
 // --- Borrow Request APIs -------------------------------------------------
@@ -177,8 +178,7 @@ export const requestAPI = {
   getMyDepartmentRequests:   (page = 0)                 => api.get(`/requests/my-department?page=${page}`),
   getMyDepartmentStats:      ()                         => api.get('/requests/my-department/stats'),
   getSlaBreached:            ()                         => api.get('/requests/sla-breached'),
-  // BUG-1 FIX: added missing `data` parameter
-  approveRequest:            (id, data)                 => api.patch(`/requests/${id}/decide?status=APPROVED`, data),
+  approveRequest:            (id)                       => api.patch(`/requests/${id}/decide?status=APPROVED`,data),
   rejectRequest:             (id, data)                 => api.patch(`/requests/${id}/decide?status=REJECTED`, data),
   returnEquipment:           (id)                       => api.patch(`/requests/${id}/return`),
 };
@@ -196,32 +196,32 @@ export const approvalAPI = {
 
 // --- Inspection APIs -----------------------------------------------------
 export const inspectionAPI = {
-  issueEquipment:        (data)                    => api.post('/inspections/issue', data),
-  processReturn:         (data)                    => api.post('/inspections/return', data),
-  acknowledgeInspection: (inspectionId)            => api.post(`/inspections/${inspectionId}/acknowledge`),
-  getByRequest:          (requestId)               => api.get(`/inspections/request/${requestId}`),
-  getMyInspections:      ()                        => api.get('/inspections/my-inspections'),
-  getUnacknowledged:     ()                        => api.get('/inspections/unacknowledged'),
-  getMyDeptDamageReport: (days = 30)               => api.get(`/inspections/my-department/damage-report?days=${days}`),
-  getMyDeptStats:        ()                        => api.get('/inspections/my-department/stats'),
+  issueEquipment:        (data)                   => api.post('/inspections/issue', data),
+  processReturn:         (data)                   => api.post('/inspections/return', data),
+  acknowledgeInspection: (inspectionId)           => api.post(`/inspections/${inspectionId}/acknowledge`),
+  getByRequest:          (requestId)              => api.get(`/inspections/request/${requestId}`),
+  getMyInspections:      ()                       => api.get('/inspections/my-inspections'),
+  getUnacknowledged:     ()                       => api.get('/inspections/unacknowledged'),
+  getMyDeptDamageReport: (days = 30)              => api.get(`/inspections/my-department/damage-report?days=${days}`),
+  getMyDeptStats:        ()                       => api.get('/inspections/my-department/stats'),
   getDamageReport:       (departmentId, days = 30) => api.get(`/inspections/department/${departmentId}/damage-report?days=${days}`),
-  getDepartmentStats:    (departmentId)            => api.get(`/inspections/department/${departmentId}/stats`),
+  getDepartmentStats:    (departmentId)           => api.get(`/inspections/department/${departmentId}/stats`),
 };
 
 // --- Penalty APIs --------------------------------------------------------
 export const penaltyAPI = {
-  createPenalty:                 (data)               => api.post('/penalties', data),
-  approvePenalty:                (penaltyId)          => api.post(`/penalties/${penaltyId}/approve`),
-  waivePenalty:                  (penaltyId, reason)  => api.post(`/penalties/${penaltyId}/waive?reason=${encodeURIComponent(reason)}`),
-  getMyPenalties:                ()                   => api.get('/penalties/my'),
-  getMySummary:                  ()                   => api.get('/penalties/my/summary'),
-  getStudentPenalties:           (studentId)          => api.get(`/penalties/students/${studentId}`),
-  getStudentSummary:             (studentId)          => api.get(`/penalties/students/${studentId}/summary`),
-  canStudentBorrow:              (studentId)          => api.get(`/penalties/students/${studentId}/can-borrow`),
-  getDepartmentPenalties:        (departmentId)       => api.get(`/penalties/departments/${departmentId}`),
-  getDepartmentPendingPenalties: (departmentId)       => api.get(`/penalties/departments/${departmentId}/pending`),
-  submitAppeal:                  (data)               => api.post('/penalties/appeals', data),
-  decideAppeal:                  (penaltyId, data)    => api.post(`/penalties/appeals/${penaltyId}/decide`, data),
+  createPenalty:                (data)                  => api.post('/penalties', data),
+  approvePenalty:               (penaltyId)             => api.post(`/penalties/${penaltyId}/approve`),
+  waivePenalty:                 (penaltyId, reason)     => api.post(`/penalties/${penaltyId}/waive?reason=${encodeURIComponent(reason)}`),
+  getMyPenalties:               ()                      => api.get('/penalties/my'),
+  getMySummary:                 ()                      => api.get('/penalties/my/summary'),
+  getStudentPenalties:          (studentId)             => api.get(`/penalties/students/${studentId}`),
+  getStudentSummary:            (studentId)             => api.get(`/penalties/students/${studentId}/summary`),
+  canStudentBorrow:             (studentId)             => api.get(`/penalties/students/${studentId}/can-borrow`),
+  getDepartmentPenalties:       (departmentId)          => api.get(`/penalties/departments/${departmentId}`),
+  getDepartmentPendingPenalties:(departmentId)          => api.get(`/penalties/departments/${departmentId}/pending`),
+  submitAppeal:                 (data)                  => api.post('/penalties/appeals', data),
+  decideAppeal:                 (penaltyId, data)       => api.post(`/penalties/appeals/${penaltyId}/decide`, data),
 };
 
 export default api;

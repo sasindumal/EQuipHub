@@ -46,8 +46,7 @@ export default function LoginPage() {
 
                     <form className="auth-form" onSubmit={handleSubmit}>
                         <div className="form-group">
-                            {/* BUG-8 FIX: added htmlFor to associate label with input */}
-                            <label htmlFor="login-email" className="form-label">Email Address</label>
+                            <label className="form-label">Email Address</label>
                             <div className="auth-input-group">
                                 <HiOutlineMail className="auth-input-icon" />
                                 <input
@@ -64,8 +63,7 @@ export default function LoginPage() {
                         </div>
 
                         <div className="form-group">
-                            {/* BUG-8 FIX: added htmlFor to associate label with input */}
-                            <label htmlFor="login-password" className="form-label">Password</label>
+                            <label className="form-label">Password</label>
                             <div className="auth-input-group">
                                 <HiOutlineLockClosed className="auth-input-icon" />
                                 <input

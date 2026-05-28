@@ -4,8 +4,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
-// BUG-5 FIX: removed unused HiOutlineAcademicCap import
-import { HiOutlineMail, HiOutlineLockClosed, HiOutlineEye, HiOutlineEyeOff, HiOutlineUser, HiOutlineIdentification } from 'react-icons/hi';
+import { HiOutlineMail, HiOutlineLockClosed, HiOutlineEye, HiOutlineEyeOff, HiOutlineUser, HiOutlineAcademicCap, HiOutlineIdentification } from 'react-icons/hi';
 import { authAPI } from '@/lib/api';
 import '../auth.css';
 
@@ -21,8 +20,6 @@ export default function RegisterPage() {
         indexNumber: '',
     });
     const [showPassword, setShowPassword] = useState(false);
-    // BUG-4 FIX: added separate visibility toggle for confirm password
-    const [showConfirmPassword, setShowConfirmPassword] = useState(false);
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
 
@@ -44,6 +41,7 @@ export default function RegisterPage() {
         if (form.password !== form.confirmPassword) {
             return 'Passwords do not match';
         }
+        // Full 4-digit year format: YYYYEXXX (e.g. 2022E001)
         const indexRegex = /^\d{4}[A-Za-z]\d{3}$/;
         if (!indexRegex.test(form.indexNumber)) {
             return 'Please enter the full registration number (e.g., 2022E001)';
@@ -100,11 +98,10 @@ export default function RegisterPage() {
                     <form className="auth-form" onSubmit={handleSubmit}>
                         <div className="form-row">
                             <div className="form-group">
-                                <label htmlFor="reg-firstName" className="form-label">First Name</label>
+                                <label className="form-label">First Name</label>
                                 <div className="auth-input-group">
                                     <HiOutlineUser className="auth-input-icon" />
                                     <input
-                                        id="reg-firstName"
                                         type="text"
                                         name="firstName"
                                         className="form-input"
@@ -116,11 +113,10 @@ export default function RegisterPage() {
                                 </div>
                             </div>
                             <div className="form-group">
-                                <label htmlFor="reg-lastName" className="form-label">Last Name</label>
+                                <label className="form-label">Last Name</label>
                                 <div className="auth-input-group">
                                     <HiOutlineUser className="auth-input-icon" />
                                     <input
-                                        id="reg-lastName"
                                         type="text"
                                         name="lastName"
                                         className="form-input"
@@ -134,11 +130,10 @@ export default function RegisterPage() {
                         </div>
 
                         <div className="form-group">
-                            <label htmlFor="reg-email" className="form-label">University Email</label>
+                            <label className="form-label">University Email</label>
                             <div className="auth-input-group">
                                 <HiOutlineMail className="auth-input-icon" />
                                 <input
-                                    id="reg-email"
                                     type="email"
                                     name="email"
                                     className="form-input"
@@ -152,11 +147,10 @@ export default function RegisterPage() {
 
                         <div className="form-row">
                             <div className="form-group">
-                                <label htmlFor="reg-indexNumber" className="form-label">Index Number</label>
+                                <label className="form-label">Index Number</label>
                                 <div className="auth-input-group">
                                     <HiOutlineIdentification className="auth-input-icon" />
                                     <input
-                                        id="reg-indexNumber"
                                         type="text"
                                         name="indexNumber"
                                         className="form-input"
@@ -169,9 +163,8 @@ export default function RegisterPage() {
                                 </div>
                             </div>
                             <div className="form-group">
-                                <label htmlFor="reg-semesterYear" className="form-label">Semester Year</label>
+                                <label className="form-label">Semester Year</label>
                                 <select
-                                    id="reg-semesterYear"
                                     name="semesterYear"
                                     className="form-input"
                                     value={form.semesterYear}
@@ -187,11 +180,10 @@ export default function RegisterPage() {
                         </div>
 
                         <div className="form-group">
-                            <label htmlFor="reg-password" className="form-label">Password</label>
+                            <label className="form-label">Password</label>
                             <div className="auth-input-group">
                                 <HiOutlineLockClosed className="auth-input-icon" />
                                 <input
-                                    id="reg-password"
                                     type={showPassword ? 'text' : 'password'}
                                     name="password"
                                     className="form-input"
@@ -204,7 +196,6 @@ export default function RegisterPage() {
                                     type="button"
                                     className="password-toggle"
                                     onClick={() => setShowPassword(!showPassword)}
-                                    aria-label={showPassword ? 'Hide password' : 'Show password'}
                                 >
                                     {showPassword ? <HiOutlineEyeOff /> : <HiOutlineEye />}
                                 </button>
@@ -212,13 +203,11 @@ export default function RegisterPage() {
                         </div>
 
                         <div className="form-group">
-                            <label htmlFor="reg-confirmPassword" className="form-label">Confirm Password</label>
+                            <label className="form-label">Confirm Password</label>
                             <div className="auth-input-group">
                                 <HiOutlineLockClosed className="auth-input-icon" />
-                                {/* BUG-4 FIX: confirm password now has its own visibility toggle */}
                                 <input
-                                    id="reg-confirmPassword"
-                                    type={showConfirmPassword ? 'text' : 'password'}
+                                    type="password"
                                     name="confirmPassword"
                                     className="form-input"
                                     placeholder="Re-enter your password"
@@ -226,14 +215,6 @@ export default function RegisterPage() {
                                     onChange={handleChange}
                                     required
                                 />
-                                <button
-                                    type="button"
-                                    className="password-toggle"
-                                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                                    aria-label={showConfirmPassword ? 'Hide confirm password' : 'Show confirm password'}
-                                >
-                                    {showConfirmPassword ? <HiOutlineEyeOff /> : <HiOutlineEye />}
-                                </button>
                             </div>
                         </div>
 
